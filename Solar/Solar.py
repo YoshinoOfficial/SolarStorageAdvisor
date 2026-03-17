@@ -1,3 +1,4 @@
+from numpy import block
 import pvlib
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -48,14 +49,18 @@ def getsolar(lat=39.9, lon=116.4, tz='Asia/Shanghai', altitude=44, name='Beijing
     mc.run_model(weather)
 
     # --- 第六步：查看结果并绘图 ---
-    print("模拟完成！当日最大 AC 输出功率为: ", mc.results.ac.max(), "W")
+    #print("模拟完成！当日最大 AC 输出功率为: ", mc.results.ac.max(), "W/平方米")
 
     # 绘图展示
+    '''
     mc.results.ac.plot(figsize=(10, 6), title='Summer Solstice Clear Sky Power Output (Beijing)')
     plt.ylabel('AC Power Output (Watts)')
     plt.xlabel('Time of Day')
     plt.grid(True)
-    plt.show()
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
+    '''
     return mc.results.ac
 
 
