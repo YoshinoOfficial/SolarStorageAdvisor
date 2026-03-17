@@ -4,6 +4,76 @@
 
 pvlib 是一个用于光伏系统建模和仿真的 Python 库，提供了完整的太阳能发电系统模拟功能，包括辐射计算、组件性能建模、温度模型等。
 
+## 快速开始 - 使用封装函数
+
+本项目提供了两个封装好的函数，可以快速进行太阳能发电模拟：
+
+### 1. getsolar() - 使用 Array 对象（需要指定温度模型参数）
+
+```python
+from Solar.Solar import getsolar
+
+# 使用默认参数
+Solar = getsolar()
+
+# 自定义参数
+Solar = getsolar(
+    lat=39.9,                    # 纬度
+    lon=116.4,                   # 经度
+    tz='Asia/Shanghai',          # 时区
+    altitude=44,                 # 海拔（米）
+    name='Beijing',              # 位置名称
+    start='2024-06-21',          # 开始日期
+    end='2024-06-22',            # 结束日期
+    freq='15min',                # 时间频率
+    temp_air=30,                 # 环境温度（°C）
+    wind_speed=2,                # 风速（m/s）
+    surface_tilt=30,             # 倾角（度）
+    surface_azimuth=180,          # 方位角（度，180=正南）
+    temp_a=-3.56,                # 温度模型参数 a
+    temp_b=-0.075,               # 温度模型参数 b
+    temp_deltaT=3                # 温度模型参数 deltaT
+)
+```
+
+### 2. getsolar_auto() - 自动推断温度模型（推荐）
+
+```python
+from Solar.Solar_auto import getsolar_auto
+
+# 使用默认参数
+Solar_auto = getsolar_auto()
+
+# 自定义参数
+Solar_auto = getsolar_auto(
+    lat=39.9,                    # 纬度
+    lon=116.4,                   # 经度
+    tz='Asia/Shanghai',          # 时区
+    altitude=44,                 # 海拔（米）
+    name='Beijing',              # 位置名称
+    start='2024-06-21',          # 开始日期
+    end='2024-06-22',            # 结束日期
+    freq='15min',                # 时间频率
+    temp_air=30,                 # 环境温度（°C）
+    wind_speed=2,                # 风速（m/s）
+    surface_tilt=30,             # 倾角（度）
+    surface_azimuth=180,          # 方位角（度，180=正南）
+    racking_model='open_rack',   # 支架类型
+    module_type='glass_polymer'   # 组件类型
+)
+```
+
+### 两个函数的区别
+
+- **getsolar()**: 使用 `Array` 对象构建系统，需要手动指定温度模型参数（`temp_a`, `temp_b`, `temp_deltaT`）
+- **getsolar_auto()**: 直接在 `PVSystem` 上设置，通过 `racking_model` 和 `module_type` 自动推断温度模型（推荐使用）
+
+两个函数的计算结果相同，但 `getsolar_auto()` 更简洁，无需手动指定温度模型参数。
+
+### 函数返回值
+
+两个函数都返回 `mc.results.ac`，即交流输出功率的时间序列数据（pandas Series）。
+
 ## 需要的数据
 
 ### 1. 地理位置数据
