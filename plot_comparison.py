@@ -1,6 +1,3 @@
-from Solar.Solar import getsolar
-from Consumption.Consumption import getconsumption
-import pandas as pd
 import matplotlib.pyplot as plt
 
 def plot_comparison(data):
@@ -30,7 +27,7 @@ def plot_comparison(data):
         linewidth=2
     )
 
-    plt.ylabel('Power (Watts)')
+    plt.ylabel('Power (kW/平方米)')
     plt.xlabel('Time')
     plt.legend()
     plt.grid(True, alpha=0.3)

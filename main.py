@@ -18,6 +18,7 @@ data = pd.DataFrame({
     'Energy Balance': Consumption.values - Solar.values  # 能量差额：正值需要购电，负值可售电
 }, index=Solar.index)
 
+# 计算日成本
 Electricity = data['Energy Balance'].clip(lower=0)  # 只保留正值，负值设为0
 ElectricityPrice = 1  # 假设电价为 1 元/千瓦时
 cost = sum(Electricity * ElectricityPrice)/4 # 计算成本,除以4是因为15分钟间隔

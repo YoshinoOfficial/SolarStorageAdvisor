@@ -1,7 +1,5 @@
-from numpy import block
 import pvlib
 import pandas as pd
-import matplotlib.pyplot as plt
 from pvlib.location import Location
 from pvlib.pvsystem import PVSystem
 from pvlib.modelchain import ModelChain

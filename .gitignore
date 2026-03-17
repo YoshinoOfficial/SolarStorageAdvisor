@@ -18,3 +18,7 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Config files (may contain sensitive info)
+config/*.json
+!config/solar_config.json.example
