@@ -1,0 +1,23 @@
+{
+    "available_panels": [
+        {
+            "id": "panel_canadian_solar",
+            "name": "Canadian Solar CS5P-220M",
+            "file": "config/solar/panels/panel_canadian_solar.json",
+            "description": "高效率单晶硅组件"
+        },
+        {
+            "id": "panel_trina",
+            "name": "Trina Solar TSM-250",
+            "file": "config/solar/panels/panel_trina.json",
+            "description": "性价比多晶硅组件"
+        },
+        {
+            "id": "panel_jinko",
+            "name": "Jinko Solar JKM300",
+            "file": "config/solar/panels/panel_jinko.json",
+            "description": "大功率单晶硅组件"
+        }
+    ],
+    "current_panel": "panel_canadian_solar"
+}

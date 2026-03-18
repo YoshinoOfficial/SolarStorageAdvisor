@@ -21,4 +21,10 @@ Thumbs.db
 
 # Config files (may contain sensitive info)
 config/*.json
-!config/solar_config.json.example
+!config/*.json.example
+config/solar/*.json
+!config/solar/*.json.example
+config/solar/panels/*.json
+!config/solar/panels/*.json.example
+config/economics/*.json
+!config/economics/*.json.example

@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import pandas as pd
 
 def load_config(config_path='config/solar_config.json', auto_create=True):
     """
@@ -19,6 +20,8 @@ def load_config(config_path='config/solar_config.json', auto_create=True):
             config = json.load(f)
         print(f"已加载配置文件: {config_path}")
         return config
+    
+    print(f"配置文件不存在: {config_path}")
     
     # 配置文件不存在，处理示例文件
     example_path = config_path.replace('.json', '.json.example')
@@ -77,3 +80,91 @@ def create_config_from_example(config_path='config/solar_config.json'):
         config = json.load(f)
     
     return config
+
+def load_panel_by_id(panel_id):
+    """
+    通过板子 ID 加载光伏板配置
+    
+    Args:
+        panel_id: 光伏板 ID
+        
+    Returns:
+        dict: 光伏板配置字典
+    """
+    panels_list = load_config('config/solar/panels_list.json')
+    
+    panel_info = None
+    for panel in panels_list['available_panels']:
+        if panel['id'] == panel_id:
+            panel_info = panel
+            break
+    
+    if not panel_info:
+        raise ValueError(f"光伏板 ID 不存在: {panel_id}")
+    print(panel_info)
+    return load_config(panel_info['file'])
+
+def list_available_panels():
+    """
+    列出所有可用的光伏板
+    
+    Returns:
+        list: 光伏板信息列表
+    """
+    panels_list = load_config('config/solar/panels_list.json')
+    return panels_list['available_panels']
+
+def get_current_panel_id():
+    """
+    获取当前使用的光伏板 ID
+    
+    Returns:
+        str: 光伏板 ID
+    """
+    panels_list = load_config('config/solar/panels_list.json')
+    return panels_list['current_panel']
+
+def set_current_panel_id(panel_id):
+    """
+    设置当前使用的光伏板 ID
+    
+    Args:
+        panel_id: 光伏板 ID
+    """
+    panels_list = load_config('config/solar/panels_list.json')
+    
+    panel_exists = False
+    for panel in panels_list['available_panels']:
+        if panel['id'] == panel_id:
+            panel_exists = True
+            break
+    
+    if not panel_exists:
+        raise ValueError(f"光伏板 ID 不存在: {panel_id}")
+    
+    panels_list['current_panel'] = panel_id
+    save_config(panels_list, 'config/solar/panels_list.json')
+    print(f"已设置当前光伏板: {panel_id}")
+
+def load_electricity_price():
+    """
+    加载电价配置
+    
+    Returns:
+        dict: 电价配置字典
+    """
+    return load_config('config/economics/electricity_price.json')
+
+def save_electricity_price(electricity_price):
+    """
+    保存电价配置
+    
+    Args:
+        electricity_price: 电价（元/千瓦时）
+    """
+    config = {
+        'electricity_price': electricity_price,
+        'description': '电价（元/千瓦时）',
+        'last_updated': pd.Timestamp.now().strftime('%Y-%m-%d')
+    }
+    save_config(config, 'config/economics/electricity_price.json')

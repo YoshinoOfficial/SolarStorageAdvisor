@@ -1,4 +1,9 @@
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+# 配置中文字体
+mpl.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
+mpl.rcParams['axes.unicode_minus'] = False
 
 def plot_comparison(data):
     '''
