@@ -1,11 +1,21 @@
+import sys
+import os
+
+# 添加项目根目录到 Python 路径，确保能找到 config 模块
+current_file = os.path.abspath(__file__)
+project_root = os.path.dirname(os.path.dirname(current_file))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 import pvlib
 import pandas as pd
+import matplotlib.pyplot as plt
 from pvlib.location import Location
 from pvlib.pvsystem import PVSystem, Array, FixedMount
 from pvlib.modelchain import ModelChain
 from config.config_manager import load_panel_by_id, get_current_panel_id
 
-def getsolar(lat=None, lon=None, tz=None, altitude=None, name=None, start=None, end=None, freq=None, temp_air=None, wind_speed=None, surface_tilt=None, surface_azimuth=None, temp_a=None, temp_b=None, temp_deltaT=None, panel_id=None):
+def getsolar(lat=None, lon=None, tz=None, altitude=None, name=None, start=None, end=None, freq=None, temp_air=None, wind_speed=None, surface_tilt=None, surface_azimuth=None, temp_a=None, temp_b=None, temp_deltaT=None, panel_id=None, ifdraw=False):
     
     # 从配置文件获取参数
     if panel_id is None:
@@ -104,17 +114,19 @@ def getsolar(lat=None, lon=None, tz=None, altitude=None, name=None, start=None, 
     #print("模拟完成！当日最大 AC 输出功率为: ", mc.results.ac.max(), "W/平方米")
 
     # 绘图展示
-    '''
-    mc.results.ac.plot(figsize=(10, 6), title='Summer Solstice Clear Sky Power Output (Beijing)')
-    plt.ylabel('AC Power Output (Watts)')
-    plt.xlabel('Time of Day')
-    plt.grid(True)
-    plt.show(block=False)
-    plt.pause(2)
-    plt.close()
-    '''
+    if ifdraw:
+        mc.results.ac.plot(figsize=(10, 6), title='Summer Solstice Clear Sky Power Output (Beijing)')
+        plt.ylabel('AC Power Output (kW)')
+        plt.xlabel('Time of Day')
+        plt.grid(True)
+        plt.show(block=False)
+        plt.pause(2)
+        plt.savefig('solar.png')
+        plt.close()
+    
     return area * mc.results.ac / 1000  # 除以1000转换为千瓦
 
 
-
+if __name__ == '__main__':
+    getsolar(ifdraw=True)
 
