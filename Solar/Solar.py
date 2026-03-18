@@ -3,8 +3,62 @@ import pandas as pd
 from pvlib.location import Location
 from pvlib.pvsystem import PVSystem, Array, FixedMount
 from pvlib.modelchain import ModelChain
+from config.config_manager import load_panel_by_id, get_current_panel_id
 
-def getsolar(lat=39.9, lon=116.4, tz='Asia/Shanghai', altitude=44, name='Beijing', start='2024-06-21', end='2024-06-22', freq='15min',temp_air=30, wind_speed=2, surface_tilt=30, surface_azimuth=180, temp_a=-3.56, temp_b=-0.075, temp_deltaT=3):
+def getsolar(lat=None, lon=None, tz=None, altitude=None, name=None, start=None, end=None, freq=None, temp_air=None, wind_speed=None, surface_tilt=None, surface_azimuth=None, temp_a=None, temp_b=None, temp_deltaT=None, panel_id=None):
+    
+    # 从配置文件获取参数
+    if panel_id is None:
+        panel_id = get_current_panel_id()
+    
+    panel_config = load_panel_by_id(panel_id)
+    
+    # 位置参数
+    location_params = panel_config['location']
+    if lat is None:
+        lat = location_params['lat']
+    if lon is None:
+        lon = location_params['lon']
+    if tz is None:
+        tz = location_params['tz']
+    if altitude is None:
+        altitude = location_params['altitude']
+    if name is None:
+        name = location_params['name']
+    
+    # 时间参数
+    time_params = panel_config['time_range']
+    if start is None:
+        start = time_params['start']
+    if end is None:
+        end = time_params['end']
+    if freq is None:
+        freq = time_params['freq']
+    
+    # 天气参数
+    weather_params = panel_config['weather']
+    if temp_air is None:
+        temp_air = weather_params['temp_air']
+    if wind_speed is None:
+        wind_speed = weather_params['wind_speed']
+    
+    # 系统参数
+    system_params = panel_config['system_config']
+    if surface_tilt is None:
+        surface_tilt = system_params['surface_tilt']
+    if surface_azimuth is None:
+        surface_azimuth = system_params['surface_azimuth']
+    
+    temp_model_params = system_params['temperature_model']
+    if temp_a is None:
+        temp_a = temp_model_params['a']
+    if temp_b is None:
+        temp_b = temp_model_params['b']
+    if temp_deltaT is None:
+        temp_deltaT = temp_model_params['deltaT']
+    
+    # 获取面积参数
+    area = panel_config['system']['area']
     
     # --- 第一步：定义地理位置 (北京) ---
     #lat, lon = 39.9, 116.4
@@ -59,7 +113,7 @@ def getsolar(lat=39.9, lon=116.4, tz='Asia/Shanghai', altitude=44, name='Beijing
     plt.pause(2)
     plt.close()
     '''
-    return mc.results.ac
+    return area * mc.results.ac / 1000  # 除以1000转换为千瓦
 
 
 

@@ -14,6 +14,14 @@ def load_config(config_path='config/solar_config.json', auto_create=True):
     Returns:
         dict: 配置字典
     """
+    # 自动调整相对路径
+    if not os.path.isabs(config_path):
+        # 获取项目根目录
+        config_manager_path = os.path.abspath(__file__)
+        config_dir = os.path.dirname(config_manager_path)
+        project_root = os.path.dirname(config_dir)
+        config_path = os.path.join(project_root, config_path)
+    
     # 配置文件存在，直接加载
     if os.path.exists(config_path):
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -47,6 +55,14 @@ def save_config(config, config_path='config/solar_config.json'):
         config: 配置字典
         config_path: 配置文件路径
     """
+    # 自动调整相对路径
+    if not os.path.isabs(config_path):
+        # 获取项目根目录
+        config_manager_path = os.path.abspath(__file__)
+        config_dir = os.path.dirname(config_manager_path)
+        project_root = os.path.dirname(config_dir)
+        config_path = os.path.join(project_root, config_path)
+    
     os.makedirs(os.path.dirname(config_path), exist_ok=True)
     
     with open(config_path, 'w', encoding='utf-8') as f:
