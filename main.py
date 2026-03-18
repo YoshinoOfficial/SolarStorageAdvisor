@@ -27,4 +27,4 @@ cost = sum(Electricity * ElectricityPrice) / 4
 print(f"成本为: {cost} 元/天")
 
 # 绘制图表
-plot_comparison(data)
+plot_comparison(data,ifsave=True)

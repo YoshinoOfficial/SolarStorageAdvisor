@@ -117,7 +117,7 @@ def load_panel_by_id(panel_id):
     
     if not panel_info:
         raise ValueError(f"光伏板 ID 不存在: {panel_id}")
-    print(panel_info)
+    # print(panel_info)
     return load_config(panel_info['file'])
 
 def list_available_panels():

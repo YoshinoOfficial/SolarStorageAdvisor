@@ -5,7 +5,7 @@ import matplotlib as mpl
 mpl.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
 mpl.rcParams['axes.unicode_minus'] = False
 
-def plot_comparison(data):
+def plot_comparison(data,ifsave=False):
     '''
     # 获取数据
     Solar = getsolar()
@@ -38,5 +38,7 @@ def plot_comparison(data):
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show(block=False)
+    if ifsave:
+        plt.savefig('comparison.png')
     plt.pause(5)
     plt.close()
