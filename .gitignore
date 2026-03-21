@@ -28,3 +28,13 @@ config/solar/panels/*.json
 !config/solar/panels/*.json.example
 config/economics/*.json
 !config/economics/*.json.example
+config/Storage/*.json
+!config/Storage/*.json.example
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.svg
