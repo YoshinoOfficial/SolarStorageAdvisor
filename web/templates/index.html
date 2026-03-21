@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>光伏储能配置系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>光伏储能配置系统</h1>
+            <div class="cost-display">
+                <span>日成本: </span>
+                <span id="daily-cost">--</span>
+                <span> 元/天</span>
+                <button onclick="recalculate()" class="btn-calculate-header">重新计算</button>
+            </div>
+        </header>
+
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="chart">功率曲线图</button>
+            <button class="tab-btn" data-tab="panel">光伏配置</button>
+            <button class="tab-btn" data-tab="storage">储能配置</button>
+            <button class="tab-btn" data-tab="price">电价配置</button>
+        </nav>
+
+        <div class="tab-content">
+            <div id="tab-chart" class="tab-pane active">
+                <div class="chart-area">
+                    <div id="power-chart" class="chart"></div>
+                    <div id="soc-chart" class="chart"></div>
+                </div>
+            </div>
+
+            <div id="tab-panel" class="tab-pane">
+                <div class="config-page">
+                    <div class="config-header">
+                        <h2>光伏配置管理</h2>
+                    </div>
+                    <div class="config-select-row">
+                        <label>当前配置:</label>
+                        <select id="panel-select"></select>
+                        <button onclick="switchPanel()" class="btn-small">切换</button>
+                        <button onclick="showCreatePanelModal()" class="btn-small">新建</button>
+                        <button onclick="deleteCurrentPanel()" class="btn-small btn-danger">删除</button>
+                    </div>
+                    <div class="config-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>面积 (m²):</label>
+                                <input type="number" id="panel-area" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label>倾角 (°):</label>
+                                <input type="number" id="panel-tilt" step="1" min="0" max="90">
+                            </div>
+                            <div class="form-group">
+                                <label>方位角 (°):</label>
+                                <input type="number" id="panel-azimuth" step="1" min="0" max="360">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>纬度:</label>
+                                <input type="number" id="panel-lat" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>经度:</label>
+                                <input type="number" id="panel-lon" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>海拔 (m):</label>
+                                <input type="number" id="panel-altitude" step="1">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>环境温度 (°C):</label>
+                                <input type="number" id="panel-temp-air" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label>风速 (m/s):</label>
+                                <input type="number" id="panel-wind-speed" step="0.1">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button onclick="updatePanelConfig()" class="btn-primary">保存光伏配置</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-storage" class="tab-pane">
+                <div class="config-page">
+                    <div class="config-header">
+                        <h2>储能配置管理</h2>
+                    </div>
+                    <div class="config-select-row">
+                        <label>当前配置:</label>
+                        <select id="storage-select"></select>
+                        <button onclick="switchStorage()" class="btn-small">切换</button>
+                        <button onclick="showCreateStorageModal()" class="btn-small">新建</button>
+                        <button onclick="deleteCurrentStorage()" class="btn-small btn-danger">删除</button>
+                    </div>
+                    <div class="config-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>容量 (kWh):</label>
+                                <input type="number" id="storage-capacity" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label>最大充电功率 (kW):</label>
+                                <input type="number" id="storage-charge-power" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label>最大放电功率 (kW):</label>
+                                <input type="number" id="storage-discharge-power" step="1">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>充电效率:</label>
+                                <input type="number" id="storage-charge-eff" step="0.01" min="0" max="1">
+                            </div>
+                            <div class="form-group">
+                                <label>放电效率:</label>
+                                <input type="number" id="storage-discharge-eff" step="0.01" min="0" max="1">
+                            </div>
+                            <div class="form-group">
+                                <label>初始 SOC:</label>
+                                <input type="number" id="storage-initial-soc" step="0.01" min="0" max="1">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>最小 SOC:</label>
+                                <input type="number" id="storage-min-soc" step="0.01" min="0" max="1">
+                            </div>
+                            <div class="form-group">
+                                <label>最大 SOC:</label>
+                                <input type="number" id="storage-max-soc" step="0.01" min="0" max="1">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button onclick="updateStorageConfig()" class="btn-primary">保存储能配置</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-price" class="tab-pane">
+                <div class="config-page">
+                    <div class="config-header">
+                        <h2>电价配置</h2>
+                    </div>
+                    <div class="config-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>电价 (元/kWh):</label>
+                                <input type="number" id="electricity-price" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button onclick="updateElectricityPrice()" class="btn-primary">保存电价</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <h3 id="modal-title">新建配置</h3>
+            <div id="modal-content"></div>
+            <div class="modal-actions">
+                <button onclick="closeModal()" class="btn-small">取消</button>
+                <button onclick="confirmModal()" class="btn-primary">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <span>计算中...</span>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
