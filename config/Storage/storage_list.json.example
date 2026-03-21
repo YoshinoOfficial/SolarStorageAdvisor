@@ -1,0 +1,23 @@
+{
+    "available_storages": [
+        {
+            "id": "storage_small",
+            "name": "小型储能系统",
+            "file": "config/Storage/configs/storage_small.json",
+            "description": "适用于小型工商业，100kWh容量"
+        },
+        {
+            "id": "storage_medium",
+            "name": "中型储能系统",
+            "file": "config/Storage/configs/storage_medium.json",
+            "description": "适用于中型工商业，500kWh容量"
+        },
+        {
+            "id": "storage_large",
+            "name": "大型储能系统",
+            "file": "config/Storage/configs/storage_large.json",
+            "description": "适用于大型工商业，1000kWh容量"
+        }
+    ],
+    "current_storage": "storage_small"
+}

@@ -30,6 +30,8 @@ config/economics/*.json
 !config/economics/*.json.example
 config/Storage/*.json
 !config/Storage/*.json.example
+config/Storage/configs/*.json
+!config/Storage/configs/*.json.example
 
 # Images
 *.png

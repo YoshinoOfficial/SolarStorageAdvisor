@@ -7,7 +7,7 @@
     "initial_soc": 0.5,
     "min_soc": 0.1,
     "max_soc": 0.9,
-    "description": "储能系统配置参数",
+    "description": "小型储能系统配置参数",
     "units": {
         "capacity": "kWh",
         "max_charge_power": "kW",

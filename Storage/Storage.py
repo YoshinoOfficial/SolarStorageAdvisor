@@ -1,7 +1,7 @@
 import sys
 import os
 
-# 添加项目根目录到 Python 路径
+# 添加项目根目录到 Python 路径，确保能找到 config 模块
 current_file = os.path.abspath(__file__)
 project_root = os.path.dirname(os.path.dirname(current_file))
 if project_root not in sys.path:
@@ -9,11 +9,7 @@ if project_root not in sys.path:
 
 import pandas as pd
 import numpy as np
-from config.config_manager import load_config
-
-def load_storage_config():
-    """加载储能配置"""
-    return load_config('config/Storage/storage_config.json')
+from config.config_manager import load_storage_config
 
 def simulate_storage(energy_balance, freq_minutes=15, config=None):
     """

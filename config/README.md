@@ -7,6 +7,7 @@
 - [基础配置管理](#基础配置管理)
 - [光伏板管理](#光伏板管理)
 - [电价管理](#电价管理)
+- [储能管理](#储能管理)
 - [完整示例](#完整示例)
 
 ---
@@ -19,13 +20,23 @@ config/
 ├── economics/                          # 经济相关文件夹
 │   ├── electricity_price.json           # 电价配置
 │   └── electricity_price.json.example   # 电价配置示例
-└── solar/                             # 光伏相关文件夹
-    ├── panels_list.json                 # 光伏板列表索引
-    ├── panels_list.json.example         # 光伏板列表示例
-    └── panels/                         # 各个光伏板的配置
-        ├── panel_canadian_solar.json   # 板子 1: Canadian Solar
-        ├── panel_trina.json            # 板子 2: Trina Solar
-        └── panel_jinko.json            # 板子 3: Jinko Solar
+├── solar/                             # 光伏相关文件夹
+│   ├── panels_list.json                 # 光伏板列表索引
+│   ├── panels_list.json.example         # 光伏板列表示例
+│   └── panels/                         # 各个光伏板的配置
+│       ├── panel_canadian_solar.json   # 板子 1: Canadian Solar
+│       ├── panel_trina.json            # 板子 2: Trina Solar
+│       └── panel_jinko.json            # 板子 3: Jinko Solar
+└── Storage/                           # 储能相关文件夹
+    ├── storage_list.json               # 储能列表索引
+    ├── storage_list.json.example       # 储能列表示例
+    └── configs/                        # 储能配置文件夹
+        ├── storage_small.json          # 小型储能配置
+        ├── storage_small.json.example  # 小型储能配置示例
+        ├── storage_medium.json         # 中型储能配置
+        ├── storage_medium.json.example # 中型储能配置示例
+        ├── storage_large.json          # 大型储能配置
+        └── storage_large.json.example  # 大型储能配置示例
 ```
 
 ### 文件说明
@@ -38,6 +49,9 @@ config/
 | `solar/panels_list.json` | 光伏板列表索引 | ❌ 否 |
 | `solar/panels_list.json.example` | 光伏板列表示例 | ✅ 是 |
 | `solar/panels/*.json` | 各个光伏板的详细配置 | ❌ 否 |
+| `Storage/storage_list.json` | 储能列表索引 | ❌ 否 |
+| `Storage/storage_list.json.example` | 储能列表示例 | ✅ 是 |
+| `Storage/configs/*.json` | 各个储能系统的详细配置 | ❌ 否 |
 
 ---
 
@@ -230,6 +244,150 @@ from config.config_manager import save_electricity_price
 
 # 修改电价
 save_electricity_price(1.2)  # 设置电价为 1.2 元/千瓦时
+```
+
+---
+
+### 储能管理函数
+
+#### `load_storage_config()`
+
+加载当前储能配置。
+
+**返回**:
+- `dict`: 储能配置字典
+
+**示例**:
+```python
+from config.config_manager import load_storage_config
+
+# 加载当前储能配置
+storage_config = load_storage_config()
+print(f"储能容量: {storage_config['capacity']} kWh")
+print(f"最大充电功率: {storage_config['max_charge_power']} kW")
+print(f"最大放电功率: {storage_config['max_discharge_power']} kW")
+print(f"充电效率: {storage_config['charge_efficiency']}")
+print(f"放电效率: {storage_config['discharge_efficiency']}")
+```
+
+---
+
+#### `load_storage_by_id(storage_id)`
+
+通过储能 ID 加载储能配置。
+
+**参数**:
+- `storage_id`: 储能 ID
+
+**返回**:
+- `dict`: 储能配置字典
+
+**示例**:
+```python
+from config.config_manager import load_storage_by_id
+
+# 加载指定储能配置
+storage_config = load_storage_by_id('storage_medium')
+print(f"储能容量: {storage_config['capacity']} kWh")
+```
+
+---
+
+#### `list_available_storages()`
+
+列出所有可用的储能系统。
+
+**返回**:
+- `list`: 储能系统信息列表
+
+**示例**:
+```python
+from config.config_manager import list_available_storages
+
+# 列出所有储能系统
+storages = list_available_storages()
+for storage in storages:
+    print(f"ID: {storage['id']}")
+    print(f"名称: {storage['name']}")
+    print(f"描述: {storage['description']}")
+    print(f"文件: {storage['file']}")
+    print("-" * 50)
+```
+
+---
+
+#### `get_current_storage_id()`
+
+获取当前使用的储能 ID。
+
+**返回**:
+- `str`: 储能 ID
+
+**示例**:
+```python
+from config.config_manager import get_current_storage_id
+
+# 获取当前储能
+current_id = get_current_storage_id()
+print(f"当前储能 ID: {current_id}")
+```
+
+---
+
+#### `set_current_storage_id(storage_id)`
+
+设置当前使用的储能 ID。
+
+**参数**:
+- `storage_id`: 储能 ID
+
+**示例**:
+```python
+from config.config_manager import set_current_storage_id
+
+# 切换到不同的储能系统
+set_current_storage_id('storage_medium')
+```
+
+---
+
+#### `save_storage_config(capacity=None, max_charge_power=None, max_discharge_power=None, charge_efficiency=None, discharge_efficiency=None, initial_soc=None, min_soc=None, max_soc=None)`
+
+保存当前储能配置（只更新提供的参数）。
+
+**参数**:
+- `capacity`: 储能容量
+- `max_charge_power`: 最大充电功率
+- `max_discharge_power`: 最大放电功率
+- `charge_efficiency`: 充电效率（0-1）
+- `discharge_efficiency`: 放电效率（0-1）
+- `initial_soc`: 初始SOC（0-1）
+- `min_soc`: 最小SOC（0-1）
+- `max_soc`: 最大SOC（0-1）
+
+**示例**:
+```python
+from config.config_manager import save_storage_config
+
+# 修改储能容量和功率
+save_storage_config(
+    capacity=200,  # 200 kWh
+    max_charge_power=100,  # 100 kW
+    max_discharge_power=100  # 100 kW
+)
+
+# 只修改效率
+save_storage_config(
+    charge_efficiency=0.98,
+    discharge_efficiency=0.98
+)
+
+# 修改SOC范围
+save_storage_config(
+    initial_soc=0.6,
+    min_soc=0.15,
+    max_soc=0.95
+)
 ```
 
 ---
@@ -431,6 +589,142 @@ from config.config_manager import save_electricity_price
 new_price = 1.2  # 1.2 元/千瓦时
 save_electricity_price(new_price)
 print(f"电价已更新为: {new_price} 元/千瓦时")
+```
+
+---
+
+## 储能管理
+
+### 列出所有可用储能系统
+
+```python
+from config.config_manager import list_available_storages
+
+storages = list_available_storages()
+for storage in storages:
+    print(f"{storage['id']}: {storage['name']} - {storage['description']}")
+```
+
+**输出示例**:
+```
+storage_small: 小型储能系统 - 适用于小型工商业，100kWh容量
+storage_medium: 中型储能系统 - 适用于中型工商业，500kWh容量
+storage_large: 大型储能系统 - 适用于大型工商业，1000kWh容量
+```
+
+### 加载储能配置
+
+```python
+from config.config_manager import load_storage_config, load_storage_by_id
+
+# 加载当前储能配置
+storage_config = load_storage_config()
+
+# 加载指定储能配置
+storage_config = load_storage_by_id('storage_medium')
+
+# 访问储能参数
+print(f"储能容量: {storage_config['capacity']} kWh")
+print(f"最大充电功率: {storage_config['max_charge_power']} kW")
+print(f"最大放电功率: {storage_config['max_discharge_power']} kW")
+print(f"充电效率: {storage_config['charge_efficiency']}")
+print(f"放电效率: {storage_config['discharge_efficiency']}")
+print(f"初始SOC: {storage_config['initial_soc']}")
+print(f"SOC范围: {storage_config['min_soc']} - {storage_config['max_soc']}")
+```
+
+### 切换当前储能系统
+
+```python
+from config.config_manager import set_current_storage_id, get_current_storage_id
+
+# 获取当前储能
+current_id = get_current_storage_id()
+print(f"当前储能: {current_id}")
+
+# 切换到新的储能系统
+set_current_storage_id('storage_medium')
+print(f"已切换到: {get_current_storage_id()}")
+```
+
+### 修改储能配置
+
+```python
+from config.config_manager import save_storage_config
+
+# 修改储能容量和功率
+save_storage_config(
+    capacity=200,  # 200 kWh
+    max_charge_power=100,  # 100 kW
+    max_discharge_power=100  # 100 kW
+)
+
+# 只修改效率
+save_storage_config(
+    charge_efficiency=0.98,
+    discharge_efficiency=0.98
+)
+
+# 修改SOC范围
+save_storage_config(
+    initial_soc=0.6,
+    min_soc=0.15,
+    max_soc=0.95
+)
+```
+
+### 添加新的储能系统
+
+**步骤 1**: 创建新的储能配置文件
+
+```python
+from config.config_manager import save_config
+
+# 创建新储能配置
+new_storage = {
+    "capacity": 2000,
+    "max_charge_power": 1000,
+    "max_discharge_power": 1000,
+    "charge_efficiency": 0.95,
+    "discharge_efficiency": 0.95,
+    "initial_soc": 0.5,
+    "min_soc": 0.1,
+    "max_soc": 0.9,
+    "description": "超大型储能系统配置参数",
+    "units": {
+        "capacity": "kWh",
+        "max_charge_power": "kW",
+        "max_discharge_power": "kW",
+        "charge_efficiency": "百分比",
+        "discharge_efficiency": "百分比",
+        "initial_soc": "百分比",
+        "min_soc": "百分比",
+        "max_soc": "百分比"
+    }
+}
+
+# 保存新储能配置
+save_config(new_storage, 'config/Storage/configs/storage_xlarge.json')
+```
+
+**步骤 2**: 更新储能列表
+
+```python
+from config.config_manager import load_config, save_config
+
+# 加载储能列表
+storage_list = load_config('config/Storage/storage_list.json')
+
+# 添加新储能
+storage_list['available_storages'].append({
+    "id": "storage_xlarge",
+    "name": "超大型储能系统",
+    "file": "config/Storage/configs/storage_xlarge.json",
+    "description": "适用于超大型工商业，2000kWh容量"
+})
+
+# 保存更新后的列表
+save_config(storage_list, 'config/Storage/storage_list.json')
 ```
 
 ---
@@ -666,6 +960,50 @@ print(f"\n最优电价: {optimal_price} 元/千瓦时")
 }
 ```
 
+### 储能配置文件格式
+
+```json
+{
+    "capacity": 100,
+    "max_charge_power": 50,
+    "max_discharge_power": 50,
+    "charge_efficiency": 0.95,
+    "discharge_efficiency": 0.95,
+    "initial_soc": 0.5,
+    "min_soc": 0.1,
+    "max_soc": 0.9,
+    "description": "储能系统配置参数",
+    "units": {
+        "capacity": "kWh",
+        "max_charge_power": "kW",
+        "max_discharge_power": "kW",
+        "charge_efficiency": "百分比",
+        "discharge_efficiency": "百分比",
+        "initial_soc": "百分比",
+        "min_soc": "百分比",
+        "max_soc": "百分比"
+    }
+}
+```
+
+### 储能列表文件格式
+
+```json
+{
+    "available_storages": [
+        {
+            "id": "storage_small",
+            "name": "小型储能系统",
+            "file": "config/Storage/configs/storage_small.json",
+            "description": "适用于小型工商业，100kWh容量"
+        }
+    ],
+    "current_storage": "storage_small"
+}
+```
+
+**注意**：`file` 字段使用相对于项目根目录的路径，需要包含 `config/` 前缀。
+
 ### 光伏板列表文件格式
 
 ```json
@@ -721,6 +1059,8 @@ config = create_config_from_example('config/solar/panels/panel_canadian_solar.js
 - `config/*.json` - 不提交
 - `config/solar/*.json` - 不提交
 - `config/solar/panels/*.json` - 不提交
+- `config/Storage/*.json` - 不提交
+- `config/Storage/configs/*.json` - 不提交
 
 只有 `.example` 文件会被提交到 Git。
 
@@ -732,4 +1072,9 @@ config = create_config_from_example('config/solar/panels/panel_canadian_solar.js
 - 使用 `list_available_panels()` 查看所有光伏板
 - 使用 `set_current_panel_id()` 切换光伏板
 - 使用 `load_electricity_price()` 和 `save_electricity_price()` 管理电价
+- 使用 `load_storage_config()` 加载当前储能配置
+- 使用 `load_storage_by_id()` 加载指定储能配置
+- 使用 `list_available_storages()` 查看所有储能系统
+- 使用 `set_current_storage_id()` 切换储能系统
+- 使用 `save_storage_config()` 修改当前储能配置
 - 所有配置文件都有对应的 `.example` 文件作为模板

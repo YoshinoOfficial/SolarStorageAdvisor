@@ -184,3 +184,131 @@ def save_electricity_price(electricity_price):
         'last_updated': pd.Timestamp.now().strftime('%Y-%m-%d')
     }
     save_config(config, 'config/economics/electricity_price.json')
+
+def load_storage_config():
+    """
+    加载当前储能配置
+    
+    Returns:
+        dict: 储能配置字典
+    """
+    storage_list = load_config('config/Storage/storage_list.json')
+    current_id = storage_list['current_storage']
+    return load_storage_by_id(current_id)
+
+def load_storage_by_id(storage_id):
+    """
+    通过储能 ID 加载储能配置
+    
+    Args:
+        storage_id: 储能 ID
+        
+    Returns:
+        dict: 储能配置字典
+    """
+    storage_list = load_config('config/Storage/storage_list.json')
+    
+    storage_info = None
+    for storage in storage_list['available_storages']:
+        if storage['id'] == storage_id:
+            storage_info = storage
+            break
+    
+    if not storage_info:
+        raise ValueError(f"储能 ID 不存在: {storage_id}")
+    
+    return load_config(storage_info['file'])
+
+def list_available_storages():
+    """
+    列出所有可用的储能系统
+    
+    Returns:
+        list: 储能系统信息列表
+    """
+    storage_list = load_config('config/Storage/storage_list.json')
+    return storage_list['available_storages']
+
+def get_current_storage_id():
+    """
+    获取当前使用的储能 ID
+    
+    Returns:
+        str: 储能 ID
+    """
+    storage_list = load_config('config/Storage/storage_list.json')
+    return storage_list['current_storage']
+
+def set_current_storage_id(storage_id):
+    """
+    设置当前使用的储能 ID
+    
+    Args:
+        storage_id: 储能 ID
+    """
+    storage_list = load_config('config/Storage/storage_list.json')
+    
+    storage_exists = False
+    for storage in storage_list['available_storages']:
+        if storage['id'] == storage_id:
+            storage_exists = True
+            break
+    
+    if not storage_exists:
+        raise ValueError(f"储能 ID 不存在: {storage_id}")
+    
+    storage_list['current_storage'] = storage_id
+    save_config(storage_list, 'config/Storage/storage_list.json')
+    print(f"已设置当前储能系统: {storage_id}")
+
+def save_storage_config(capacity=None, max_charge_power=None, max_discharge_power=None,
+                        charge_efficiency=None, discharge_efficiency=None,
+                        initial_soc=None, min_soc=None, max_soc=None):
+    """
+    保存当前储能配置（只更新提供的参数）
+    
+    Args:
+        capacity: 储能容量（kWh）
+        max_charge_power: 最大充电功率（kW）
+        max_discharge_power: 最大放电功率（kW）
+        charge_efficiency: 充电效率（0-1）
+        discharge_efficiency: 放电效率（0-1）
+        initial_soc: 初始SOC（0-1）
+        min_soc: 最小SOC（0-1）
+        max_soc: 最大SOC（0-1）
+    """
+    # 获取当前储能配置文件路径
+    storage_list = load_config('config/Storage/storage_list.json')
+    current_id = storage_list['current_storage']
+    
+    storage_info = None
+    for storage in storage_list['available_storages']:
+        if storage['id'] == current_id:
+            storage_info = storage
+            break
+    
+    if not storage_info:
+        raise ValueError(f"当前储能 ID 不存在: {current_id}")
+    
+    # 加载当前配置
+    config = load_config(storage_info['file'])
+    
+    if capacity is not None:
+        config['capacity'] = capacity
+    if max_charge_power is not None:
+        config['max_charge_power'] = max_charge_power
+    if max_discharge_power is not None:
+        config['max_discharge_power'] = max_discharge_power
+    if charge_efficiency is not None:
+        config['charge_efficiency'] = charge_efficiency
+    if discharge_efficiency is not None:
+        config['discharge_efficiency'] = discharge_efficiency
+    if initial_soc is not None:
+        config['initial_soc'] = initial_soc
+    if min_soc is not None:
+        config['min_soc'] = min_soc
+    if max_soc is not None:
+        config['max_soc'] = max_soc
+    
+    save_config(config, storage_info['file'])
+    print(f"储能配置已更新: {current_id}")
