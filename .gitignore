@@ -33,6 +33,10 @@ config/Storage/*.json
 config/Storage/configs/*.json
 !config/Storage/configs/*.json.example
 
+# Model config (contains API key)
+config/model/*.json
+!config/model/*.json.example
+
 # Images
 *.png
 *.jpg
