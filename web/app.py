@@ -1,14 +1,11 @@
 from flask import Flask, render_template, jsonify, request
-import pandas as pd
 import sys
 import os
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-from Solar.Solar import getsolar
-from Consumption.Consumption import getconsumption
-from Storage.Storage import simulate_storage
+from main import get_simulation_data, calculate_daily_cost
 from config.config_manager import (
     load_electricity_price, save_electricity_price,
     list_available_panels, get_current_panel_id, set_current_panel_id, load_panel_by_id,
@@ -20,30 +17,6 @@ from config.config_manager import (
 app = Flask(__name__, 
             template_folder='templates',
             static_folder='static')
-
-freconvert = 60 / 15
-
-def calculate():
-    Solar = getsolar()
-    Consumption = getconsumption()
-    
-    data = pd.DataFrame({
-        'Solar': Solar.values,
-        'Consumption': Consumption.values,
-        'Energy Balance': Consumption.values - Solar.values
-    }, index=Solar.index)
-    
-    storage_power, soc = simulate_storage(data['Energy Balance'], freq_minutes=15)
-    data['Storage Power'] = storage_power.values
-    data['SOC'] = soc.values
-    data['Net Load'] = data['Energy Balance'] + data['Storage Power']
-    
-    economics_config = load_electricity_price()
-    Electricity = data['Net Load'].clip(lower=0)
-    ElectricityPrice = economics_config['electricity_price']
-    cost = float(sum(Electricity * ElectricityPrice) / freconvert)
-    
-    return data, cost
 
 def dataframe_to_json(data):
     result = {
@@ -90,7 +63,8 @@ def get_config():
 @app.route('/api/calculate', methods=['POST'])
 def api_calculate():
     try:
-        data, cost = calculate()
+        data = get_simulation_data()
+        cost = calculate_daily_cost(data)
         chart_data = dataframe_to_json(data)
         
         return jsonify({

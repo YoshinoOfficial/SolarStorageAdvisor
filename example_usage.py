@@ -80,7 +80,7 @@ data = pd.DataFrame({
 
 Electricity = data['Energy Balance'].clip(lower=0)
 ElectricityPrice = economics_config['electricity_price']
-cost = sum(Electricity * ElectricityPrice) / 4
+cost = sum(Electricity * ElectricityPrice) / (60/15)
 print(f"成本为: {cost} 元/天")
 
 plot_comparison(data)
