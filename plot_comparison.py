@@ -23,6 +23,7 @@ def plot_comparison(data, ifsave=False):
     # 使用颜色字典
     color_dict = {
         'Solar': '#1f77b4',
+        'Wind': '#17becf',
         'Consumption': '#ff7f0e',
         'Energy Balance': '#2ca02c',
         'Storage Power': '#9467bd',
@@ -30,7 +31,7 @@ def plot_comparison(data, ifsave=False):
     }
     
     # 上图：功率曲线
-    power_cols = ['Solar', 'Consumption', 'Storage Power', 'Net Load']
+    power_cols = ['Solar', 'Wind', 'Consumption', 'Storage Power', 'Net Load']
     power_cols_exist = [col for col in power_cols if col in data.columns]
     
     for col in power_cols_exist:

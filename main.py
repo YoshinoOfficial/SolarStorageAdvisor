@@ -1,5 +1,6 @@
 from Solar.Solar import getsolar
 from Consumption.Consumption import getconsumption
+from Wind.Wind import getwind
 from Storage.Storage import simulate_storage
 from config.config_manager import load_electricity_price
 import pandas as pd
@@ -8,13 +9,15 @@ from plot_comparison import plot_comparison
 freconvert = 60 / 15
 
 def get_simulation_data():
-    Solar = getsolar()
-    Consumption = getconsumption()
+    Solar = getsolar(start="2010-06-01", end="2010-06-02")
+    Consumption = getconsumption(start="2010-06-01", end="2010-06-02")
+    Wind = getwind(start="2010-06-01", end="2010-06-01")
     
     data = pd.DataFrame({
         'Solar': Solar.values,
+        'Wind': Wind.values,
         'Consumption': Consumption.values,
-        'Energy Balance': Consumption.values - Solar.values
+        'Energy Balance': Consumption.values - Solar.values - Wind.values
     }, index=Solar.index)
     
     storage_power, soc = simulate_storage(data['Energy Balance'], freq_minutes=15)

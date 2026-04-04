@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from Consumption.IndustrialConsumption import get_industrial_consumption
 
-def getconsumption(type='industry',totaldailyconsumption=100*24,start='2024-06-21', end='2024-06-22', freq='15min', tz='Asia/Shanghai', ifdraw=False):
+def getconsumption(type='industry',totaldailyconsumption=2000*24,start='2024-06-21', end='2024-06-22', freq='15min', tz='Asia/Shanghai', ifdraw=False):
     times = pd.date_range(start=start, end=end, freq=freq, tz=tz)
 
     # 恒定负荷数据
