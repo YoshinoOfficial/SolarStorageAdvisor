@@ -72,10 +72,21 @@ function updateUI() {
         const option = document.createElement('option');
         option.value = panel.id;
         option.textContent = panel.name;
-        if (panel.id === currentConfig.current_panel_id) {
-            option.selected = true;
-        }
         panelSelect.appendChild(option);
+    });
+
+    const quantitiesList = document.getElementById('panel-quantities-list');
+    quantitiesList.innerHTML = '';
+    currentConfig.panels.forEach(panel => {
+        const quantity = currentConfig.panel_quantities[panel.id] || 0;
+        const item = document.createElement('div');
+        item.className = 'panel-quantity-item';
+        item.innerHTML = `
+            <span class="panel-name">${panel.name}</span>
+            <span class="panel-desc">${panel.description}</span>
+            <input type="number" class="quantity-input" data-panel-id="${panel.id}" value="${quantity}" min="0" step="1">
+        `;
+        quantitiesList.appendChild(item);
     });
 
     const storageSelect = document.getElementById('storage-select');
@@ -90,16 +101,6 @@ function updateUI() {
         storageSelect.appendChild(option);
     });
 
-    const panelConfig = currentConfig.current_panel_config;
-    document.getElementById('panel-area').value = panelConfig.system.area;
-    document.getElementById('panel-tilt').value = panelConfig.system_config.surface_tilt;
-    document.getElementById('panel-azimuth').value = panelConfig.system_config.surface_azimuth;
-    document.getElementById('panel-lat').value = panelConfig.location.lat;
-    document.getElementById('panel-lon').value = panelConfig.location.lon;
-    document.getElementById('panel-altitude').value = panelConfig.location.altitude;
-    document.getElementById('panel-temp-air').value = panelConfig.weather.temp_air;
-    document.getElementById('panel-wind-speed').value = panelConfig.weather.wind_speed;
-
     const storageConfig = currentConfig.current_storage_config;
     document.getElementById('storage-capacity').value = storageConfig.capacity;
     document.getElementById('storage-charge-power').value = storageConfig.max_charge_power;
@@ -111,6 +112,8 @@ function updateUI() {
     document.getElementById('storage-max-soc').value = storageConfig.max_soc;
 
     document.getElementById('electricity-price').value = currentConfig.electricity_price;
+    
+    loadPanelDetail();
 }
 
 async function recalculate() {
@@ -141,6 +144,14 @@ function updateCharts(data) {
             type: 'scatter',
             mode: 'lines',
             line: { color: '#f1c40f' }
+        },
+        {
+            x: timestamps,
+            y: data.wind,
+            name: '风力发电',
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: '#17becf' }
         },
         {
             x: timestamps,
@@ -210,23 +221,6 @@ function updateCharts(data) {
     });
 }
 
-async function switchPanel() {
-    const panelId = document.getElementById('panel-select').value;
-    showLoading();
-    try {
-        const result = await fetchAPI('/api/panels/switch', 'POST', { panel_id: panelId });
-        if (result.success) {
-            await loadConfig();
-        } else {
-            alert('切换失败: ' + result.error);
-        }
-    } catch (e) {
-        alert('切换失败: ' + e.message);
-    } finally {
-        hideLoading();
-    }
-}
-
 async function switchStorage() {
     const storageId = document.getElementById('storage-select').value;
     showLoading();
@@ -244,8 +238,64 @@ async function switchStorage() {
     }
 }
 
+async function loadPanelDetail() {
+    const panelId = document.getElementById('panel-select').value;
+    if (!panelId) {
+        document.getElementById('panel-detail-form').style.display = 'none';
+        return;
+    }
+    
+    try {
+        const result = await fetchAPI(`/api/panels/${panelId}`);
+        if (result.success) {
+            const panelConfig = result.data;
+            document.getElementById('panel-area').value = panelConfig.system.area;
+            document.getElementById('panel-tilt').value = panelConfig.system_config.surface_tilt;
+            document.getElementById('panel-azimuth').value = panelConfig.system_config.surface_azimuth;
+            document.getElementById('panel-lat').value = panelConfig.location.lat;
+            document.getElementById('panel-lon').value = panelConfig.location.lon;
+            document.getElementById('panel-altitude').value = panelConfig.location.altitude;
+            document.getElementById('panel-temp-air').value = panelConfig.weather.temp_air;
+            document.getElementById('panel-wind-speed').value = panelConfig.weather.wind_speed;
+            document.getElementById('panel-detail-form').style.display = 'block';
+        }
+    } catch (e) {
+        console.error('加载光伏板详情失败:', e);
+        document.getElementById('panel-detail-form').style.display = 'none';
+    }
+}
+
+async function savePanelQuantities() {
+    const inputs = document.querySelectorAll('.quantity-input');
+    const quantities = {};
+    inputs.forEach(input => {
+        quantities[input.dataset.panelId] = parseInt(input.value) || 0;
+    });
+    
+    showLoading();
+    try {
+        const result = await fetchAPI('/api/panels/quantities', 'POST', { quantities: quantities });
+        if (result.success) {
+            alert(result.message);
+            await recalculate();
+        } else {
+            alert('保存失败: ' + result.error);
+        }
+    } catch (e) {
+        alert('保存失败: ' + e.message);
+    } finally {
+        hideLoading();
+    }
+}
+
 async function updatePanelConfig() {
+    const panelId = document.getElementById('panel-select').value;
+    if (!panelId) {
+        alert('请先选择光伏板');
+        return;
+    }
     const data = {
+        panel_id: panelId,
         area: parseFloat(document.getElementById('panel-area').value),
         surface_tilt: parseFloat(document.getElementById('panel-tilt').value),
         surface_azimuth: parseFloat(document.getElementById('panel-azimuth').value),
@@ -306,8 +356,13 @@ async function updateElectricityPrice() {
 
 async function deleteCurrentPanel() {
     const panelId = document.getElementById('panel-select').value;
-    if (panelId === currentConfig.current_panel_id) {
-        alert('无法删除当前正在使用的配置，请先切换到其他配置');
+    if (!panelId) {
+        alert('请先选择光伏板');
+        return;
+    }
+    const quantity = currentConfig.panel_quantities[panelId] || 0;
+    if (quantity > 0) {
+        alert('该光伏板当前数量不为 0，请先将数量设为 0 再删除');
         return;
     }
     if (!confirm(`确定要删除光伏配置 "${panelId}" 吗？`)) {

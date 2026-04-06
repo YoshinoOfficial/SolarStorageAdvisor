@@ -175,9 +175,69 @@ for panel in panels:
 
 ---
 
-#### `get_current_panel_id()`
+#### `get_panel_quantities()`
+
+获取所有光伏板的数量配置。
+
+**返回**:
+- `dict`: 光伏板ID到数量的映射，如 `{"panel_canadian_solar": 10, "panel_trina": 5}`
+
+**示例**:
+```python
+from config.config_manager import get_panel_quantities
+
+# 获取光伏板数量配置
+quantities = get_panel_quantities()
+for panel_id, quantity in quantities.items():
+    print(f"{panel_id}: {quantity} 块")
+```
+
+---
+
+#### `set_panel_quantities(quantities_dict)`
+
+批量设置光伏板数量配置。
+
+**参数**:
+- `quantities_dict`: 光伏板ID到数量的映射字典
+
+**示例**:
+```python
+from config.config_manager import set_panel_quantities
+
+# 批量设置光伏板数量
+set_panel_quantities({
+    "panel_canadian_solar": 20,
+    "panel_trina": 10,
+    "panel_jinko": 5
+})
+```
+
+---
+
+#### `set_panel_quantity(panel_id, quantity)`
+
+设置单个光伏板的数量。
+
+**参数**:
+- `panel_id`: 光伏板 ID
+- `quantity`: 数量（块数）
+
+**示例**:
+```python
+from config.config_manager import set_panel_quantity
+
+# 设置单个光伏板数量
+set_panel_quantity("panel_canadian_solar", 15)
+```
+
+---
+
+#### `get_current_panel_id()` （已废弃）
 
 获取当前使用的光伏板 ID。
+
+> **注意**: 此函数已废弃，保留仅为向后兼容。推荐使用 `get_panel_quantities()` 获取光伏板配置。
 
 **返回**:
 - `str`: 光伏板 ID
@@ -186,16 +246,18 @@ for panel in panels:
 ```python
 from config.config_manager import get_current_panel_id
 
-# 获取当前光伏板
+# 获取当前光伏板（已废弃）
 current_id = get_current_panel_id()
 print(f"当前光伏板 ID: {current_id}")
 ```
 
 ---
 
-#### `set_current_panel_id(panel_id)`
+#### `set_current_panel_id(panel_id)` （已废弃）
 
 设置当前使用的光伏板 ID。
+
+> **注意**: 此函数已废弃，保留仅为向后兼容。推荐使用 `set_panel_quantity()` 或 `set_panel_quantities()` 设置光伏板数量。
 
 **参数**:
 - `panel_id`: 光伏板 ID
@@ -204,7 +266,7 @@ print(f"当前光伏板 ID: {current_id}")
 ```python
 from config.config_manager import set_current_panel_id
 
-# 切换到不同的光伏板
+# 切换到不同的光伏板（已废弃）
 set_current_panel_id('panel_trina')
 ```
 
@@ -478,16 +540,42 @@ print(f"纬度: {panel_config['location']['lat']}")
 print(f"经度: {panel_config['location']['lon']}")
 ```
 
-### 切换当前光伏板
+### 设置光伏板数量
+
+光伏系统支持同时使用多种光伏板，每种光伏板可以设置不同的数量。系统会自动计算所有光伏板的功率总和。
+
+```python
+from config.config_manager import get_panel_quantities, set_panel_quantities, set_panel_quantity
+
+# 获取当前光伏板数量配置
+quantities = get_panel_quantities()
+print("当前光伏板配置:")
+for panel_id, quantity in quantities.items():
+    print(f"  {panel_id}: {quantity} 块")
+
+# 方式1: 设置单个光伏板数量
+set_panel_quantity("panel_canadian_solar", 20)
+
+# 方式2: 批量设置所有光伏板数量
+set_panel_quantities({
+    "panel_canadian_solar": 20,
+    "panel_trina": 10,
+    "panel_jinko": 5
+})
+```
+
+### 切换当前光伏板（已废弃）
+
+> **注意**: 此方式已废弃，推荐使用上述"设置光伏板数量"方法。
 
 ```python
 from config.config_manager import set_current_panel_id, get_current_panel_id
 
-# 获取当前光伏板
+# 获取当前光伏板（已废弃）
 current_id = get_current_panel_id()
 print(f"当前光伏板: {current_id}")
 
-# 切换到新的光伏板
+# 切换到新的光伏板（已废弃）
 set_current_panel_id('panel_trina')
 print(f"已切换到: {get_current_panel_id()}")
 ```
@@ -731,51 +819,30 @@ save_config(storage_list, 'config/Storage/storage_list.json')
 
 ## 完整示例
 
-### 示例 1: 使用当前光伏板运行模拟
+### 示例 1: 使用光伏板配置运行模拟
 
 ```python
 from Solar.Solar import getsolar
 from Consumption.Consumption import getconsumption
 from config.config_manager import (
-    load_panel_by_id,
-    get_current_panel_id,
+    get_panel_quantities,
     load_electricity_price
 )
 import pandas as pd
 from plot_comparison import plot_comparison
 
-# 加载当前光伏板配置
-panel_id = get_current_panel_id()
-panel_config = load_panel_by_id(panel_id)
+# 获取光伏板数量配置
+panel_quantities = get_panel_quantities()
+print("光伏板配置:")
+for pid, qty in panel_quantities.items():
+    if qty > 0:
+        print(f"  {pid}: {qty} 块")
 
 # 加载电价配置
 economics_config = load_electricity_price()
 
-# 提取参数
-area = panel_config['system']['area']
-location_params = panel_config['location']
-time_params = panel_config['time_range']
-weather_params = panel_config['weather']
-system_params = panel_config['system_config']
-
-# 运行模拟
-Solar = area * getsolar(
-    lat=location_params['lat'],
-    lon=location_params['lon'],
-    tz=location_params['tz'],
-    altitude=location_params['altitude'],
-    name=location_params['name'],
-    start=time_params['start'],
-    end=time_params['end'],
-    freq=time_params['freq'],
-    temp_air=weather_params['temp_air'],
-    wind_speed=weather_params['wind_speed'],
-    surface_tilt=system_params['surface_tilt'],
-    surface_azimuth=system_params['surface_azimuth'],
-    temp_a=system_params['temperature_model']['a'],
-    temp_b=system_params['temperature_model']['b'],
-    temp_deltaT=system_params['temperature_model']['deltaT']
-) / 1000
+# 运行模拟（自动累加所有光伏板功率）
+Solar = getsolar(ifdraw=True)
 
 # 计算成本
 Consumption = getconsumption()
@@ -794,39 +861,41 @@ print(f"成本为: {cost} 元/天")
 plot_comparison(data)
 ```
 
-### 示例 2: 比较不同光伏板的性能
+### 示例 2: 自定义光伏板数量运行模拟
 
 ```python
 from Solar.Solar import getsolar
-from config.config_manager import list_available_panels, load_panel_by_id
+from config.config_manager import load_electricity_price
+
+# 自定义光伏板数量
+custom_quantities = {
+    "panel_canadian_solar": 30,
+    "panel_trina": 15,
+    "panel_jinko": 10
+}
+
+# 运行模拟并绘制曲线
+Solar = getsolar(panel_quantities=custom_quantities, ifdraw=True)
+
+print(f"最大功率: {Solar.max():.2f} kW")
+print(f"总发电量: {Solar.sum() / 4:.2f} kWh")
+```
+
+### 示例 3: 比较不同光伏板的性能
+
+```python
+from Solar.Solar import getsolar
+from config.config_manager import list_available_panels
 import pandas as pd
 
 # 列出所有光伏板
 panels = list_available_panels()
 
-# 比较每个光伏板的最大输出功率
+# 比较每个光伏板单块的输出功率
 results = []
 for panel in panels:
-    panel_config = load_panel_by_id(panel['id'])
-    
-    # 运行模拟
-    Solar = panel_config['system']['area'] * getsolar(
-        lat=panel_config['location']['lat'],
-        lon=panel_config['location']['lon'],
-        tz=panel_config['location']['tz'],
-        altitude=panel_config['location']['altitude'],
-        name=panel_config['location']['name'],
-        start=panel_config['time_range']['start'],
-        end=panel_config['time_range']['end'],
-        freq=panel_config['time_range']['freq'],
-        temp_air=panel_config['weather']['temp_air'],
-        wind_speed=panel_config['weather']['wind_speed'],
-        surface_tilt=panel_config['system_config']['surface_tilt'],
-        surface_azimuth=panel_config['system_config']['surface_azimuth'],
-        temp_a=panel_config['system_config']['temperature_model']['a'],
-        temp_b=panel_config['system_config']['temperature_model']['b'],
-        temp_deltaT=panel_config['system_config']['temperature_model']['deltaT']
-    ) / 1000
+    # 单独计算该光伏板（1块）
+    Solar = getsolar(panel_id=panel['id'])
     
     max_power = Solar.max()
     total_energy = Solar.sum() / 4  # 转换为 kWh
@@ -1012,13 +1081,25 @@ print(f"\n最优电价: {optimal_price} 元/千瓦时")
         {
             "id": "panel_canadian_solar",
             "name": "Canadian Solar CS5P-220M",
-            "file": "panels/panel_canadian_solar.json",
+            "file": "config/solar/panels/panel_canadian_solar.json",
             "description": "高效率单晶硅组件"
+        },
+        {
+            "id": "panel_trina",
+            "name": "Trina Solar TSM-250",
+            "file": "config/solar/panels/panel_trina.json",
+            "description": "性价比多晶硅组件"
         }
     ],
-    "current_panel": "panel_canadian_solar"
+    "panel_quantities": {
+        "panel_canadian_solar": 10,
+        "panel_trina": 5,
+        "panel_jinko": 0
+    }
 }
 ```
+
+> **说明**: `panel_quantities` 字段定义了每种光伏板的数量（块数）。系统会自动计算所有光伏板的功率总和。数量为 0 表示不使用该类型光伏板。
 
 ---
 
@@ -1027,8 +1108,8 @@ print(f"\n最优电价: {optimal_price} 元/千瓦时")
 ### Q1: 如何添加新的光伏板？
 
 1. 创建新的光伏板配置文件（参考现有格式）
-2. 更新 `solar/panels_list.json`，添加新光伏板信息
-3. 使用 `set_current_panel_id()` 切换到新光伏板
+2. 更新 `solar/panels_list.json`，添加新光伏板信息到 `available_panels` 列表
+3. 在 `panel_quantities` 中设置该光伏板的数量
 
 ### Q2: 如何备份当前配置？
 
@@ -1070,7 +1151,9 @@ config = create_config_from_example('config/solar/panels/panel_canadian_solar.js
 
 - 使用 `load_panel_by_id()` 加载光伏板配置
 - 使用 `list_available_panels()` 查看所有光伏板
-- 使用 `set_current_panel_id()` 切换光伏板
+- 使用 `get_panel_quantities()` 获取光伏板数量配置
+- 使用 `set_panel_quantity()` 设置单个光伏板数量
+- 使用 `set_panel_quantities()` 批量设置光伏板数量
 - 使用 `load_electricity_price()` 和 `save_electricity_price()` 管理电价
 - 使用 `load_storage_config()` 加载当前储能配置
 - 使用 `load_storage_by_id()` 加载指定储能配置

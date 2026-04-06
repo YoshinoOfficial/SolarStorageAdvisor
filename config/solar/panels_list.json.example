@@ -19,5 +19,9 @@
             "description": "大功率单晶硅组件"
         }
     ],
-    "current_panel": "panel_canadian_solar"
+    "panel_quantities": {
+        "panel_canadian_solar": 10,
+        "panel_trina": 5,
+        "panel_jinko": 0
+    }
 }

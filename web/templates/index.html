@@ -38,55 +38,66 @@
                 <div class="config-page">
                     <div class="config-header">
                         <h2>光伏配置管理</h2>
+                        <p class="config-hint">支持同时配置多种光伏板，系统会自动计算总功率</p>
                     </div>
-                    <div class="config-select-row">
-                        <label>当前配置:</label>
-                        <select id="panel-select"></select>
-                        <button onclick="switchPanel()" class="btn-small">切换</button>
-                        <button onclick="showCreatePanelModal()" class="btn-small">新建</button>
-                        <button onclick="deleteCurrentPanel()" class="btn-small btn-danger">删除</button>
-                    </div>
-                    <div class="config-form">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>面积 (m²):</label>
-                                <input type="number" id="panel-area" step="1">
-                            </div>
-                            <div class="form-group">
-                                <label>倾角 (°):</label>
-                                <input type="number" id="panel-tilt" step="1" min="0" max="90">
-                            </div>
-                            <div class="form-group">
-                                <label>方位角 (°):</label>
-                                <input type="number" id="panel-azimuth" step="1" min="0" max="360">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>纬度:</label>
-                                <input type="number" id="panel-lat" step="0.1">
-                            </div>
-                            <div class="form-group">
-                                <label>经度:</label>
-                                <input type="number" id="panel-lon" step="0.1">
-                            </div>
-                            <div class="form-group">
-                                <label>海拔 (m):</label>
-                                <input type="number" id="panel-altitude" step="1">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>环境温度 (°C):</label>
-                                <input type="number" id="panel-temp-air" step="1">
-                            </div>
-                            <div class="form-group">
-                                <label>风速 (m/s):</label>
-                                <input type="number" id="panel-wind-speed" step="0.1">
-                            </div>
+                    <div class="panel-quantities-section">
+                        <h3>光伏板数量配置</h3>
+                        <div id="panel-quantities-list" class="panel-quantities-list">
                         </div>
                         <div class="form-actions">
-                            <button onclick="updatePanelConfig()" class="btn-primary">保存光伏配置</button>
+                            <button onclick="savePanelQuantities()" class="btn-primary">保存数量配置</button>
+                        </div>
+                    </div>
+                    <div class="panel-details-section">
+                        <h3>光伏板详细配置</h3>
+                        <div class="config-select-row">
+                            <label>选择光伏板:</label>
+                            <select id="panel-select" onchange="loadPanelDetail()"></select>
+                            <button onclick="showCreatePanelModal()" class="btn-small">新建</button>
+                            <button onclick="deleteCurrentPanel()" class="btn-small btn-danger">删除</button>
+                        </div>
+                        <div id="panel-detail-form" class="config-form" style="display: none;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>面积 (m²):</label>
+                                    <input type="number" id="panel-area" step="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>倾角 (°):</label>
+                                    <input type="number" id="panel-tilt" step="1" min="0" max="90">
+                                </div>
+                                <div class="form-group">
+                                    <label>方位角 (°):</label>
+                                    <input type="number" id="panel-azimuth" step="1" min="0" max="360">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>纬度:</label>
+                                    <input type="number" id="panel-lat" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label>经度:</label>
+                                    <input type="number" id="panel-lon" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label>海拔 (m):</label>
+                                    <input type="number" id="panel-altitude" step="1">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>环境温度 (°C):</label>
+                                    <input type="number" id="panel-temp-air" step="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>风速 (m/s):</label>
+                                    <input type="number" id="panel-wind-speed" step="0.1">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button onclick="updatePanelConfig()" class="btn-primary">保存光伏板配置</button>
+                            </div>
                         </div>
                     </div>
                 </div>

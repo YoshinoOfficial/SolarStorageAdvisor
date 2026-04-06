@@ -8,7 +8,7 @@ sys.path.insert(0, project_root)
 from main import get_simulation_data, calculate_daily_cost
 from config.config_manager import (
     load_electricity_price, save_electricity_price,
-    list_available_panels, get_current_panel_id, set_current_panel_id, load_panel_by_id,
+    list_available_panels, get_panel_quantities, set_panel_quantities, set_panel_quantity, load_panel_by_id,
     list_available_storages, get_current_storage_id, set_current_storage_id, load_storage_config,
     save_storage_config, create_new_storage_config, delete_storage_config,
     create_new_panel_config, delete_panel_config, save_panel_config
@@ -22,6 +22,7 @@ def dataframe_to_json(data):
     result = {
         'timestamps': [str(t) for t in data.index],
         'solar': data['Solar'].tolist(),
+        'wind': data['Wind'].tolist(),
         'consumption': data['Consumption'].tolist(),
         'energy_balance': data['Energy Balance'].tolist(),
         'storage_power': data['Storage Power'].tolist(),
@@ -39,9 +40,8 @@ def get_config():
     try:
         panels = list_available_panels()
         storages = list_available_storages()
-        current_panel_id = get_current_panel_id()
+        panel_quantities = get_panel_quantities()
         current_storage_id = get_current_storage_id()
-        current_panel_config = load_panel_by_id(current_panel_id)
         current_storage_config = load_storage_config()
         electricity_price = load_electricity_price()
         
@@ -50,9 +50,8 @@ def get_config():
             'data': {
                 'panels': panels,
                 'storages': storages,
-                'current_panel_id': current_panel_id,
+                'panel_quantities': panel_quantities,
                 'current_storage_id': current_storage_id,
-                'current_panel_config': current_panel_config,
                 'current_storage_config': current_storage_config,
                 'electricity_price': electricity_price['electricity_price']
             }
@@ -77,12 +76,30 @@ def api_calculate():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/panels/switch', methods=['POST'])
-def switch_panel():
+@app.route('/api/panels/<panel_id>', methods=['GET'])
+def get_panel_config(panel_id):
+    try:
+        config = load_panel_by_id(panel_id)
+        return jsonify({'success': True, 'data': config})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/panels/quantities', methods=['POST'])
+def set_panel_quantities_api():
+    try:
+        quantities = request.json.get('quantities')
+        set_panel_quantities(quantities)
+        return jsonify({'success': True, 'message': '已更新光伏板数量配置'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/panels/quantity', methods=['POST'])
+def set_panel_quantity_api():
     try:
         panel_id = request.json.get('panel_id')
-        set_current_panel_id(panel_id)
-        return jsonify({'success': True, 'message': f'已切换到光伏板: {panel_id}'})
+        quantity = request.json.get('quantity')
+        set_panel_quantity(panel_id, quantity)
+        return jsonify({'success': True, 'message': f'已设置 {panel_id} 数量为 {quantity}'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
@@ -120,7 +137,9 @@ def delete_panel():
 def update_panel():
     try:
         params = request.json
-        panel_id = params.get('panel_id', get_current_panel_id())
+        panel_id = params.get('panel_id')
+        if not panel_id:
+            return jsonify({'success': False, 'error': '缺少 panel_id 参数'}), 400
         save_panel_config(
             panel_id=panel_id,
             area=params.get('area'),

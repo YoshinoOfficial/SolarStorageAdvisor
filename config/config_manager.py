@@ -130,19 +130,73 @@ def list_available_panels():
     panels_list = load_config('config/solar/panels_list.json')
     return panels_list['available_panels']
 
+def get_panel_quantities():
+    """
+    获取所有光伏板的数量配置
+    
+    Returns:
+        dict: 光伏板ID到数量的映射，如 {"panel_canadian_solar": 10, "panel_trina": 5}
+    """
+    panels_list = load_config('config/solar/panels_list.json')
+    return panels_list.get('panel_quantities', {})
+
+def set_panel_quantities(quantities_dict):
+    """
+    设置光伏板数量配置
+    
+    Args:
+        quantities_dict: 光伏板ID到数量的映射字典
+    """
+    panels_list = load_config('config/solar/panels_list.json')
+    
+    valid_ids = {panel['id'] for panel in panels_list['available_panels']}
+    for panel_id in quantities_dict:
+        if panel_id not in valid_ids:
+            raise ValueError(f"光伏板 ID 不存在: {panel_id}")
+    
+    panels_list['panel_quantities'] = quantities_dict
+    save_config(panels_list, 'config/solar/panels_list.json')
+    print(f"已设置光伏板数量配置")
+
+def set_panel_quantity(panel_id, quantity):
+    """
+    设置单个光伏板的数量
+    
+    Args:
+        panel_id: 光伏板 ID
+        quantity: 数量（块数）
+    """
+    panels_list = load_config('config/solar/panels_list.json')
+    
+    panel_exists = False
+    for panel in panels_list['available_panels']:
+        if panel['id'] == panel_id:
+            panel_exists = True
+            break
+    
+    if not panel_exists:
+        raise ValueError(f"光伏板 ID 不存在: {panel_id}")
+    
+    if 'panel_quantities' not in panels_list:
+        panels_list['panel_quantities'] = {}
+    
+    panels_list['panel_quantities'][panel_id] = quantity
+    save_config(panels_list, 'config/solar/panels_list.json')
+    print(f"已设置光伏板 {panel_id} 数量为: {quantity}")
+
 def get_current_panel_id():
     """
-    获取当前使用的光伏板 ID
+    获取当前使用的光伏板 ID（已废弃，保留向后兼容）
     
     Returns:
         str: 光伏板 ID
     """
     panels_list = load_config('config/solar/panels_list.json')
-    return panels_list['current_panel']
+    return panels_list.get('current_panel', list(panels_list.get('panel_quantities', {}).keys())[0] if panels_list.get('panel_quantities') else None)
 
 def set_current_panel_id(panel_id):
     """
-    设置当前使用的光伏板 ID
+    设置当前使用的光伏板 ID（已废弃，保留向后兼容）
     
     Args:
         panel_id: 光伏板 ID
