@@ -14,7 +14,7 @@ import numpy as np
 from pvlib.location import Location
 from pvlib.pvsystem import PVSystem, Array, FixedMount
 from pvlib.modelchain import ModelChain
-from config.config_manager import load_panel_by_id, get_current_panel_id, get_panel_quantities, list_available_panels
+from config.config_manager import load_panel_by_id, get_panel_quantities, list_available_panels
 
 
 WEATHER_TYPES = {
@@ -398,3 +398,18 @@ if __name__ == '__main__':
         print(f"{WEATHER_TYPES[weather_type]} 日发电量: {power.sum():.2f} kWh")
     
     _draw_all_weather_comparison(weather_powers)
+    
+    # 保存各天气类型的功率曲线到CSV文件
+    data_dir = os.path.join(project_root, 'data')
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    
+    # 合并所有天气类型的功率数据到一个DataFrame
+    power_df = pd.DataFrame(weather_powers)
+    # 将天气类型转换为数字label
+    weather_labels = {wt: i for i, wt in enumerate(WEATHER_TYPES.keys())}
+    power_df.columns = [weather_labels.get(wt, wt) for wt in power_df.columns]
+    
+    csv_path = os.path.join(data_dir, 'weather_power_curves.csv')
+    power_df.to_csv(csv_path, encoding='utf-8-sig', index_label='time')
+    print(f"\n功率曲线数据已保存至 {csv_path}")
