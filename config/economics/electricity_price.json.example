@@ -1,5 +1,6 @@
 {
     "electricity_price": 1,
-    "description": "电价（元/千瓦时）",
+    "feed_in_price": 0.4,
+    "description": "电价（元/千瓦时），feed_in_price为上网电价（售电价）",
     "last_updated": "2024-06-21"
 }

@@ -225,18 +225,33 @@ def load_electricity_price():
     """
     return load_config('config/economics/electricity_price.json')
 
-def save_electricity_price(electricity_price):
+def save_electricity_price(electricity_price, feed_in_price=None):
     """
     保存电价配置
     
     Args:
         electricity_price: 电价（元/千瓦时）
+        feed_in_price: 上网电价/售电价（元/千瓦时），可选
     """
-    config = {
-        'electricity_price': electricity_price,
-        'description': '电价（元/千瓦时）',
-        'last_updated': pd.Timestamp.now().strftime('%Y-%m-%d')
-    }
+    config = load_electricity_price()
+    config['electricity_price'] = electricity_price
+    if feed_in_price is not None:
+        config['feed_in_price'] = feed_in_price
+    config['description'] = '电价（元/千瓦时），feed_in_price为上网电价（售电价）'
+    config['last_updated'] = pd.Timestamp.now().strftime('%Y-%m-%d')
+    save_config(config, 'config/economics/electricity_price.json')
+
+def save_feed_in_price(feed_in_price):
+    """
+    保存上网电价/售电价配置
+    
+    Args:
+        feed_in_price: 上网电价/售电价（元/千瓦时）
+    """
+    config = load_electricity_price()
+    config['feed_in_price'] = feed_in_price
+    config['description'] = '电价（元/千瓦时），feed_in_price为上网电价（售电价）'
+    config['last_updated'] = pd.Timestamp.now().strftime('%Y-%m-%d')
     save_config(config, 'config/economics/electricity_price.json')
 
 def load_storage_config():

@@ -15,6 +15,10 @@
                 <span>日成本: </span>
                 <span id="daily-cost">--</span>
                 <span> 元/天</span>
+                <span class="separator">|</span>
+                <span>新能源收益: </span>
+                <span id="renewable-revenue">--</span>
+                <span> 元/天</span>
                 <button onclick="recalculate()" class="btn-calculate-header">重新计算</button>
             </div>
         </header>
@@ -169,12 +173,16 @@
                     <div class="config-form">
                         <div class="form-row">
                             <div class="form-group">
-                                <label>电价 (元/kWh):</label>
+                                <label>市电价 (元/kWh):</label>
                                 <input type="number" id="electricity-price" step="0.01" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>上网电价 (元/kWh):</label>
+                                <input type="number" id="feed-in-price" step="0.01" min="0">
                             </div>
                         </div>
                         <div class="form-actions">
-                            <button onclick="updateElectricityPrice()" class="btn-primary">保存电价</button>
+                            <button onclick="updateElectricityPrice()" class="btn-primary">保存电价配置</button>
                         </div>
                     </div>
                 </div>

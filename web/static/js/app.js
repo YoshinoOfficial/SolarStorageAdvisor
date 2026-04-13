@@ -112,6 +112,7 @@ function updateUI() {
     document.getElementById('storage-max-soc').value = storageConfig.max_soc;
 
     document.getElementById('electricity-price').value = currentConfig.electricity_price;
+    document.getElementById('feed-in-price').value = currentConfig.feed_in_price;
     
     loadPanelDetail();
 }
@@ -123,6 +124,8 @@ async function recalculate() {
         if (result.success) {
             updateCharts(result.data.chart_data);
             document.getElementById('daily-cost').textContent = result.data.daily_cost.toFixed(2);
+            const revenue = result.data.renewable_revenue;
+            document.getElementById('renewable-revenue').textContent = revenue.total_revenue.toFixed(2);
         } else {
             alert('计算失败: ' + result.error);
         }
@@ -341,13 +344,15 @@ async function updateStorageConfig() {
 }
 
 async function updateElectricityPrice() {
-    const price = parseFloat(document.getElementById('electricity-price').value);
+    const electricityPrice = parseFloat(document.getElementById('electricity-price').value);
+    const feedInPrice = parseFloat(document.getElementById('feed-in-price').value);
     try {
-        const result = await fetchAPI('/api/electricity-price/update', 'POST', { electricity_price: price });
-        if (result.success) {
-            alert(result.message);
+        const result1 = await fetchAPI('/api/electricity-price/update', 'POST', { electricity_price: electricityPrice });
+        const result2 = await fetchAPI('/api/feed-in-price/update', 'POST', { feed_in_price: feedInPrice });
+        if (result1.success && result2.success) {
+            alert('电价配置已保存');
         } else {
-            alert('保存失败: ' + result.error);
+            alert('保存失败: ' + (result1.error || result2.error));
         }
     } catch (e) {
         alert('保存失败: ' + e.message);
