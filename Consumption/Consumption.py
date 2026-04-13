@@ -13,6 +13,7 @@ from Consumption.IndustrialConsumption import get_industrial_consumption
 
 def getconsumption(type='industry',totaldailyconsumption=2000*24,start='2024-06-21', end='2024-06-22', freq='15min', tz='Asia/Shanghai', ifdraw=False):
     times = pd.date_range(start=start, end=end, freq=freq, tz=tz)
+    times = times[0:-1]  # 去掉后一天0点数据
 
     # 恒定负荷数据
     if type == 'industry':

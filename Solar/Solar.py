@@ -190,6 +190,7 @@ def _calculate_single_panel(panel_config, lat=None, lon=None, tz=None, altitude=
     
     # --- 第二步：构造"晴朗天空"时间序列 ---
     times = pd.date_range(start=start, end=end, freq=freq, tz=tz)
+    times = times[0:-1]  # 去掉后一天0点数据
 
     # 获取晴空辐射数据 (GHI, DNI, DHI)
     clearsky = site.get_clearsky(times)

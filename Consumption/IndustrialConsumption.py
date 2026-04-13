@@ -34,6 +34,7 @@ def get_industrial_consumption(
         pd.Series: 负荷曲线（kW），以times为索引
     """
     times = pd.date_range(start=start, end=end, freq=freq, tz=tz)
+    times = times[0:-1]  # 去掉后一天0点数据
     
     # 定义工业负荷典型比例模式（基于时间点的小时数）
     # 工业负荷特点：白天工作时段高，夜间低，可能有多个峰值

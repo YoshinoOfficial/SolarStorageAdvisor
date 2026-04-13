@@ -172,6 +172,8 @@ def interpolate_to_15min(power_output):
         extended_index.union(new_index)
     ).interpolate(method='linear').reindex(new_index)
 
+    power_15min = power_15min[0:-1]  # 去掉后一天0点数据
+
     return power_15min
 
 
