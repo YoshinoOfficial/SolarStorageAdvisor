@@ -178,7 +178,7 @@ def interpolate_to_15min(power_output):
 
 
 def getwind(start=None, end=None, turbine_type="E-126/4200", hub_height=135, 
-            nominal_power_kw=4200, ifdraw=False):
+            nominal_power_kw=4200, ifdraw=False, save_csv=False):
     """
     获取风力发电功率曲线（15分钟间隔）。
 
@@ -201,6 +201,8 @@ def getwind(start=None, end=None, turbine_type="E-126/4200", hub_height=135,
         默认: 4200 (对应 E-126/4200 的 4.2MW)
     ifdraw : bool
         是否绘制功率曲线图。默认: False
+    save_csv : bool
+        是否保存功率曲线到CSV文件。默认: False
 
     Returns
     -------
@@ -254,12 +256,28 @@ def getwind(start=None, end=None, turbine_type="E-126/4200", hub_height=135,
         plt.pause(3)
         plt.savefig('wind.png', dpi=300, bbox_inches='tight')
         plt.close()
+
+    if save_csv:
+        data_dir = os.path.join(project_root, 'data')
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+        
+        date_str = start if start else power_15min_kw.index[0].strftime('%Y-%m-%d')
+        csv_filename = f'wind_power_{date_str}.csv'
+        csv_path = os.path.join(data_dir, csv_filename)
+        
+        df_to_save = pd.DataFrame({
+            'datetime': power_15min_kw.index.strftime('%Y-%m-%d %H:%M:%S'),
+            'power_kw': power_15min_kw.values
+        })
+        df_to_save.to_csv(csv_path, index=False, encoding='utf-8-sig')
+        print(f"风电功率曲线已保存至: {csv_path}")
     
     return power_15min_kw
 
 
 if __name__ == '__main__':
-    wind_power = getwind(start='2010-06-01', end='2010-06-01', ifdraw=True)
+    wind_power = getwind(start='2010-06-01', end='2010-06-01', ifdraw=True, save_csv=True)
     print(f"风电功率数据点数: {len(wind_power)}")
     print(f"时间范围: {wind_power.index[0]} 至 {wind_power.index[-1]}")
     print(f"最大功率: {wind_power.max():.2f} kW")
