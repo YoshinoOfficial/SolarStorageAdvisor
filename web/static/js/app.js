@@ -42,6 +42,27 @@ function initTabs() {
                     Plotly.Plots.resize('power-chart');
                     Plotly.Plots.resize('soc-chart');
                 }, 50);
+            } else if (tabId === 'optimization') {
+                loadOptimizationData();
+            }
+        });
+    });
+    
+    const subTabBtns = document.querySelectorAll('.sub-tab-btn');
+    subTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const subTabId = btn.dataset.subTab;
+            
+            subTabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            document.querySelectorAll('.sub-tab-content').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            document.getElementById('sub-tab-' + subTabId).classList.add('active');
+            
+            if (subTabId === 'comparison') {
+                loadComparisonImages();
             }
         });
     });
@@ -535,3 +556,194 @@ document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     loadConfig();
 });
+
+async function loadOptimizationData() {
+    try {
+        const [scenariosRes, metricsRes, summaryRes, economicRes, renewableRes, carbonRes] = await Promise.all([
+            fetchAPI('/api/optimization/typical-scenarios'),
+            fetchAPI('/api/optimization/typical-metrics'),
+            fetchAPI('/api/optimization/annual-summary'),
+            fetchAPI('/api/optimization/chart/economic-comparison'),
+            fetchAPI('/api/optimization/chart/renewable-utilization'),
+            fetchAPI('/api/optimization/chart/carbon-analysis')
+        ]);
+        
+        if (scenariosRes.success && metricsRes.success && summaryRes.success) {
+            renderAnnualSummary(summaryRes.data);
+            renderScenariosTable(scenariosRes.data, metricsRes.data);
+        }
+        
+        if (economicRes.success) {
+            document.getElementById('economic-chart').innerHTML = 
+                `<img src="data:image/png;base64,${economicRes.data}" style="width:100%;height:auto;">`;
+        }
+        
+        if (renewableRes.success) {
+            document.getElementById('renewable-chart').innerHTML = 
+                `<img src="data:image/png;base64,${renewableRes.data}" style="width:100%;height:auto;">`;
+        }
+        
+        if (carbonRes.success) {
+            document.getElementById('carbon-chart').innerHTML = 
+                `<img src="data:image/png;base64,${carbonRes.data}" style="width:100%;height:auto;">`;
+        }
+    } catch (e) {
+        console.error('加载优化数据失败:', e);
+    }
+}
+
+function renderAnnualSummary(data) {
+    if (!data || data.length === 0) return;
+    
+    const summary = data[0];
+    const container = document.getElementById('annual-summary');
+    
+    container.innerHTML = `
+        <div class="summary-card">
+            <div class="summary-label">全年总成本</div>
+            <div class="summary-value">${(summary.annual_objective / 10000).toFixed(2)} 万元</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">全年购电量</div>
+            <div class="summary-value">${summary.annual_grid_energy.toFixed(0)} MWh</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">全年购气量</div>
+            <div class="summary-value">${summary.annual_gas_energy.toFixed(0)} MWh</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">全年碳排放</div>
+            <div class="summary-value">${summary.annual_carbon_emission.toFixed(0)} tCO₂</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">全年碳配额</div>
+            <div class="summary-value">${summary.annual_carbon_quota.toFixed(0)} tCO₂</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">碳交易收益</div>
+            <div class="summary-value">${summary.annual_carbon_sell.toFixed(0)} tCO₂</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">新能源利用率</div>
+            <div class="summary-value">${summary.annual_renewable_use_rate.toFixed(1)}%</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">全年弃风弃光</div>
+            <div class="summary-value">${summary.annual_renewable_curtailment.toFixed(0)} MWh</div>
+        </div>
+    `;
+}
+
+function renderScenariosTable(scenarios, metrics) {
+    const container = document.getElementById('scenarios-table');
+    
+    const uniqueMetrics = metrics.filter((item, index, self) => 
+        index === self.findIndex((t) => t.scenario === item.scenario)
+    );
+    
+    let html = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>场景</th>
+                    <th>代表天数</th>
+                    <th>日成本(元)</th>
+                    <th>购电量(MWh)</th>
+                    <th>碳排放(tCO₂)</th>
+                    <th>新能源利用率(%)</th>
+                    <th>弃能量(MWh)</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    uniqueMetrics.forEach((metric, idx) => {
+        const scenario = scenarios[idx];
+        html += `
+            <tr>
+                <td>${scenario.scenario_cn}</td>
+                <td>${metric.representative_days}</td>
+                <td>${metric.total_objective.toFixed(0)}</td>
+                <td>${metric.grid_energy.toFixed(2)}</td>
+                <td>${metric.carbon_emission.toFixed(1)}</td>
+                <td>${metric.renewable_use_rate.toFixed(1)}</td>
+                <td>${metric.renewable_curtailment.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function loadComparisonImages() {
+    const container = document.getElementById('comparison-images');
+    
+    if (container.innerHTML.trim() !== '') return;
+    
+    try {
+        const result = await fetchAPI('/api/optimization/comparison/images');
+        
+        if (result.success) {
+            const imageMap = {};
+            const descMap = {};
+            
+            result.data.forEach(img => {
+                const figNum = img.figure_num;
+                if (!imageMap[figNum]) {
+                    imageMap[figNum] = [];
+                    descMap[figNum] = {
+                        title: img.title,
+                        description: img.description
+                    };
+                }
+                imageMap[figNum].push(img);
+            });
+            
+            const sortedNums = Object.keys(imageMap).sort((a, b) => {
+                const order = ['Fig1', 'Fig4', 'Fig5', 'Fig7a', 'Fig7b', 'Fig8', 'Fig9', 'Fig10'];
+                return order.indexOf(a) - order.indexOf(b);
+            });
+            
+            sortedNums.forEach(figNum => {
+                const section = document.createElement('div');
+                section.className = 'comparison-section';
+                
+                const titleEl = document.createElement('h4');
+                titleEl.textContent = `${figNum} ${descMap[figNum].title}`;
+                section.appendChild(titleEl);
+                
+                const descEl = document.createElement('p');
+                descEl.className = 'comparison-description';
+                descEl.textContent = descMap[figNum].description;
+                section.appendChild(descEl);
+                
+                const grid = document.createElement('div');
+                grid.className = 'comparison-images-grid';
+                
+                imageMap[figNum].forEach(img => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'comparison-image-wrapper';
+                    
+                    const scenarioLabel = document.createElement('div');
+                    scenarioLabel.className = 'comparison-scenario-label';
+                    scenarioLabel.textContent = img.scenario;
+                    
+                    const imgEl = document.createElement('img');
+                    imgEl.src = `data:image/png;base64,${img.data}`;
+                    imgEl.alt = img.filename;
+                    
+                    wrapper.appendChild(scenarioLabel);
+                    wrapper.appendChild(imgEl);
+                    grid.appendChild(wrapper);
+                });
+                
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+        }
+    } catch (e) {
+        console.error('加载对比图片失败:', e);
+        container.innerHTML = '<p>加载失败，请重试</p>';
+    }
+}

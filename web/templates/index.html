@@ -28,6 +28,7 @@
             <button class="tab-btn" data-tab="panel">光伏配置</button>
             <button class="tab-btn" data-tab="storage">储能配置</button>
             <button class="tab-btn" data-tab="price">电价配置</button>
+            <button class="tab-btn" data-tab="optimization">优化算法</button>
         </nav>
 
         <div class="tab-content">
@@ -184,6 +185,61 @@
                         <div class="form-actions">
                             <button onclick="updateElectricityPrice()" class="btn-primary">保存电价配置</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-optimization" class="tab-pane">
+                <div class="optimization-page">
+                    <div class="config-header">
+                        <h2>零碳园区优化结果分析</h2>
+                        <p class="config-hint">基于典型气象日的多能互补系统优化结果</p>
+                    </div>
+                    
+                    <div class="optimization-sub-tabs">
+                        <button class="sub-tab-btn active" data-sub-tab="typical">典型场景分析</button>
+                        <button class="sub-tab-btn" data-sub-tab="comparison">四场景对比</button>
+                    </div>
+                    
+                    <div id="sub-tab-typical" class="sub-tab-content active">
+                        <div class="optimization-charts">
+                            <div class="chart-section">
+                                <h3>经济性对比</h3>
+                                <div id="economic-chart" class="chart-container"></div>
+                            </div>
+                            <div class="chart-section">
+                                <h3>可再生能源利用</h3>
+                                <div id="renewable-chart" class="chart-container"></div>
+                            </div>
+                            <div class="chart-section">
+                                <h3>碳排放分析</h3>
+                                <div id="carbon-chart" class="chart-container"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="optimization-summary">
+                            <h3>年度汇总指标</h3>
+                            <div id="annual-summary" class="summary-cards"></div>
+                        </div>
+                        
+                        <div class="optimization-details">
+                            <h3>典型场景详细数据</h3>
+                            <div id="scenarios-table" class="data-table-container"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="sub-tab-comparison" class="sub-tab-content">
+                        <div class="comparison-intro">
+                            <h3>四场景对比分析</h3>
+                            <p><strong>场景定义：</strong></p>
+                            <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+                                <li><strong>S1 (无储能无碳交易)</strong>：基准场景，系统无储能设备，不参与碳交易市场</li>
+                                <li><strong>S2 (有储能无碳交易)</strong>：配置电储能和热储能，提高新能源消纳能力</li>
+                                <li><strong>S3 (有储能有碳交易)</strong>：在S2基础上启用碳交易，碳配额盈余可出售获利</li>
+                                <li><strong>S4 (高新能源有储能有碳交易)</strong>：提高光伏和风电装机容量，最大化新能源利用</li>
+                            </ul>
+                        </div>
+                        <div id="comparison-images" class="comparison-grid"></div>
                     </div>
                 </div>
             </div>

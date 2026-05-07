@@ -332,8 +332,13 @@ def _draw_power_curves(panel_powers, total_power, panel_quantities, weather_type
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     
-    plt.savefig(f'solar_{weather_type}.png', dpi=150)
-    print(f"图表已保存至 solar_{weather_type}.png")
+    data_dir = os.path.join(project_root, 'data')
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    
+    save_path = os.path.join(data_dir, f'solar_{weather_type}.png')
+    plt.savefig(save_path, dpi=150)
+    print(f"图表已保存至 {save_path}")
     plt.show(block=False)
     plt.pause(2)
     plt.close()
@@ -381,8 +386,14 @@ def _draw_all_weather_comparison(weather_powers):
     ax2.grid(True, alpha=0.3, axis='y')
     
     plt.tight_layout()
-    plt.savefig('solar_weather_comparison.png', dpi=150)
-    print("对比图已保存至 solar_weather_comparison.png")
+    
+    data_dir = os.path.join(project_root, 'data')
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    
+    save_path = os.path.join(data_dir, 'solar_weather_comparison.png')
+    plt.savefig(save_path, dpi=150)
+    print(f"对比图已保存至 {save_path}")
     plt.show(block=False)
     plt.pause(2)
     plt.close()

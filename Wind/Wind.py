@@ -235,6 +235,10 @@ def getwind(start=None, end=None, turbine_type="E-126/4200", hub_height=135,
 
     power_15min_kw.name = 'Wind'
 
+    data_dir = os.path.join(project_root, 'data')
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+
     if ifdraw:
         import matplotlib.pyplot as plt
         import matplotlib as mpl
@@ -254,14 +258,14 @@ def getwind(start=None, end=None, turbine_type="E-126/4200", hub_height=135,
         plt.tight_layout()
         plt.show(block=False)
         plt.pause(3)
-        plt.savefig('wind.png', dpi=300, bbox_inches='tight')
+        
+        date_str = start if start else power_15min_kw.index[0].strftime('%Y-%m-%d')
+        png_filename = f'wind_power_{date_str}.png'
+        png_path = os.path.join(data_dir, png_filename)
+        plt.savefig(png_path, dpi=300, bbox_inches='tight')
         plt.close()
 
-    if save_csv:
-        data_dir = os.path.join(project_root, 'data')
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
-        
+    if save_csv:        
         date_str = start if start else power_15min_kw.index[0].strftime('%Y-%m-%d')
         csv_filename = f'wind_power_{date_str}.csv'
         csv_path = os.path.join(data_dir, csv_filename)

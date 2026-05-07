@@ -69,8 +69,8 @@ def visualize_power_density(power_density_dict, area, save_path=None):
         ax1.plot(power_density.index, power_density.values, 
                 label=weather_name, color=colors[i % len(colors)], linewidth=2)
     
-    ax1.set_title(f'单块光伏板功率密度日运行曲线 (面积: {area} m²)', fontsize=14)
-    ax1.set_ylabel('功率密度 (kW/m²)', fontsize=12)
+    ax1.set_title(f'单块光伏板功率密度日运行曲线 (面积: {area} 平方米)', fontsize=14)
+    ax1.set_ylabel('功率密度 (kW/平方米)', fontsize=12)
     ax1.set_xlabel('时间', fontsize=12)
     ax1.legend(loc='upper right', fontsize=10)
     ax1.grid(True, alpha=0.3)
@@ -82,7 +82,7 @@ def visualize_power_density(power_density_dict, area, save_path=None):
     
     bars = ax2.bar(weather_names, daily_energy_density, color=colors[:len(weather_names)])
     ax2.set_title('不同天气类型日发电量密度对比', fontsize=14)
-    ax2.set_ylabel('发电量密度 (kWh/m²)', fontsize=12)
+    ax2.set_ylabel('发电量密度 (kWh/平方米)', fontsize=12)
     ax2.set_xlabel('天气类型', fontsize=12)
     
     for bar, energy in zip(bars, daily_energy_density):
@@ -136,4 +136,4 @@ if __name__ == '__main__':
     for weather_type, power_density in power_density_dict.items():
         weather_name = WEATHER_TYPES.get(weather_type, weather_type)
         daily_energy_density = power_density.sum()
-        print(f"  {weather_name}: {daily_energy_density:.3f} kWh/m²")
+        print(f"  {weather_name}: {daily_energy_density:.3f} kWh/平方米")
