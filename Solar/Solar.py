@@ -421,6 +421,6 @@ if __name__ == '__main__':
     weather_labels = {wt: i for i, wt in enumerate(WEATHER_TYPES.keys())}
     power_df.columns = [weather_labels.get(wt, wt) for wt in power_df.columns]
     
-    csv_path = os.path.join(data_dir, 'soalrsum.csv')
+    csv_path = os.path.join(data_dir, 'solarsum.csv')
     power_df.to_csv(csv_path, encoding='utf-8-sig', index_label='time')
     print(f"\n功率曲线数据已保存至 {csv_path}")

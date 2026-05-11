@@ -10,17 +10,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>光伏储能配置系统</h1>
-            <div class="cost-display">
-                <span>日成本: </span>
-                <span id="daily-cost">--</span>
-                <span> 元/天</span>
-                <span class="separator">|</span>
-                <span>新能源收益: </span>
-                <span id="renewable-revenue">--</span>
-                <span> 元/天</span>
-                <button onclick="recalculate()" class="btn-calculate-header">重新计算</button>
-            </div>
+            <h1>零碳园区能源系统</h1>
         </header>
 
         <nav class="tab-nav">
@@ -29,13 +19,44 @@
             <button class="tab-btn" data-tab="storage">储能配置</button>
             <button class="tab-btn" data-tab="price">电价配置</button>
             <button class="tab-btn" data-tab="optimization">优化算法</button>
+            <button class="tab-btn" data-tab="comparison">四场景对比</button>
         </nav>
 
         <div class="tab-content">
             <div id="tab-chart" class="tab-pane active">
-                <div class="chart-area">
-                    <div id="power-chart" class="chart"></div>
-                    <div id="soc-chart" class="chart"></div>
+                <div class="chart-sub-tabs">
+                    <button class="chart-sub-tab-btn active" data-chart-sub-tab="park">园区总功率曲线</button>
+                    <button class="chart-sub-tab-btn" data-chart-sub-tab="community">分园区功率曲线</button>
+                </div>
+                <div id="chart-sub-tab-park" class="chart-sub-tab-content active">
+                    <div class="optimization-charts">
+                        <div class="chart-section full-width">
+                            <div id="park-power-chart" class="chart-container"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="chart-sub-tab-community" class="chart-sub-tab-content">
+                    <div class="optimization-charts">
+                        <div class="chart-section full-width">
+                            <h3>各社区功率曲线</h3>
+                            <div class="scenario-selector">
+                                <label>选择场景：</label>
+                                <select id="chart-community-scenario-select" onchange="loadChartCommunityPower()">
+                                    <option value="S1">S1: 无储能无碳交易</option>
+                                    <option value="S2">S2: 有储能无碳交易</option>
+                                    <option value="S3" selected>S3: 有储能有碳交易</option>
+                                    <option value="S4">S4: 高新能源有储能有碳交易</option>
+                                </select>
+                                <label style="margin-left: 20px;">选择社区：</label>
+                                <select id="chart-community-id-select" onchange="loadChartCommunityPower()">
+                                    <option value="1">社区1</option>
+                                    <option value="2">社区2</option>
+                                    <option value="3">社区3</option>
+                                </select>
+                            </div>
+                            <div id="chart-community-power-chart" class="chart-container"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -197,8 +218,8 @@
                     </div>
                     
                     <div class="optimization-sub-tabs">
-                        <button class="sub-tab-btn active" data-sub-tab="typical">典型场景分析</button>
-                        <button class="sub-tab-btn" data-sub-tab="comparison">四场景对比</button>
+                        <button class="sub-tab-btn active" data-sub-tab="typical">全园区数据汇总</button>
+                        <button class="sub-tab-btn" data-sub-tab="convergence">收敛曲线</button>
                     </div>
                     
                     <div id="sub-tab-typical" class="sub-tab-content active">
@@ -217,6 +238,22 @@
                             </div>
                         </div>
                         
+                        <div class="optimization-charts">
+                            <div class="chart-section full-width">
+                                <h3>24小时功率平衡</h3>
+                                <div class="scenario-selector">
+                                    <label>选择场景：</label>
+                                    <select id="power-scenario-select" onchange="loadPowerChartByScenario()">
+                                        <option value="S1">S1: 无储能无碳交易</option>
+                                        <option value="S2">S2: 有储能无碳交易</option>
+                                        <option value="S3" selected>S3: 有储能有碳交易</option>
+                                        <option value="S4">S4: 高新能源有储能有碳交易</option>
+                                    </select>
+                                </div>
+                                <div id="hourly-power-chart" class="chart-container"></div>
+                            </div>
+                        </div>
+                        
                         <div class="optimization-summary">
                             <h3>年度汇总指标</h3>
                             <div id="annual-summary" class="summary-cards"></div>
@@ -228,19 +265,41 @@
                         </div>
                     </div>
                     
-                    <div id="sub-tab-comparison" class="sub-tab-content">
-                        <div class="comparison-intro">
-                            <h3>四场景对比分析</h3>
-                            <p><strong>场景定义：</strong></p>
-                            <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
-                                <li><strong>S1 (无储能无碳交易)</strong>：基准场景，系统无储能设备，不参与碳交易市场</li>
-                                <li><strong>S2 (有储能无碳交易)</strong>：配置电储能和热储能，提高新能源消纳能力</li>
-                                <li><strong>S3 (有储能有碳交易)</strong>：在S2基础上启用碳交易，碳配额盈余可出售获利</li>
-                                <li><strong>S4 (高新能源有储能有碳交易)</strong>：提高光伏和风电装机容量，最大化新能源利用</li>
-                            </ul>
+                    <div id="sub-tab-convergence" class="sub-tab-content">
+                        <div class="convergence-intro">
+                            <h3>ADMM算法收敛曲线</h3>
+                            <p style="color: #7f8c8d; margin-bottom: 20px;">
+                                展示四种场景下ADMM分布式优化算法的收敛过程。原始残差和对偶残差随迭代次数下降，验证算法收敛性。
+                            </p>
                         </div>
-                        <div id="comparison-images" class="comparison-grid"></div>
+                        <div class="optimization-charts">
+                            <div class="chart-section full-width">
+                                <div id="admm-convergence-chart" class="chart-container"></div>
+                            </div>
+                        </div>
                     </div>
+                </div>
+            </div>
+            
+            <div id="tab-comparison" class="tab-pane">
+                <div class="comparison-page">
+                    <div class="comparison-intro">
+                        <h3>四场景对比分析</h3>
+                        <p><strong>场景定义：</strong></p>
+                        <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+                            <li><strong>S1 (无储能无碳交易)</strong>：基准场景，系统无储能设备，不参与碳交易市场</li>
+                            <li><strong>S2 (有储能无碳交易)</strong>：配置电储能和热储能，提高新能源消纳能力</li>
+                            <li><strong>S3 (有储能有碳交易)</strong>：在S2基础上启用碳交易，碳配额盈余可出售获利</li>
+                            <li><strong>S4 (高新能源有储能有碳交易)</strong>：提高光伏和风电装机容量，最大化新能源利用</li>
+                        </ul>
+                    </div>
+                    <div class="optimization-charts">
+                        <div class="chart-section">
+                            <h3>成本构成分解</h3>
+                            <div id="cost-breakdown-chart" class="chart-container"></div>
+                        </div>
+                    </div>
+                    <div id="comparison-images" class="comparison-grid"></div>
                 </div>
             </div>
         </div>

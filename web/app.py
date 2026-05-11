@@ -13,7 +13,7 @@ import threading
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-OPTIMIZATION_DATA_DIR = os.path.join(project_root, '零碳园区优化_v6')
+OPTIMIZATION_DATA_DIR = os.path.join(project_root, '零碳园区优化_v8')
 
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
@@ -395,6 +395,148 @@ def get_renewable_utilization_chart():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/optimization/chart/hourly-power-data', methods=['GET'])
+def get_hourly_power_data():
+    try:
+        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+        
+        scenario_param = request.args.get('scenario', 'S3')
+        scenario_map = {
+            'S1': 'S1_Normal_NoStorage_NoCarbon',
+            'S2': 'S2_Normal_WithStorage_NoCarbon',
+            'S3': 'S3_Normal_WithStorage_Carbon',
+            'S4': 'S4_HighRE_WithStorage_Carbon'
+        }
+        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario_name_map = {
+            'S1_Normal_NoStorage_NoCarbon': 'S1: 无储能无碳交易',
+            'S2_Normal_WithStorage_NoCarbon': 'S2: 有储能无碳交易',
+            'S3_Normal_WithStorage_Carbon': 'S3: 有储能有碳交易',
+            'S4_HighRE_WithStorage_Carbon': 'S4: 高新能源有储能有碳交易'
+        }
+        scenario_name = scenario_name_map.get(scenario, 'S3')
+        
+        hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+        
+        if not os.path.exists(hourly_file):
+            return jsonify({'success': False, 'error': '数据文件不存在'}), 404
+        
+        df = pd.read_csv(hourly_file)
+        
+        supply_data = {
+            'hours': list(range(1, 25)),
+            'pv': df['Sum_PpvUse'].tolist(),
+            'wind': df['Sum_PwindUse'].tolist(),
+            'grid': df['Sum_Pgrid'].tolist(),
+            'discharge': df['Sum_Pdis'].tolist(),
+            'chp': df['Sum_Pchp'].tolist(),
+            'fc': df['Sum_Pfc'].tolist()
+        }
+        
+        demand_data = {
+            'hours': list(range(1, 25)),
+            'load': df['DataSum_Pload'].tolist(),
+            'elec': df['Sum_Pelec'].tolist(),
+            'eb': df['Sum_Peb'].tolist(),
+            'comp': df['Sum_Pcomp'].tolist(),
+            'charge': df['Sum_Pch'].tolist()
+        }
+        
+        soc_data = {
+            'hours': list(range(1, 25)),
+            'soc_e': df['Mean_SOC_e'].tolist(),
+            'soc_th': df['Mean_SOC_th'].tolist(),
+            'soc_h2': df['Mean_SOC_h2'].tolist()
+        }
+        
+        supply_total = (df['Sum_PpvUse'] + df['Sum_PwindUse'] + df['Sum_Pgrid'] + df['Sum_Pdis'] + df['Sum_Pchp'] + df['Sum_Pfc']).tolist()
+        demand_total = (df['DataSum_Pload'] + df['Sum_Pelec'] + df['Sum_Peb'] + df['Sum_Pcomp'] + df['Sum_Pch']).tolist()
+        
+        return jsonify({
+            'success': True,
+            'scenario': scenario_name,
+            'supply': supply_data,
+            'demand': demand_data,
+            'soc': soc_data,
+            'supply_total': supply_total,
+            'demand_total': demand_total
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/optimization/chart/community-power-data', methods=['GET'])
+def get_community_power_data():
+    try:
+        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+        
+        scenario_param = request.args.get('scenario', 'S3')
+        community_id = request.args.get('community', '1')
+        
+        scenario_map = {
+            'S1': 'S1_Normal_NoStorage_NoCarbon',
+            'S2': 'S2_Normal_WithStorage_NoCarbon',
+            'S3': 'S3_Normal_WithStorage_Carbon',
+            'S4': 'S4_HighRE_WithStorage_Carbon'
+        }
+        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario_name_map = {
+            'S1_Normal_NoStorage_NoCarbon': 'S1: 无储能无碳交易',
+            'S2_Normal_WithStorage_NoCarbon': 'S2: 有储能无碳交易',
+            'S3_Normal_WithStorage_Carbon': 'S3: 有储能有碳交易',
+            'S4_HighRE_WithStorage_Carbon': 'S4: 高新能源有储能有碳交易'
+        }
+        scenario_name = scenario_name_map.get(scenario, 'S3')
+        
+        community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
+        
+        if not os.path.exists(community_file):
+            return jsonify({'success': False, 'error': '数据文件不存在'}), 404
+        
+        df = pd.read_csv(community_file)
+        df_community = df[df['Community'] == int(community_id)]
+        
+        supply_data = {
+            'hours': list(range(1, 25)),
+            'pv': df_community['PpvUse'].tolist(),
+            'wind': df_community['PwindUse'].tolist(),
+            'grid': df_community['Pgrid'].tolist(),
+            'discharge': df_community['Pdis'].tolist(),
+            'chp': df_community['Pchp'].tolist(),
+            'fc': df_community['Pfc'].tolist()
+        }
+        
+        demand_data = {
+            'hours': list(range(1, 25)),
+            'load': df_community['Data_Pload'].tolist(),
+            'elec': df_community['Pelec'].tolist(),
+            'eb': df_community['Peb'].tolist(),
+            'comp': df_community['Pcomp'].tolist(),
+            'charge': df_community['Pch'].tolist()
+        }
+        
+        soc_data = {
+            'hours': list(range(1, 25)),
+            'soc_e': df_community['SOC_e'].tolist(),
+            'soc_th': df_community['SOC_th'].tolist(),
+            'soc_h2': df_community['SOC_h2'].tolist()
+        }
+        
+        supply_total = (df_community['PpvUse'] + df_community['PwindUse'] + df_community['Pgrid'] + df_community['Pdis'] + df_community['Pchp'] + df_community['Pfc']).tolist()
+        demand_total = (df_community['Data_Pload'] + df_community['Pelec'] + df_community['Peb'] + df_community['Pcomp'] + df_community['Pch']).tolist()
+        
+        return jsonify({
+            'success': True,
+            'scenario': scenario_name,
+            'community': community_id,
+            'supply': supply_data,
+            'demand': demand_data,
+            'soc': soc_data,
+            'supply_total': supply_total,
+            'demand_total': demand_total
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/optimization/chart/carbon-analysis', methods=['GET'])
 def get_carbon_analysis_chart():
     try:
@@ -554,6 +696,201 @@ def get_comparison_images():
                 })
         
         return jsonify({'success': True, 'data': images})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/optimization/chart/admm-convergence', methods=['GET'])
+def get_admm_convergence_chart():
+    try:
+        convergence_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+        
+        scenarios = ['S1_Normal_NoStorage_NoCarbon', 'S2_Normal_WithStorage_NoCarbon', 
+                     'S3_Normal_WithStorage_Carbon', 'S4_HighRE_WithStorage_Carbon']
+        scenario_labels = ['S1: 无储能无碳交易', 'S2: 有储能无碳交易', 
+                          'S3: 有储能有碳交易', 'S4: 高新能源有储能有碳交易']
+        colors = ['#e74c3c', '#3498db', '#2ecc71', '#9b59b6']
+        
+        with matplotlib_lock:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+            
+            for scenario, label, color in zip(scenarios, scenario_labels, colors):
+                conv_file = os.path.join(convergence_dir, f'{scenario}_admm_convergence.csv')
+                if os.path.exists(conv_file):
+                    df = pd.read_csv(conv_file)
+                    ax1.semilogy(df['Iteration'], df['PrimalResidual'], 
+                                label=label, color=color, linewidth=1.5)
+                    ax2.semilogy(df['Iteration'], df['DualResidual'], 
+                                label=label, color=color, linewidth=1.5)
+            
+            ax1.set_xlabel('迭代次数')
+            ax1.set_ylabel('原始残差 (对数尺度)')
+            ax1.set_title('ADMM原始残差收敛曲线')
+            ax1.legend(fontsize=8)
+            ax1.grid(True, alpha=0.3)
+            
+            ax2.set_xlabel('迭代次数')
+            ax2.set_ylabel('对偶残差 (对数尺度)')
+            ax2.set_title('ADMM对偶残差收敛曲线')
+            ax2.legend(fontsize=8)
+            ax2.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            
+            buffer = BytesIO()
+            plt.savefig(buffer, format='png', dpi=100)
+            buffer.seek(0)
+            image_base64 = base64.b64encode(buffer.getvalue()).decode()
+            plt.close(fig)
+        
+        return jsonify({'success': True, 'data': image_base64})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/optimization/chart/hourly-power', methods=['GET'])
+def get_hourly_power_chart():
+    try:
+        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+        
+        scenario_param = request.args.get('scenario', 'S3')
+        scenario_map = {
+            'S1': 'S1_Normal_NoStorage_NoCarbon',
+            'S2': 'S2_Normal_WithStorage_NoCarbon',
+            'S3': 'S3_Normal_WithStorage_Carbon',
+            'S4': 'S4_HighRE_WithStorage_Carbon'
+        }
+        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario_name_map = {
+            'S1_Normal_NoStorage_NoCarbon': 'S1: 无储能无碳交易',
+            'S2_Normal_WithStorage_NoCarbon': 'S2: 有储能无碳交易',
+            'S3_Normal_WithStorage_Carbon': 'S3: 有储能有碳交易',
+            'S4_HighRE_WithStorage_Carbon': 'S4: 高新能源有储能有碳交易'
+        }
+        scenario_name = scenario_name_map.get(scenario, 'S3')
+        
+        hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+        
+        if not os.path.exists(hourly_file):
+            return jsonify({'success': False, 'error': '数据文件不存在'}), 404
+        
+        df = pd.read_csv(hourly_file)
+        
+        with matplotlib_lock:
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
+            
+            hours = range(1, 25)
+            
+            supply = df['Sum_PpvUse'].values + df['Sum_PwindUse'].values + df['Sum_Pgrid'].values + df['Sum_Pdis'].values + df['Sum_Pchp'].values + df['Sum_Pfc'].values
+            demand = df['DataSum_Pload'].values + df['Sum_Pelec'].values + df['Sum_Peb'].values + df['Sum_Pcomp'].values + df['Sum_Pch'].values
+            
+            ax1.stackplot(hours, 
+                         df['Sum_PpvUse'].values, 
+                         df['Sum_PwindUse'].values,
+                         df['Sum_Pgrid'].values,
+                         df['Sum_Pdis'].values,
+                         df['Sum_Pchp'].values,
+                         df['Sum_Pfc'].values,
+                         labels=['光伏', '风电', '电网', '储能放电', 'CHP', '燃料电池'],
+                         colors=['#f1c40f', '#3498db', '#95a5a6', '#2ecc71', '#e74c3c', '#8e44ad'],
+                         alpha=0.8)
+            ax1.plot(hours, demand, 'k-', linewidth=2.5, label='总用电')
+            ax1.set_xlabel('时间 (h)')
+            ax1.set_ylabel('功率 (MW)')
+            ax1.set_title(f'{scenario_name} 24小时电力平衡 - 供电侧')
+            ax1.legend(loc='upper left', fontsize=8, ncol=3)
+            ax1.grid(True, alpha=0.3)
+            ax1.set_xlim(1, 24)
+            ax1.set_ylim(0, max(supply.max(), demand.max()) * 1.1)
+            
+            ax2.stackplot(hours,
+                         df['DataSum_Pload'].values,
+                         df['Sum_Pelec'].values,
+                         df['Sum_Peb'].values,
+                         df['Sum_Pcomp'].values,
+                         df['Sum_Pch'].values,
+                         labels=['电负荷', '电解槽', '电锅炉', '压缩机', '储能充电'],
+                         colors=['#e74c3c', '#9b59b6', '#f39c12', '#1abc9c', '#2ecc71'],
+                         alpha=0.8)
+            ax2.plot(hours, supply, 'k-', linewidth=2.5, label='总供电')
+            ax2.set_xlabel('时间 (h)')
+            ax2.set_ylabel('功率 (MW)')
+            ax2.set_title(f'{scenario_name} 24小时电力平衡 - 用电侧')
+            ax2.legend(loc='upper left', fontsize=8, ncol=3)
+            ax2.grid(True, alpha=0.3)
+            ax2.set_xlim(1, 24)
+            ax2.set_ylim(0, max(supply.max(), demand.max()) * 1.1)
+            
+            plt.tight_layout()
+            
+            buffer = BytesIO()
+            plt.savefig(buffer, format='png', dpi=100)
+            buffer.seek(0)
+            image_base64 = base64.b64encode(buffer.getvalue()).decode()
+            plt.close(fig)
+        
+        return jsonify({'success': True, 'data': image_base64})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/optimization/chart/cost-breakdown', methods=['GET'])
+def get_cost_breakdown_chart():
+    try:
+        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+        
+        scenarios = ['S1_Normal_NoStorage_NoCarbon', 'S2_Normal_WithStorage_NoCarbon', 
+                     'S3_Normal_WithStorage_Carbon', 'S4_HighRE_WithStorage_Carbon']
+        scenario_labels = ['S1', 'S2', 'S3', 'S4']
+        
+        cost_data = []
+        for scenario in scenarios:
+            scalar_file = os.path.join(data_dir, f'{scenario}_admm_solution_scalars.csv')
+            if os.path.exists(scalar_file):
+                df = pd.read_csv(scalar_file)
+                cost_data.append({
+                    'scenario': scenario_labels[scenarios.index(scenario)],
+                    'grid': df['Part_gridCost'].values[0] / 1000,
+                    'gas': df['Part_gasCost'].values[0] / 1000,
+                    'carbon': df['Part_carbonTradingCost'].values[0] / 1000,
+                    'curtail': (df['Part_pvCurtCost'].values[0] + df['Part_windCurtCost'].values[0]) / 1000,
+                    'h2short': df['Part_h2ShortCost'].values[0] / 1000
+                })
+        
+        with matplotlib_lock:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            x = range(len(cost_data))
+            width = 0.6
+            
+            bottom = [0] * len(cost_data)
+            colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6']
+            labels = ['电网成本', '燃气成本', '碳交易成本', '弃能惩罚', '氢短缺惩罚']
+            keys = ['grid', 'gas', 'carbon', 'curtail', 'h2short']
+            
+            for color, label, key in zip(colors, labels, keys):
+                values = [d[key] for d in cost_data]
+                ax.bar(x, values, width, bottom=bottom, label=label, color=color)
+                bottom = [b + v for b, v in zip(bottom, values)]
+            
+            for i, total in enumerate(bottom):
+                ax.text(i, total + 0.5, f'{total:.1f}', ha='center', va='bottom', 
+                       fontsize=11, fontweight='bold', color='#2c3e50')
+            
+            ax.set_xlabel('场景')
+            ax.set_ylabel('成本 (千元)')
+            ax.set_title('各场景成本构成分解')
+            ax.set_xticks(x)
+            ax.set_xticklabels([d['scenario'] for d in cost_data])
+            ax.legend(loc='upper right')
+            ax.grid(axis='y', alpha=0.3)
+            
+            plt.tight_layout()
+            
+            buffer = BytesIO()
+            plt.savefig(buffer, format='png', dpi=100)
+            buffer.seek(0)
+            image_base64 = base64.b64encode(buffer.getvalue()).decode()
+            plt.close(fig)
+        
+        return jsonify({'success': True, 'data': image_base64})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

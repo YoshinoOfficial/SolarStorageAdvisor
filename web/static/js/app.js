@@ -38,12 +38,33 @@ function initTabs() {
             document.getElementById('tab-' + tabId).classList.add('active');
             
             if (tabId === 'chart') {
-                setTimeout(() => {
-                    Plotly.Plots.resize('power-chart');
-                    Plotly.Plots.resize('soc-chart');
-                }, 50);
+                loadParkPowerChart();
             } else if (tabId === 'optimization') {
                 loadOptimizationData();
+            } else if (tabId === 'comparison') {
+                loadComparisonImages();
+            }
+        });
+    });
+    
+    const chartSubTabBtns = document.querySelectorAll('.chart-sub-tab-btn');
+    chartSubTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const subTabId = btn.dataset.chartSubTab;
+            
+            chartSubTabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            document.querySelectorAll('.chart-sub-tab-content').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            document.getElementById('chart-sub-tab-' + subTabId).classList.add('active');
+            
+            if (subTabId === 'park') {
+                loadParkPowerChart();
+            }
+            if (subTabId === 'community') {
+                loadChartCommunityPower();
             }
         });
     });
@@ -61,8 +82,8 @@ function initTabs() {
             });
             document.getElementById('sub-tab-' + subTabId).classList.add('active');
             
-            if (subTabId === 'comparison') {
-                loadComparisonImages();
+            if (subTabId === 'convergence') {
+                loadConvergenceChart();
             }
         });
     });
@@ -144,9 +165,6 @@ async function recalculate() {
         const result = await fetchAPI('/api/calculate', 'POST');
         if (result.success) {
             updateCharts(result.data.chart_data);
-            document.getElementById('daily-cost').textContent = result.data.daily_cost.toFixed(2);
-            const revenue = result.data.renewable_revenue;
-            document.getElementById('renewable-revenue').textContent = revenue.total_revenue.toFixed(2);
         } else {
             alert('计算失败: ' + result.error);
         }
@@ -555,6 +573,7 @@ async function confirmModal() {
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     loadConfig();
+    loadParkPowerChart();
 });
 
 async function loadOptimizationData() {
@@ -574,22 +593,227 @@ async function loadOptimizationData() {
         }
         
         if (economicRes.success) {
-            document.getElementById('economic-chart').innerHTML = 
-                `<img src="data:image/png;base64,${economicRes.data}" style="width:100%;height:auto;">`;
+            renderClickableChart('economic-chart', economicRes.data, '经济性对比');
         }
         
         if (renewableRes.success) {
-            document.getElementById('renewable-chart').innerHTML = 
-                `<img src="data:image/png;base64,${renewableRes.data}" style="width:100%;height:auto;">`;
+            renderClickableChart('renewable-chart', renewableRes.data, '可再生能源利用');
         }
         
         if (carbonRes.success) {
-            document.getElementById('carbon-chart').innerHTML = 
-                `<img src="data:image/png;base64,${carbonRes.data}" style="width:100%;height:auto;">`;
+            renderClickableChart('carbon-chart', carbonRes.data, '碳排放分析');
         }
+        
+        loadPowerChartByScenario();
     } catch (e) {
         console.error('加载优化数据失败:', e);
     }
+}
+
+async function loadConvergenceChart() {
+    try {
+        const res = await fetchAPI('/api/optimization/chart/admm-convergence');
+        if (res.success) {
+            renderClickableChart('admm-convergence-chart', res.data, 'ADMM算法收敛曲线');
+        }
+    } catch (e) {
+        console.error('加载收敛曲线失败:', e);
+    }
+}
+
+async function loadPowerChartByScenario() {
+    const select = document.getElementById('power-scenario-select');
+    const scenario = select ? select.value : 'S3';
+    
+    try {
+        const res = await fetchAPI(`/api/optimization/chart/hourly-power-data?scenario=${scenario}`);
+        if (res.success) {
+            renderInteractivePowerChart('hourly-power-chart', res);
+        }
+    } catch (e) {
+        console.error('加载功率曲线失败:', e);
+    }
+}
+
+async function loadParkPowerChart() {
+    const select = document.getElementById('park-scenario-select');
+    const scenario = select ? select.value : 'S3';
+    
+    try {
+        const res = await fetchAPI(`/api/optimization/chart/hourly-power-data?scenario=${scenario}`);
+        if (res.success) {
+            renderInteractivePowerChart('park-power-chart', res);
+        }
+    } catch (e) {
+        console.error('加载功率曲线失败:', e);
+    }
+}
+
+async function loadCommunityChartByScenario() {
+    const scenarioSelect = document.getElementById('community-scenario-select');
+    const communitySelect = document.getElementById('community-id-select');
+    const scenario = scenarioSelect ? scenarioSelect.value : 'S3';
+    const community = communitySelect ? communitySelect.value : '1';
+    
+    try {
+        const res = await fetchAPI(`/api/optimization/chart/community-power-data?scenario=${scenario}&community=${community}`);
+        if (res.success) {
+            renderInteractivePowerChart('community-power-chart', res);
+        }
+    } catch (e) {
+        console.error('加载社区功率曲线失败:', e);
+    }
+}
+
+async function loadChartCommunityPower() {
+    const scenarioSelect = document.getElementById('chart-community-scenario-select');
+    const communitySelect = document.getElementById('chart-community-id-select');
+    const scenario = scenarioSelect ? scenarioSelect.value : 'S3';
+    const community = communitySelect ? communitySelect.value : '1';
+    
+    try {
+        const res = await fetchAPI(`/api/optimization/chart/community-power-data?scenario=${scenario}&community=${community}`);
+        if (res.success) {
+            renderInteractivePowerChart('chart-community-power-chart', res);
+        }
+    } catch (e) {
+        console.error('加载社区功率曲线失败:', e);
+    }
+}
+
+function renderInteractivePowerChart(containerId, data) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    
+    const supplyDiv = document.createElement('div');
+    supplyDiv.id = 'power-supply-chart';
+    supplyDiv.style.height = '300px';
+    
+    const demandDiv = document.createElement('div');
+    demandDiv.id = 'power-demand-chart';
+    demandDiv.style.height = '300px';
+    
+    const socDiv = document.createElement('div');
+    socDiv.id = 'power-soc-chart';
+    socDiv.style.height = '280px';
+    
+    container.appendChild(supplyDiv);
+    container.appendChild(demandDiv);
+    container.appendChild(socDiv);
+    
+    const hours = data.supply.hours;
+    
+    const supplyTraces = [
+        { x: hours, y: data.supply.pv, type: 'scatter', mode: 'lines', stackgroup: 'one', name: '光伏', line: { color: '#f1c40f' }, hovertemplate: '光伏: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.supply.wind, type: 'scatter', mode: 'lines', stackgroup: 'one', name: '风电', line: { color: '#3498db' }, hovertemplate: '风电: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.supply.grid, type: 'scatter', mode: 'lines', stackgroup: 'one', name: '电网', line: { color: '#95a5a6' }, hovertemplate: '电网: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.supply.discharge, type: 'scatter', mode: 'lines', stackgroup: 'one', name: '储能放电', line: { color: '#2ecc71' }, hovertemplate: '储能放电: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.supply.chp, type: 'scatter', mode: 'lines', stackgroup: 'one', name: 'CHP', line: { color: '#e74c3c' }, hovertemplate: 'CHP: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.supply.fc, type: 'scatter', mode: 'lines', stackgroup: 'one', name: '燃料电池', line: { color: '#8e44ad' }, hovertemplate: '燃料电池: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.demand_total, type: 'scatter', mode: 'lines', name: '总用电', line: { color: '#000000', width: 2.5 }, hovertemplate: '总用电: %{y:.2f} MW<extra></extra>' }
+    ];
+    
+    const demandTraces = [
+        { x: hours, y: data.demand.load, type: 'scatter', mode: 'lines', stackgroup: 'one', name: '电负荷', line: { color: '#e74c3c' }, hovertemplate: '电负荷: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.demand.elec, type: 'scatter', mode: 'lines', stackgroup: 'one', name: '电解槽', line: { color: '#9b59b6' }, hovertemplate: '电解槽: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.demand.eb, type: 'scatter', mode: 'lines', stackgroup: 'one', name: '电锅炉', line: { color: '#f39c12' }, hovertemplate: '电锅炉: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.demand.comp, type: 'scatter', mode: 'lines', stackgroup: 'one', name: '压缩机', line: { color: '#1abc9c' }, hovertemplate: '压缩机: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.demand.charge, type: 'scatter', mode: 'lines', stackgroup: 'one', name: '储能充电', line: { color: '#2ecc71' }, hovertemplate: '储能充电: %{y:.2f} MW<extra></extra>' },
+        { x: hours, y: data.supply_total, type: 'scatter', mode: 'lines', name: '总供电', line: { color: '#000000', width: 2.5 }, hovertemplate: '总供电: %{y:.2f} MW<extra></extra>' }
+    ];
+    
+    const socTraces = [
+        { x: hours, y: data.soc.soc_e, type: 'scatter', mode: 'lines+markers', name: '电储能SOC', line: { color: '#3498db', width: 2 }, marker: { size: 4 }, yaxis: 'y', hovertemplate: '电储能: %{y:.2f} MWh<extra></extra>' },
+        { x: hours, y: data.soc.soc_th, type: 'scatter', mode: 'lines+markers', name: '热储能SOC', line: { color: '#e74c3c', width: 2 }, marker: { size: 4 }, yaxis: 'y', hovertemplate: '热储能: %{y:.2f} MWh<extra></extra>' },
+        { x: hours, y: data.soc.soc_h2, type: 'scatter', mode: 'lines+markers', name: '氢储能SOC', line: { color: '#2ecc71', width: 2 }, marker: { size: 4 }, yaxis: 'y2', hovertemplate: '氢储能: %{y:.2f} kg<extra></extra>' }
+    ];
+    
+    const supplyLayout = {
+        title: { text: '供电侧', font: { size: 14 } },
+        xaxis: { title: '时间 (h)', dtick: 2 },
+        yaxis: { title: '功率 (MW)' },
+        hovermode: 'x unified',
+        legend: { x: 0, y: 1.25, orientation: 'h', font: { size: 10 } },
+        margin: { t: 65, b: 40, l: 55, r: 25 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(248,249,250,1)'
+    };
+    
+    const demandLayout = {
+        title: { text: '用电侧', font: { size: 14 } },
+        xaxis: { title: '时间 (h)', dtick: 2 },
+        yaxis: { title: '功率 (MW)' },
+        hovermode: 'x unified',
+        legend: { x: 0, y: 1.25, orientation: 'h', font: { size: 10 } },
+        margin: { t: 65, b: 40, l: 55, r: 25 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(248,249,250,1)'
+    };
+    
+    const socLayout = {
+        title: { text: '储能SOC', font: { size: 14 } },
+        xaxis: { title: '时间 (h)', dtick: 2 },
+        yaxis: { title: '电/热储能 (MWh)', side: 'left' },
+        yaxis2: { title: '氢储能', side: 'right', overlaying: 'y' },
+        hovermode: 'x unified',
+        legend: { x: 0, y: 1.25, orientation: 'h', font: { size: 10 } },
+        margin: { t: 65, b: 40, l: 55, r: 55 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(248,249,250,1)'
+    };
+    
+    const config = { responsive: true, displayModeBar: true };
+    
+    Plotly.newPlot(supplyDiv, supplyTraces, supplyLayout, config);
+    Plotly.newPlot(demandDiv, demandTraces, demandLayout, config);
+    Plotly.newPlot(socDiv, socTraces, socLayout, config);
+}
+
+function renderClickableChart(containerId, imageData, title) {
+    const container = document.getElementById(containerId);
+    const img = document.createElement('img');
+    img.src = `data:image/png;base64,${imageData}`;
+    img.style.cssText = 'width:100%;height:auto;cursor:pointer;';
+    img.onclick = () => showFullscreenChart(imageData, title);
+    container.innerHTML = '';
+    container.appendChild(img);
+}
+
+function showFullscreenChart(imageData, title) {
+    const overlay = document.createElement('div');
+    overlay.className = 'fullscreen-overlay';
+    overlay.onclick = (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+        }
+    };
+    
+    const closeBtn = document.createElement('div');
+    closeBtn.className = 'fullscreen-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.onclick = () => document.body.removeChild(overlay);
+    
+    const img = document.createElement('img');
+    img.src = `data:image/png;base64,${imageData}`;
+    img.onclick = (e) => e.stopPropagation();
+    
+    const label = document.createElement('div');
+    label.className = 'fullscreen-label';
+    label.innerHTML = `<strong>${title}</strong>`;
+    
+    overlay.appendChild(closeBtn);
+    overlay.appendChild(img);
+    overlay.appendChild(label);
+    document.body.appendChild(overlay);
+    
+    document.addEventListener('keydown', function escHandler(e) {
+        if (e.key === 'Escape') {
+            if (document.body.contains(overlay)) {
+                document.body.removeChild(overlay);
+            }
+            document.removeEventListener('keydown', escHandler);
+        }
+    });
 }
 
 function renderAnnualSummary(data) {
@@ -682,6 +906,11 @@ async function loadComparisonImages() {
     if (container.innerHTML.trim() !== '') return;
     
     try {
+        const costRes = await fetchAPI('/api/optimization/chart/cost-breakdown');
+        if (costRes.success) {
+            renderClickableChart('cost-breakdown-chart', costRes.data, '成本构成分解');
+        }
+        
         const result = await fetchAPI('/api/optimization/comparison/images');
         
         if (result.success) {
@@ -705,25 +934,92 @@ async function loadComparisonImages() {
                 return order.indexOf(a) - order.indexOf(b);
             });
             
+            const singleImageSections = [];
+            const multiImageSections = [];
+            
             sortedNums.forEach(figNum => {
+                if (imageMap[figNum].length === 1) {
+                    singleImageSections.push({
+                        figNum: figNum,
+                        data: imageMap[figNum],
+                        info: descMap[figNum]
+                    });
+                } else {
+                    multiImageSections.push({
+                        figNum: figNum,
+                        data: imageMap[figNum],
+                        info: descMap[figNum]
+                    });
+                }
+            });
+            
+            for (let i = 0; i < singleImageSections.length; i += 2) {
+                const rowContainer = document.createElement('div');
+                rowContainer.className = 'comparison-row';
+                
+                for (let j = 0; j < 2 && i + j < singleImageSections.length; j++) {
+                    const item = singleImageSections[i + j];
+                    const section = document.createElement('div');
+                    section.className = 'comparison-section comparison-section-half';
+                    
+                    const titleEl = document.createElement('h4');
+                    titleEl.textContent = item.info.title;
+                    section.appendChild(titleEl);
+                    
+                    const descEl = document.createElement('p');
+                    descEl.className = 'comparison-description';
+                    descEl.textContent = item.info.description;
+                    section.appendChild(descEl);
+                    
+                    const grid = document.createElement('div');
+                    grid.className = 'comparison-images-grid';
+                    grid.style.gridTemplateColumns = '1fr';
+                    
+                    item.data.forEach(img => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'comparison-image-wrapper';
+                        wrapper.onclick = () => showFullscreenImage(img.data, img.scenario, img.title);
+                        
+                        const scenarioLabel = document.createElement('div');
+                        scenarioLabel.className = 'comparison-scenario-label';
+                        scenarioLabel.textContent = img.scenario;
+                        
+                        const imgEl = document.createElement('img');
+                        imgEl.src = `data:image/png;base64,${img.data}`;
+                        imgEl.alt = img.filename;
+                        
+                        wrapper.appendChild(scenarioLabel);
+                        wrapper.appendChild(imgEl);
+                        grid.appendChild(wrapper);
+                    });
+                    
+                    section.appendChild(grid);
+                    rowContainer.appendChild(section);
+                }
+                
+                container.appendChild(rowContainer);
+            }
+            
+            multiImageSections.forEach(item => {
                 const section = document.createElement('div');
                 section.className = 'comparison-section';
                 
                 const titleEl = document.createElement('h4');
-                titleEl.textContent = `${figNum} ${descMap[figNum].title}`;
+                titleEl.textContent = item.info.title;
                 section.appendChild(titleEl);
                 
                 const descEl = document.createElement('p');
                 descEl.className = 'comparison-description';
-                descEl.textContent = descMap[figNum].description;
+                descEl.textContent = item.info.description;
                 section.appendChild(descEl);
                 
                 const grid = document.createElement('div');
                 grid.className = 'comparison-images-grid';
                 
-                imageMap[figNum].forEach(img => {
+                item.data.forEach(img => {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'comparison-image-wrapper';
+                    wrapper.onclick = () => showFullscreenImage(img.data, img.scenario, img.title);
                     
                     const scenarioLabel = document.createElement('div');
                     scenarioLabel.className = 'comparison-scenario-label';
@@ -746,4 +1042,41 @@ async function loadComparisonImages() {
         console.error('加载对比图片失败:', e);
         container.innerHTML = '<p>加载失败，请重试</p>';
     }
+}
+
+function showFullscreenImage(imageData, scenario, title) {
+    const overlay = document.createElement('div');
+    overlay.className = 'fullscreen-overlay';
+    overlay.onclick = (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+        }
+    };
+    
+    const closeBtn = document.createElement('div');
+    closeBtn.className = 'fullscreen-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.onclick = () => document.body.removeChild(overlay);
+    
+    const img = document.createElement('img');
+    img.src = `data:image/png;base64,${imageData}`;
+    img.onclick = (e) => e.stopPropagation();
+    
+    const label = document.createElement('div');
+    label.className = 'fullscreen-label';
+    label.innerHTML = `<strong>${title}</strong> - ${scenario}`;
+    
+    overlay.appendChild(closeBtn);
+    overlay.appendChild(img);
+    overlay.appendChild(label);
+    document.body.appendChild(overlay);
+    
+    document.addEventListener('keydown', function escHandler(e) {
+        if (e.key === 'Escape') {
+            if (document.body.contains(overlay)) {
+                document.body.removeChild(overlay);
+            }
+            document.removeEventListener('keydown', escHandler);
+        }
+    });
 }

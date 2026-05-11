@@ -1,0 +1,2 @@
+Scenario,Method,Objective_Yuan,LocalObjective_Yuan,Iterations,FinalPrimalResidual,FinalDualResidual,MaxConsensusP_MW,MaxConsensusQ_MVAr,MaxConsensusCarbon_kg,TotalPVCurt_MWh,TotalWindCurt_MWh,TotalH2Shortage_kg,Part_gridCost,Part_carbonTradingCost,Part_gasCost,Part_gasCarbonCost,Part_pvCurtCost,Part_windCurtCost,Part_h2ShortCost,Part_qSupportCost
+S1_Normal_NoStorage_NoCarbon,centralized,51911.9781202268,NaN,NaN,NaN,NaN,NaN,NaN,NaN,0,10.7879221313896,27,13641.9426947991,881.219297495266,24154.2840171972,0,0,2157.58442627791,8100,61.6831549111593

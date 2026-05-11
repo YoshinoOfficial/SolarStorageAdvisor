@@ -1,0 +1,6 @@
+TypicalScenario,TypicalScenarioCN,RepresentativeDays,PVScaleFinal,WindScaleFinal,LoadScaleFinal,H2ScaleFinal,AvailablePV_MWh,AvailableWind_MWh,TotalElectricLoad_MWh,TotalHeatLoad_MWh,TotalH2Load_kg
+Sunny_LowWind,晴天少风,85,3.3,2.7,1.05,1,62.376533268981,39.783329630244,64.8165,73.80975,617.5
+Sunny_HighWind,晴天多风,60,3.3,3.3,1.05,1,62.376533268981,48.624069548076,64.8165,73.80975,617.5
+Cloudy_MidWind,多云中风,100,3,3,1.05,1,56.7059393354373,44.20369958916,64.8165,73.80975,617.5
+Rainy_LowWind,阴天少风,80,2.7,2.7,1.05,1,51.0353454018936,39.783329630244,64.8165,73.80975,617.5
+Rainy_HighWind,阴天多风,40,2.3,3.3,1.05,1,43.4745534905019,48.624069548076,64.8165,73.80975,617.5

@@ -1,0 +1,9 @@
+Scenario,ScenarioCN,Method,Status,TotalObjective_Yuan,Iterations,CarbonTradingCost_Yuan,ADMMPrimalResidual,ADMMDualResidual,MaxConsensusP_MW,MaxConsensusQ_MVAr,MaxConsensusCarbon_kg
+S1_Normal_NoStorage_NoCarbon,场景1-正常新能源-无储能-无碳交易,centralized-multi-energy-pq,Solved,51911.9781202268,NaN,881.219297495266,NaN,NaN,NaN,NaN,NaN
+S1_Normal_NoStorage_NoCarbon,场景1-正常新能源-无储能-无碳交易,admm-fixed-multi-energy-pq-carbon,Solved,51854.3162394448,106,724.056700877554,6.51372913439856e-05,0.000506768718707267,4.3815119775914e-05,3.62084271847696e-05,0
+S2_Normal_WithStorage_NoCarbon,场景2-正常新能源-有储能-无碳交易,centralized-multi-energy-pq,Solved,25247.3757293073,NaN,0,NaN,NaN,NaN,NaN,NaN
+S2_Normal_WithStorage_NoCarbon,场景2-正常新能源-有储能-无碳交易,admm-fixed-multi-energy-pq-carbon,Solved,25247.3766244405,28,0,7.71048327050812e-05,0.00173718976795728,3.25659769211395e-05,2.26329337834619e-05,0
+S3_Normal_WithStorage_Carbon,场景3-正常新能源-有储能-有碳交易,centralized-multi-energy-pq,Solved,24421.759162396,NaN,-817.222227270589,NaN,NaN,NaN,NaN,NaN
+S3_Normal_WithStorage_Carbon,场景3-正常新能源-有储能-有碳交易,admm-fixed-multi-energy-pq-carbon,Solved,24430.0371186893,36,-1028.98115359715,9.11540208801305e-05,0.00315265535564678,5.05756238897703e-05,4.17952477933525e-05,0
+S4_HighRE_WithStorage_Carbon,场景4-高新能源-有储能-有碳交易,centralized-multi-energy-pq,Solved,23702.2446998331,NaN,-1210.17283619786,NaN,NaN,NaN,NaN,NaN
+S4_HighRE_WithStorage_Carbon,场景4-高新能源-有储能-有碳交易,admm-fixed-multi-energy-pq-carbon,Solved,23702.2451853381,27,-1210.17283619786,8.50248839506993e-05,0.00117685119771788,1.81047149867553e-05,6.84951772258469e-05,3.47283508374263e-19
