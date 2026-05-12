@@ -1,0 +1,22 @@
+{
+    "default_turbine": {
+        "turbine_type": "E-126/4200",
+        "hub_height": 135,
+        "nominal_power_kw": 4200
+    },
+    "communities": {
+        "industrial": {
+            "name": "工业区",
+            "coefficient": 3.0
+        },
+        "commercial": {
+            "name": "商业区",
+            "coefficient": 2.0
+        },
+        "residential": {
+            "name": "居民区",
+            "coefficient": 1.0
+        }
+    },
+    "current_community": "industrial"
+}

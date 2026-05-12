@@ -14,7 +14,7 @@ import numpy as np
 from pvlib.location import Location
 from pvlib.pvsystem import PVSystem, Array, FixedMount
 from pvlib.modelchain import ModelChain
-from config.config_manager import load_panel_by_id, get_panel_quantities, list_available_panels
+from config.config_manager import load_panel_by_id, get_panel_quantities, list_available_panels, list_communities
 
 
 WEATHER_TYPES = {
@@ -228,7 +228,7 @@ def _calculate_single_panel(panel_config, lat=None, lon=None, tz=None, altitude=
     return area * mc.results.ac / 1000
 
 
-def getsolar(panel_quantities=None, lat=None, lon=None, tz=None, altitude=None, name=None, 
+def getsolar(panel_quantities=None, community=None, lat=None, lon=None, tz=None, altitude=None, name=None, 
              start=None, end=None, freq=None, temp_air=None, wind_speed=None, 
              surface_tilt=None, surface_azimuth=None, temp_a=None, temp_b=None, 
              temp_deltaT=None, panel_id=None, weather_type='clear', ifdraw=False):
@@ -238,6 +238,8 @@ def getsolar(panel_quantities=None, lat=None, lon=None, tz=None, altitude=None, 
     Args:
         panel_quantities: 光伏板数量字典，如 {"panel_canadian_solar": 10, "panel_trina": 5}
                          如不提供，则从配置文件读取
+        community: 社区ID（如 'industrial', 'commercial', 'residential'），
+                   指定后从该社区的配置读取光伏板数量
         panel_id: 单独计算某一种光伏板时使用（向后兼容）
         weather_type: 天气类型，可选值：
             - 'clear': 晴天（默认）
@@ -253,7 +255,10 @@ def getsolar(panel_quantities=None, lat=None, lon=None, tz=None, altitude=None, 
     """
     # 如果没有传入 panel_quantities，从配置文件读取
     if panel_quantities is None:
-        panel_quantities = get_panel_quantities()
+        if community is not None:
+            panel_quantities = get_panel_quantities(community=community)
+        else:
+            panel_quantities = get_panel_quantities()
     
     # 向后兼容：如果指定了 panel_id，只计算该光伏板
     if panel_id is not None:
@@ -294,6 +299,116 @@ def getsolar(panel_quantities=None, lat=None, lon=None, tz=None, altitude=None, 
         _draw_power_curves(panel_powers, total_power, panel_quantities, weather_type)
     
     return total_power
+
+
+def calculate_all_communities(start=None, end=None, freq=None, weather_type=None):
+    """
+    计算所有三个社区（工业区、商业区、居民区）在所有天气类型下的光伏发电功率曲线，
+    并将每个社区的功率曲线保存为单独的CSV文件（包含所有天气类型列）到 data/ 目录
+    
+    Args:
+        start: 开始时间，如不提供则使用配置文件中的值
+        end: 结束时间，如不提供则使用配置文件中的值
+        freq: 时间频率，如不提供则使用配置文件中的值
+        weather_type: 天气类型（可选），如果提供则只计算该天气类型
+        
+    Returns:
+        dict: 社区ID到{天气类型: 功率时间序列}的映射
+    """
+    communities = list_communities()
+    community_powers = {}
+    
+    data_dir = os.path.join(project_root, 'data')
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    
+    weather_types_to_compute = [weather_type] if weather_type else list(WEATHER_TYPES.keys())
+    
+    for comm in communities:
+        cid = comm['id']
+        cname = comm['name']
+        print(f"\n正在计算 {cname} 的功率...")
+        
+        comm_weather_powers = {}
+        
+        for wt in weather_types_to_compute:
+            wt_name = WEATHER_TYPES.get(wt, wt)
+            print(f"  天气: {wt_name}")
+            power = getsolar(community=cid, start=start, end=end, freq=freq, weather_type=wt)
+            comm_weather_powers[wt] = power
+            if not power.empty:
+                print(f"    日发电量: {power.sum():.2f} kWh")
+        
+        community_powers[cid] = comm_weather_powers
+        
+        if comm_weather_powers and not list(comm_weather_powers.values())[0].empty:
+            power_df = pd.DataFrame({
+                weather_label: comm_weather_powers[wt] 
+                for wt, weather_label in zip(WEATHER_TYPES.keys(), WEATHER_TYPES.keys())
+                if wt in comm_weather_powers and not comm_weather_powers[wt].empty
+            })
+            power_df.columns = [WEATHER_TYPES.get(col, col) for col in power_df.columns]
+            
+            csv_filename = f"solar_{cid}.csv"
+            csv_path = os.path.join(data_dir, csv_filename)
+            power_df.to_csv(csv_path, encoding='utf-8-sig', index_label='time')
+            print(f"  {cname} 功率曲线（含所有天气类型）已保存至 {csv_path}")
+            
+            _draw_community_all_weather(power_df, cid, cname, WEATHER_TYPES)
+    
+    return community_powers
+
+
+def _draw_community_all_weather(power_df, community_id, community_name, weather_types):
+    """
+    绘制单个社区在所有天气类型下的功率对比曲线并保存
+    
+    Args:
+        power_df: 包含所有天气类型功率列的DataFrame
+        community_id: 社区ID
+        community_name: 社区名称
+        weather_types: 天气类型名称映射字典
+    """
+    plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
+    
+    fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+    colors = plt.cm.Set1.colors
+    
+    ax1 = axes[0]
+    for i, col in enumerate(power_df.columns):
+        power_df[col].plot(ax=ax1, label=col, color=colors[i % len(colors)], linewidth=2)
+    
+    ax1.set_title(f'{community_name} 不同天气类型功率输出对比', fontsize=14)
+    ax1.set_ylabel('功率 (kW)', fontsize=12)
+    ax1.legend(loc='upper right', fontsize=10)
+    ax1.grid(True, alpha=0.3)
+    
+    ax2 = axes[1]
+    weather_names = list(power_df.columns)
+    daily_energy = [power_df[col].sum() for col in weather_names]
+    
+    bars = ax2.bar(weather_names, daily_energy, color=colors[:len(weather_names)])
+    ax2.set_title(f'{community_name} 不同天气类型日发电量对比', fontsize=14)
+    ax2.set_ylabel('发电量 (kWh)', fontsize=12)
+    ax2.set_xlabel('天气类型', fontsize=12)
+    
+    for bar, energy in zip(bars, daily_energy):
+        ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5, 
+                f'{energy:.1f}', ha='center', va='bottom', fontsize=10)
+    
+    ax2.grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    
+    data_dir = os.path.join(project_root, 'data')
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    
+    save_path = os.path.join(data_dir, f'solar_{community_id}_all_weather.png')
+    plt.savefig(save_path, dpi=150)
+    print(f"对比图已保存至 {save_path}")
+    plt.close()
 
 
 def _draw_power_curves(panel_powers, total_power, panel_quantities, weather_type='clear'):
@@ -400,27 +515,20 @@ def _draw_all_weather_comparison(weather_powers):
 
 
 if __name__ == '__main__':
-    weather_powers = {}
+    print("=" * 60)
+    print("计算所有社区在所有天气类型下的光伏发电功率曲线")
+    print("=" * 60)
     
-    for weather_type in WEATHER_TYPES.keys():
-        print(f"\n正在计算 {WEATHER_TYPES[weather_type]} 的功率...")
-        power = getsolar(weather_type=weather_type, ifdraw=False)
-        weather_powers[weather_type] = power
-        print(f"{WEATHER_TYPES[weather_type]} 日发电量: {power.sum():.2f} kWh")
+    community_powers = calculate_all_communities()
     
-    _draw_all_weather_comparison(weather_powers)
+    print(f"\n{'=' * 60}")
+    print("各社区各天气类型日发电量汇总:")  
+    print(f"{'=' * 60}")
+    for cid, weather_powers in community_powers.items():
+        print(f"\n{cid}:")
+        for wt, power in weather_powers.items():
+            if not power.empty:
+                wt_name = WEATHER_TYPES.get(wt, wt)
+                print(f"  {wt_name}: {power.sum():.2f} kWh")
     
-    # 保存各天气类型的功率曲线到CSV文件
-    data_dir = os.path.join(project_root, 'data')
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-    
-    # 合并所有天气类型的功率数据到一个DataFrame
-    power_df = pd.DataFrame(weather_powers)
-    # 将天气类型转换为数字label
-    weather_labels = {wt: i for i, wt in enumerate(WEATHER_TYPES.keys())}
-    power_df.columns = [weather_labels.get(wt, wt) for wt in power_df.columns]
-    
-    csv_path = os.path.join(data_dir, 'solarsum.csv')
-    power_df.to_csv(csv_path, encoding='utf-8-sig', index_label='time')
-    print(f"\n功率曲线数据已保存至 {csv_path}")
+    print(f"\n所有社区功率曲线已保存到 data/ 目录")

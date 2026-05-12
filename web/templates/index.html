@@ -15,11 +15,8 @@
 
         <nav class="tab-nav">
             <button class="tab-btn active" data-tab="chart">功率曲线图</button>
-            <button class="tab-btn" data-tab="panel">光伏配置</button>
-            <button class="tab-btn" data-tab="storage">储能配置</button>
-            <button class="tab-btn" data-tab="price">电价配置</button>
+            <button class="tab-btn" data-tab="config">设备配置</button>
             <button class="tab-btn" data-tab="optimization">优化算法</button>
-            <button class="tab-btn" data-tab="comparison">四场景对比</button>
         </nav>
 
         <div class="tab-content">
@@ -60,151 +57,167 @@
                 </div>
             </div>
 
-            <div id="tab-panel" class="tab-pane">
-                <div class="config-page">
-                    <div class="config-header">
-                        <h2>光伏配置管理</h2>
-                        <p class="config-hint">支持同时配置多种光伏板，系统会自动计算总功率</p>
-                    </div>
-                    <div class="panel-quantities-section">
-                        <h3>光伏板数量配置</h3>
-                        <div id="panel-quantities-list" class="panel-quantities-list">
+            <div id="tab-config" class="tab-pane">
+                <div class="config-sub-tabs">
+                    <button class="config-sub-tab-btn active" data-config-sub-tab="panel">光伏配置</button>
+                    <button class="config-sub-tab-btn" data-config-sub-tab="storage">储能配置</button>
+                    <button class="config-sub-tab-btn" data-config-sub-tab="wind">风电配置</button>
+                </div>
+                <div id="config-sub-tab-panel" class="config-sub-tab-content active">
+                    <div class="config-page">
+                        <div class="config-header">
+                            <h2>光伏配置管理</h2>
+                            <p class="config-hint">支持同时配置多种光伏板，系统会自动计算总功率</p>
                         </div>
-                        <div class="form-actions">
-                            <button onclick="savePanelQuantities()" class="btn-primary">保存数量配置</button>
+                        <div class="panel-quantities-section">
+                            <h3>社区选择</h3>
+                            <div class="config-select-row">
+                                <label>当前社区:</label>
+                                <select id="community-select" onchange="switchCommunity()"></select>
+                            </div>
+                            <h3>光伏板数量配置</h3>
+                            <div id="panel-quantities-list" class="panel-quantities-list">
+                            </div>
+                            <div class="form-actions">
+                                <button onclick="savePanelQuantities()" class="btn-primary">保存数量配置</button>
+                            </div>
+                        </div>
+                        <div class="panel-details-section">
+                            <h3>光伏板详细配置</h3>
+                            <div class="config-select-row">
+                                <label>选择光伏板:</label>
+                                <select id="panel-select" onchange="loadPanelDetail()"></select>
+                                <button onclick="showCreatePanelModal()" class="btn-small">新建</button>
+                                <button onclick="deleteCurrentPanel()" class="btn-small btn-danger">删除</button>
+                            </div>
+                            <div id="panel-detail-form" class="config-form" style="display: none;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>面积 (m²):</label>
+                                        <input type="number" id="panel-area" step="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>倾角 (°):</label>
+                                        <input type="number" id="panel-tilt" step="1" min="0" max="90">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>方位角 (°):</label>
+                                        <input type="number" id="panel-azimuth" step="1" min="0" max="360">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>纬度:</label>
+                                        <input type="number" id="panel-lat" step="0.1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>经度:</label>
+                                        <input type="number" id="panel-lon" step="0.1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>海拔 (m):</label>
+                                        <input type="number" id="panel-altitude" step="1">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>环境温度 (°C):</label>
+                                        <input type="number" id="panel-temp-air" step="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>风速 (m/s):</label>
+                                        <input type="number" id="panel-wind-speed" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button onclick="updatePanelConfig()" class="btn-primary">保存光伏板配置</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="panel-details-section">
-                        <h3>光伏板详细配置</h3>
+                </div>
+                <div id="config-sub-tab-storage" class="config-sub-tab-content">
+                    <div class="config-page">
+                        <div class="config-header">
+                            <h2>储能配置管理</h2>
+                        </div>
                         <div class="config-select-row">
-                            <label>选择光伏板:</label>
-                            <select id="panel-select" onchange="loadPanelDetail()"></select>
-                            <button onclick="showCreatePanelModal()" class="btn-small">新建</button>
-                            <button onclick="deleteCurrentPanel()" class="btn-small btn-danger">删除</button>
+                            <label>当前配置:</label>
+                            <select id="storage-select"></select>
+                            <button onclick="switchStorage()" class="btn-small">切换</button>
+                            <button onclick="showCreateStorageModal()" class="btn-small">新建</button>
+                            <button onclick="deleteCurrentStorage()" class="btn-small btn-danger">删除</button>
                         </div>
-                        <div id="panel-detail-form" class="config-form" style="display: none;">
+                        <div class="config-form">
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>面积 (m²):</label>
-                                    <input type="number" id="panel-area" step="1">
+                                    <label>容量 (kWh):</label>
+                                    <input type="number" id="storage-capacity" step="1">
                                 </div>
                                 <div class="form-group">
-                                    <label>倾角 (°):</label>
-                                    <input type="number" id="panel-tilt" step="1" min="0" max="90">
+                                    <label>最大充电功率 (kW):</label>
+                                    <input type="number" id="storage-charge-power" step="1">
                                 </div>
                                 <div class="form-group">
-                                    <label>方位角 (°):</label>
-                                    <input type="number" id="panel-azimuth" step="1" min="0" max="360">
+                                    <label>最大放电功率 (kW):</label>
+                                    <input type="number" id="storage-discharge-power" step="1">
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>纬度:</label>
-                                    <input type="number" id="panel-lat" step="0.1">
+                                    <label>充电效率:</label>
+                                    <input type="number" id="storage-charge-eff" step="0.01" min="0" max="1">
                                 </div>
                                 <div class="form-group">
-                                    <label>经度:</label>
-                                    <input type="number" id="panel-lon" step="0.1">
+                                    <label>放电效率:</label>
+                                    <input type="number" id="storage-discharge-eff" step="0.01" min="0" max="1">
                                 </div>
                                 <div class="form-group">
-                                    <label>海拔 (m):</label>
-                                    <input type="number" id="panel-altitude" step="1">
+                                    <label>初始 SOC:</label>
+                                    <input type="number" id="storage-initial-soc" step="0.01" min="0" max="1">
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>环境温度 (°C):</label>
-                                    <input type="number" id="panel-temp-air" step="1">
+                                    <label>最小 SOC:</label>
+                                    <input type="number" id="storage-min-soc" step="0.01" min="0" max="1">
                                 </div>
                                 <div class="form-group">
-                                    <label>风速 (m/s):</label>
-                                    <input type="number" id="panel-wind-speed" step="0.1">
+                                    <label>最大 SOC:</label>
+                                    <input type="number" id="storage-max-soc" step="0.01" min="0" max="1">
                                 </div>
                             </div>
                             <div class="form-actions">
-                                <button onclick="updatePanelConfig()" class="btn-primary">保存光伏板配置</button>
+                                <button onclick="updateStorageConfig()" class="btn-primary">保存储能配置</button>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <div id="tab-storage" class="tab-pane">
-                <div class="config-page">
-                    <div class="config-header">
-                        <h2>储能配置管理</h2>
-                    </div>
-                    <div class="config-select-row">
-                        <label>当前配置:</label>
-                        <select id="storage-select"></select>
-                        <button onclick="switchStorage()" class="btn-small">切换</button>
-                        <button onclick="showCreateStorageModal()" class="btn-small">新建</button>
-                        <button onclick="deleteCurrentStorage()" class="btn-small btn-danger">删除</button>
-                    </div>
-                    <div class="config-form">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>容量 (kWh):</label>
-                                <input type="number" id="storage-capacity" step="1">
+                <div id="config-sub-tab-wind" class="config-sub-tab-content">
+                    <div class="config-page">
+                        <div class="config-header">
+                            <h2>风电配置管理</h2>
+                            <p class="config-hint">配置各社区的风力发电机台数</p>
+                        </div>
+                        <div class="config-select-row">
+                            <label>风电社区:</label>
+                            <select id="wind-community-select" onchange="switchWindCommunity()"></select>
+                        </div>
+                        <div class="config-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>风机台数:</label>
+                                    <input type="number" id="wind-turbine-count" step="1" min="0">
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label>最大充电功率 (kW):</label>
-                                <input type="number" id="storage-charge-power" step="1">
-                            </div>
-                            <div class="form-group">
-                                <label>最大放电功率 (kW):</label>
-                                <input type="number" id="storage-discharge-power" step="1">
+                            <div class="form-actions">
+                                <button onclick="saveWindTurbineCount()" class="btn-primary">保存风机台数</button>
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>充电效率:</label>
-                                <input type="number" id="storage-charge-eff" step="0.01" min="0" max="1">
+                        <div class="panel-details-section" style="margin-top: 24px;">
+                            <h3>风机参数</h3>
+                            <div id="wind-turbine-detail" class="config-form">
                             </div>
-                            <div class="form-group">
-                                <label>放电效率:</label>
-                                <input type="number" id="storage-discharge-eff" step="0.01" min="0" max="1">
-                            </div>
-                            <div class="form-group">
-                                <label>初始 SOC:</label>
-                                <input type="number" id="storage-initial-soc" step="0.01" min="0" max="1">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>最小 SOC:</label>
-                                <input type="number" id="storage-min-soc" step="0.01" min="0" max="1">
-                            </div>
-                            <div class="form-group">
-                                <label>最大 SOC:</label>
-                                <input type="number" id="storage-max-soc" step="0.01" min="0" max="1">
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button onclick="updateStorageConfig()" class="btn-primary">保存储能配置</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="tab-price" class="tab-pane">
-                <div class="config-page">
-                    <div class="config-header">
-                        <h2>电价配置</h2>
-                    </div>
-                    <div class="config-form">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>市电价 (元/kWh):</label>
-                                <input type="number" id="electricity-price" step="0.01" min="0">
-                            </div>
-                            <div class="form-group">
-                                <label>上网电价 (元/kWh):</label>
-                                <input type="number" id="feed-in-price" step="0.01" min="0">
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button onclick="updateElectricityPrice()" class="btn-primary">保存电价配置</button>
                         </div>
                     </div>
                 </div>
@@ -278,28 +291,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            <div id="tab-comparison" class="tab-pane">
-                <div class="comparison-page">
-                    <div class="comparison-intro">
-                        <h3>四场景对比分析</h3>
-                        <p><strong>场景定义：</strong></p>
-                        <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
-                            <li><strong>S1 (无储能无碳交易)</strong>：基准场景，系统无储能设备，不参与碳交易市场</li>
-                            <li><strong>S2 (有储能无碳交易)</strong>：配置电储能和热储能，提高新能源消纳能力</li>
-                            <li><strong>S3 (有储能有碳交易)</strong>：在S2基础上启用碳交易，碳配额盈余可出售获利</li>
-                            <li><strong>S4 (高新能源有储能有碳交易)</strong>：提高光伏和风电装机容量，最大化新能源利用</li>
-                        </ul>
-                    </div>
-                    <div class="optimization-charts">
-                        <div class="chart-section">
-                            <h3>成本构成分解</h3>
-                            <div id="cost-breakdown-chart" class="chart-container"></div>
-                        </div>
-                    </div>
-                    <div id="comparison-images" class="comparison-grid"></div>
                 </div>
             </div>
         </div>

@@ -26,7 +26,10 @@ from config.config_manager import (
     list_available_panels, get_panel_quantities, set_panel_quantities, set_panel_quantity, load_panel_by_id,
     list_available_storages, get_current_storage_id, set_current_storage_id, load_storage_config,
     save_storage_config, create_new_storage_config, delete_storage_config,
-    create_new_panel_config, delete_panel_config, save_panel_config
+    create_new_panel_config, delete_panel_config, save_panel_config,
+    list_communities, get_current_community, set_current_community,
+    list_wind_communities, get_current_wind_community, set_current_wind_community,
+    get_wind_coefficient, set_wind_coefficient, get_wind_turbine_config
 )
 
 app = Flask(__name__, 
@@ -55,21 +58,29 @@ def get_config():
     try:
         panels = list_available_panels()
         storages = list_available_storages()
+        communities = list_communities()
+        current_community = get_current_community()
         panel_quantities = get_panel_quantities()
         current_storage_id = get_current_storage_id()
         current_storage_config = load_storage_config()
         electricity_price_config = load_electricity_price()
+        wind_communities = list_wind_communities()
+        current_wind_community = get_current_wind_community()
         
         return jsonify({
             'success': True,
             'data': {
                 'panels': panels,
                 'storages': storages,
+                'communities': communities,
+                'current_community': current_community,
                 'panel_quantities': panel_quantities,
                 'current_storage_id': current_storage_id,
                 'current_storage_config': current_storage_config,
                 'electricity_price': electricity_price_config['electricity_price'],
-                'feed_in_price': electricity_price_config.get('feed_in_price', 0.4)
+                'feed_in_price': electricity_price_config.get('feed_in_price', 0.4),
+                'wind_communities': wind_communities,
+                'current_wind_community': current_wind_community
             }
         })
     except Exception as e:
@@ -78,7 +89,8 @@ def get_config():
 @app.route('/api/calculate', methods=['POST'])
 def api_calculate():
     try:
-        data = get_simulation_data()
+        community = get_current_community()
+        data = get_simulation_data(community=community)
         cost = calculate_daily_cost(data)
         revenue = calculate_renewable_revenue(data)
         chart_data = dataframe_to_json(data)
@@ -88,7 +100,8 @@ def api_calculate():
             'data': {
                 'chart_data': chart_data,
                 'daily_cost': cost,
-                'renewable_revenue': revenue
+                'renewable_revenue': revenue,
+                'current_community': community
             }
         })
     except Exception as e:
@@ -175,6 +188,84 @@ def update_panel():
             wind_speed=params.get('wind_speed')
         )
         return jsonify({'success': True, 'message': f'已更新光伏板配置: {panel_id}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/communities', methods=['GET'])
+def get_communities():
+    try:
+        communities = list_communities()
+        current_community = get_current_community()
+        return jsonify({
+            'success': True,
+            'data': {
+                'communities': communities,
+                'current_community': current_community
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/communities/switch', methods=['POST'])
+def switch_community():
+    try:
+        community_id = request.json.get('community_id')
+        set_current_community(community_id)
+        return jsonify({'success': True, 'message': f'已切换到社区: {community_id}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/communities/quantities', methods=['POST'])
+def set_community_quantities():
+    try:
+        data = request.json
+        community_id = data.get('community_id')
+        quantities = data.get('quantities')
+        if community_id:
+            set_panel_quantities(quantities, community=community_id)
+        else:
+            set_panel_quantities(quantities)
+        return jsonify({'success': True, 'message': '已更新社区光伏板数量配置'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/wind/communities', methods=['GET'])
+def get_wind_communities():
+    try:
+        communities = list_wind_communities()
+        current = get_current_wind_community()
+        turbine = get_wind_turbine_config()
+        return jsonify({
+            'success': True,
+            'data': {
+                'communities': communities,
+                'current_wind_community': current,
+                'turbine_config': turbine
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/wind/communities/switch', methods=['POST'])
+def switch_wind_community():
+    try:
+        community_id = request.json.get('community_id')
+        set_current_wind_community(community_id)
+        return jsonify({'success': True, 'message': f'已切换到风电社区: {community_id}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/wind/coefficient', methods=['POST'])
+def update_wind_coefficient():
+    try:
+        data = request.json
+        community_id = data.get('community_id')
+        coefficient = data.get('coefficient')
+        if community_id:
+            set_wind_coefficient(community_id, coefficient)
+        else:
+            set_wind_coefficient(get_current_wind_community(), coefficient)
+        return jsonify({'success': True, 'message': f'已更新风电系数为: {coefficient}'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
@@ -625,80 +716,6 @@ def get_economic_comparison_chart():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/optimization/comparison/images', methods=['GET'])
-def get_comparison_images():
-    try:
-        comparison_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_submission')
-        
-        image_files = [f for f in os.listdir(comparison_dir) if f.endswith('.png')]
-        
-        figure_descriptions = {
-            'Fig1': {
-                'title': '目标函数对比',
-                'description': '展示S1-S4四个场景的总成本对比。S1无储能无碳交易成本最高，S4高新能源有储能有碳交易成本最低。'
-            },
-            'Fig4': {
-                'title': '园区购电功率对比',
-                'description': '展示四个场景的日内购电功率曲线。S1购电最多且分布最宽，S4购电最少，说明储能和高新能源显著降低对外部电网的依赖。'
-            },
-            'Fig5': {
-                'title': '可再生能源利用曲线',
-                'description': '展示光伏、风电利用情况和弃能量。S1弃能最多，S2/S3储能后弃能减少，S4新能源增加但弃能略有上升。'
-            },
-            'Fig7a': {
-                'title': '电储能SOC曲线',
-                'description': '展示电储能充放电状态。S1无储能，S2-S4电储能SOC在10%-90%范围内变化，日末回到50%。'
-            },
-            'Fig7b': {
-                'title': '热储能SOC曲线',
-                'description': '展示热储能充放热状态。储能实现热能的跨时段转移，提高能源利用效率。'
-            },
-            'Fig8': {
-                'title': 'CHP出力曲线',
-                'description': '展示冷热电联产机组的电、热出力。CHP在新能源不足时提供支撑，实现多能互补。'
-            },
-            'Fig9': {
-                'title': '能量平衡图',
-                'description': '展示电、热、氢的能量供需平衡。储能和制氢设备实现能量时空转移。'
-            },
-            'Fig10': {
-                'title': '制氢曲线',
-                'description': '展示电解槽制氢功率和氢气储罐状态。制氢消纳富余新能源，提供氢气供应。'
-            }
-        }
-        
-        images = []
-        for f in sorted(image_files):
-            file_path = os.path.join(comparison_dir, f)
-            with open(file_path, 'rb') as img_file:
-                img_base64 = base64.b64encode(img_file.read()).decode()
-                
-                fig_num = f.split('_')[0]
-                desc_info = figure_descriptions.get(fig_num, {'title': '', 'description': ''})
-                
-                scenario_info = ''
-                if 'NoStorage_NoCarbon' in f:
-                    scenario_info = 'S1: 无储能无碳交易'
-                elif 'WithStorage_NoCarbon' in f:
-                    scenario_info = 'S2: 有储能无碳交易'
-                elif 'WithStorage_Carbon' in f:
-                    scenario_info = 'S3: 有储能有碳交易'
-                elif 'HighRE' in f:
-                    scenario_info = 'S4: 高新能源有储能有碳交易'
-                
-                images.append({
-                    'filename': f,
-                    'data': img_base64,
-                    'figure_num': fig_num,
-                    'title': desc_info['title'],
-                    'description': desc_info['description'],
-                    'scenario': scenario_info
-                })
-        
-        return jsonify({'success': True, 'data': images})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 @app.route('/api/optimization/chart/admm-convergence', methods=['GET'])
 def get_admm_convergence_chart():
     try:
@@ -828,85 +845,6 @@ def get_hourly_power_chart():
             plt.close(fig)
         
         return jsonify({'success': True, 'data': image_base64})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/optimization/chart/cost-breakdown', methods=['GET'])
-def get_cost_breakdown_chart():
-    try:
-        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
-        
-        scenarios = ['S1_Normal_NoStorage_NoCarbon', 'S2_Normal_WithStorage_NoCarbon', 
-                     'S3_Normal_WithStorage_Carbon', 'S4_HighRE_WithStorage_Carbon']
-        scenario_labels = ['S1', 'S2', 'S3', 'S4']
-        
-        cost_data = []
-        for scenario in scenarios:
-            scalar_file = os.path.join(data_dir, f'{scenario}_admm_solution_scalars.csv')
-            if os.path.exists(scalar_file):
-                df = pd.read_csv(scalar_file)
-                cost_data.append({
-                    'scenario': scenario_labels[scenarios.index(scenario)],
-                    'grid': df['Part_gridCost'].values[0] / 1000,
-                    'gas': df['Part_gasCost'].values[0] / 1000,
-                    'carbon': df['Part_carbonTradingCost'].values[0] / 1000,
-                    'curtail': (df['Part_pvCurtCost'].values[0] + df['Part_windCurtCost'].values[0]) / 1000,
-                    'h2short': df['Part_h2ShortCost'].values[0] / 1000
-                })
-        
-        with matplotlib_lock:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            
-            x = range(len(cost_data))
-            width = 0.6
-            
-            bottom = [0] * len(cost_data)
-            colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6']
-            labels = ['电网成本', '燃气成本', '碳交易成本', '弃能惩罚', '氢短缺惩罚']
-            keys = ['grid', 'gas', 'carbon', 'curtail', 'h2short']
-            
-            for color, label, key in zip(colors, labels, keys):
-                values = [d[key] for d in cost_data]
-                ax.bar(x, values, width, bottom=bottom, label=label, color=color)
-                bottom = [b + v for b, v in zip(bottom, values)]
-            
-            for i, total in enumerate(bottom):
-                ax.text(i, total + 0.5, f'{total:.1f}', ha='center', va='bottom', 
-                       fontsize=11, fontweight='bold', color='#2c3e50')
-            
-            ax.set_xlabel('场景')
-            ax.set_ylabel('成本 (千元)')
-            ax.set_title('各场景成本构成分解')
-            ax.set_xticks(x)
-            ax.set_xticklabels([d['scenario'] for d in cost_data])
-            ax.legend(loc='upper right')
-            ax.grid(axis='y', alpha=0.3)
-            
-            plt.tight_layout()
-            
-            buffer = BytesIO()
-            plt.savefig(buffer, format='png', dpi=100)
-            buffer.seek(0)
-            image_base64 = base64.b64encode(buffer.getvalue()).decode()
-            plt.close(fig)
-        
-        return jsonify({'success': True, 'data': image_base64})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/optimization/comparison/image/<filename>', methods=['GET'])
-def get_comparison_image(filename):
-    try:
-        comparison_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_submission')
-        file_path = os.path.join(comparison_dir, filename)
-        
-        if not os.path.exists(file_path):
-            return jsonify({'success': False, 'error': '文件不存在'}), 404
-        
-        with open(file_path, 'rb') as img_file:
-            img_base64 = base64.b64encode(img_file.read()).decode()
-        
-        return jsonify({'success': True, 'data': img_base64})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

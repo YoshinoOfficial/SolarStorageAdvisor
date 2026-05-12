@@ -130,22 +130,37 @@ def list_available_panels():
     panels_list = load_config('config/solar/panels_list.json')
     return panels_list['available_panels']
 
-def get_panel_quantities():
+def get_panel_quantities(community=None):
     """
-    获取所有光伏板的数量配置
+    获取光伏板的数量配置
     
+    Args:
+        community: 社区ID（如 'industrial', 'commercial', 'residential'），
+                   如果不提供则返回当前选中社区的数量
+        
     Returns:
         dict: 光伏板ID到数量的映射，如 {"panel_canadian_solar": 10, "panel_trina": 5}
     """
     panels_list = load_config('config/solar/panels_list.json')
+    
+    if 'communities' in panels_list:
+        if community is None:
+            community = panels_list.get('current_community', 'industrial')
+        communities = panels_list['communities']
+        if community in communities:
+            return communities[community].get('panel_quantities', {})
+        raise ValueError(f"社区 ID 不存在: {community}")
+    
     return panels_list.get('panel_quantities', {})
 
-def set_panel_quantities(quantities_dict):
+def set_panel_quantities(quantities_dict, community=None):
     """
     设置光伏板数量配置
     
     Args:
         quantities_dict: 光伏板ID到数量的映射字典
+        community: 社区ID（如 'industrial', 'commercial', 'residential'），
+                   如果不提供则设置当前选中社区的数量
     """
     panels_list = load_config('config/solar/panels_list.json')
     
@@ -154,17 +169,27 @@ def set_panel_quantities(quantities_dict):
         if panel_id not in valid_ids:
             raise ValueError(f"光伏板 ID 不存在: {panel_id}")
     
-    panels_list['panel_quantities'] = quantities_dict
+    if 'communities' in panels_list:
+        if community is None:
+            community = panels_list.get('current_community', 'industrial')
+        if community not in panels_list['communities']:
+            raise ValueError(f"社区 ID 不存在: {community}")
+        panels_list['communities'][community]['panel_quantities'] = quantities_dict
+    else:
+        panels_list['panel_quantities'] = quantities_dict
+    
     save_config(panels_list, 'config/solar/panels_list.json')
     print(f"已设置光伏板数量配置")
 
-def set_panel_quantity(panel_id, quantity):
+def set_panel_quantity(panel_id, quantity, community=None):
     """
     设置单个光伏板的数量
     
     Args:
         panel_id: 光伏板 ID
         quantity: 数量（块数）
+        community: 社区ID（如 'industrial', 'commercial', 'residential'），
+                   如果不提供则设置当前选中社区的数量
     """
     panels_list = load_config('config/solar/panels_list.json')
     
@@ -177,12 +202,71 @@ def set_panel_quantity(panel_id, quantity):
     if not panel_exists:
         raise ValueError(f"光伏板 ID 不存在: {panel_id}")
     
-    if 'panel_quantities' not in panels_list:
-        panels_list['panel_quantities'] = {}
+    if 'communities' in panels_list:
+        if community is None:
+            community = panels_list.get('current_community', 'industrial')
+        if community not in panels_list['communities']:
+            raise ValueError(f"社区 ID 不存在: {community}")
+        if 'panel_quantities' not in panels_list['communities'][community]:
+            panels_list['communities'][community]['panel_quantities'] = {}
+        panels_list['communities'][community]['panel_quantities'][panel_id] = quantity
+    else:
+        if 'panel_quantities' not in panels_list:
+            panels_list['panel_quantities'] = {}
+        panels_list['panel_quantities'][panel_id] = quantity
     
-    panels_list['panel_quantities'][panel_id] = quantity
     save_config(panels_list, 'config/solar/panels_list.json')
     print(f"已设置光伏板 {panel_id} 数量为: {quantity}")
+
+def list_communities():
+    """
+    列出所有可用的社区
+    
+    Returns:
+        list: 社区列表，每个社区包含 id, name, panel_quantities
+    """
+    panels_list = load_config('config/solar/panels_list.json')
+    
+    if 'communities' not in panels_list:
+        return [{'id': 'default', 'name': '默认园区'}]
+    
+    communities = []
+    for cid, cinfo in panels_list['communities'].items():
+        communities.append({
+            'id': cid,
+            'name': cinfo.get('name', cid),
+            'panel_quantities': cinfo.get('panel_quantities', {})
+        })
+    return communities
+
+def get_current_community():
+    """
+    获取当前选中的社区 ID
+    
+    Returns:
+        str: 社区 ID
+    """
+    panels_list = load_config('config/solar/panels_list.json')
+    return panels_list.get('current_community', 'industrial')
+
+def set_current_community(community_id):
+    """
+    设置当前选中的社区 ID
+    
+    Args:
+        community_id: 社区 ID（如 'industrial', 'commercial', 'residential'）
+    """
+    panels_list = load_config('config/solar/panels_list.json')
+    
+    if 'communities' not in panels_list:
+        raise ValueError("配置文件中没有社区配置")
+    
+    if community_id not in panels_list['communities']:
+        raise ValueError(f"社区 ID 不存在: {community_id}")
+    
+    panels_list['current_community'] = community_id
+    save_config(panels_list, 'config/solar/panels_list.json')
+    print(f"已设置当前社区: {community_id}")
 
 def get_current_panel_id():
     """
@@ -192,7 +276,12 @@ def get_current_panel_id():
         str: 光伏板 ID
     """
     panels_list = load_config('config/solar/panels_list.json')
-    return panels_list.get('current_panel', list(panels_list.get('panel_quantities', {}).keys())[0] if panels_list.get('panel_quantities') else None)
+    current_community = panels_list.get('current_community', 'industrial')
+    if 'communities' in panels_list and current_community in panels_list['communities']:
+        quantities = panels_list['communities'][current_community].get('panel_quantities', {})
+    else:
+        quantities = panels_list.get('panel_quantities', {})
+    return list(quantities.keys())[0] if quantities else None
 
 def set_current_panel_id(panel_id):
     """
@@ -212,7 +301,12 @@ def set_current_panel_id(panel_id):
     if not panel_exists:
         raise ValueError(f"光伏板 ID 不存在: {panel_id}")
     
-    panels_list['current_panel'] = panel_id
+    current_community = panels_list.get('current_community', 'industrial')
+    if 'communities' in panels_list and current_community in panels_list['communities']:
+        panels_list['communities'][current_community]['panel_quantities'][panel_id] = panels_list['communities'][current_community].get('panel_quantities', {}).get(panel_id, 0)
+    else:
+        panels_list['current_panel'] = panel_id
+    
     save_config(panels_list, 'config/solar/panels_list.json')
     print(f"已设置当前光伏板: {panel_id}")
 
@@ -675,3 +769,99 @@ def save_panel_config(panel_id, area=None, surface_tilt=None, surface_azimuth=No
     if panel_info:
         save_config(config, panel_info['file'])
         print(f"光伏板配置已更新: {panel_id}")
+
+def load_wind_config():
+    """
+    加载风电配置
+    
+    Returns:
+        dict: 风电配置字典
+    """
+    return load_config('config/wind/wind_list.json')
+
+def list_wind_communities():
+    """
+    列出风电系统中所有可用的社区
+    
+    Returns:
+        list: 社区列表，每个社区包含 id, name, coefficient
+    """
+    config = load_wind_config()
+    communities = []
+    for cid, cinfo in config['communities'].items():
+        communities.append({
+            'id': cid,
+            'name': cinfo.get('name', cid),
+            'coefficient': cinfo.get('coefficient', 1.0)
+        })
+    return communities
+
+def get_current_wind_community():
+    """
+    获取当前选中的风电社区 ID
+    
+    Returns:
+        str: 社区 ID
+    """
+    config = load_wind_config()
+    return config.get('current_community', 'industrial')
+
+def set_current_wind_community(community_id):
+    """
+    设置当前选中的风电社区 ID
+    
+    Args:
+        community_id: 社区 ID（如 'industrial', 'commercial', 'residential'）
+    """
+    config = load_wind_config()
+    if community_id not in config['communities']:
+        raise ValueError(f"风电社区 ID 不存在: {community_id}")
+    config['current_community'] = community_id
+    save_config(config, 'config/wind/wind_list.json')
+    print(f"已设置当前风电社区: {community_id}")
+
+def get_wind_coefficient(community=None):
+    """
+    获取风电社区的系数（功率倍数）
+    
+    Args:
+        community: 社区ID，如不提供则使用当前社区
+        
+    Returns:
+        float: 功率系数
+    """
+    config = load_wind_config()
+    if community is None:
+        community = config.get('current_community', 'industrial')
+    if community not in config['communities']:
+        raise ValueError(f"风电社区 ID 不存在: {community}")
+    return config['communities'][community].get('coefficient', 1.0)
+
+def set_wind_coefficient(community_id, coefficient):
+    """
+    设置风电社区的系数
+    
+    Args:
+        community_id: 社区 ID
+        coefficient: 功率系数
+    """
+    config = load_wind_config()
+    if community_id not in config['communities']:
+        raise ValueError(f"风电社区 ID 不存在: {community_id}")
+    config['communities'][community_id]['coefficient'] = coefficient
+    save_config(config, 'config/wind/wind_list.json')
+    print(f"已设置风电社区 {community_id} 系数为: {coefficient}")
+
+def get_wind_turbine_config():
+    """
+    获取默认风机配置
+    
+    Returns:
+        dict: 风机配置字典
+    """
+    config = load_wind_config()
+    return config.get('default_turbine', {
+        'turbine_type': 'E-126/4200',
+        'hub_height': 135,
+        'nominal_power_kw': 4200
+    })

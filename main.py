@@ -2,16 +2,18 @@ from Solar.Solar import getsolar
 from Consumption.Consumption import getconsumption
 from Wind.Wind import getwind
 from Storage.Storage import simulate_storage
-from config.config_manager import load_electricity_price
+from config.config_manager import load_electricity_price, get_current_community, list_communities, get_current_wind_community
 import pandas as pd
 from plot_comparison import plot_comparison
 
 freconvert = 60 / 15
 
-def get_simulation_data():
-    Solar = getsolar(start="2010-06-01", end="2010-06-02")
+def get_simulation_data(community=None):
+    if community is None:
+        community = get_current_community()
+    Solar = getsolar(community=community, start="2010-06-01", end="2010-06-02")
     Consumption = getconsumption(start="2010-06-01", end="2010-06-02")
-    Wind = getwind(start="2010-06-01", end="2010-06-01")
+    Wind = getwind(start="2010-06-01", end="2010-06-01", community=community)
     
     data = pd.DataFrame({
         'Solar': Solar.values,

@@ -41,8 +41,6 @@ function initTabs() {
                 loadParkPowerChart();
             } else if (tabId === 'optimization') {
                 loadOptimizationData();
-            } else if (tabId === 'comparison') {
-                loadComparisonImages();
             }
         });
     });
@@ -87,6 +85,21 @@ function initTabs() {
             }
         });
     });
+    
+    const configSubTabBtns = document.querySelectorAll('.config-sub-tab-btn');
+    configSubTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const subTabId = btn.dataset.configSubTab;
+            
+            configSubTabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            document.querySelectorAll('.config-sub-tab-content').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            document.getElementById('config-sub-tab-' + subTabId).classList.add('active');
+        });
+    });
 }
 
 async function loadConfig() {
@@ -108,6 +121,35 @@ async function loadConfig() {
 }
 
 function updateUI() {
+    const communitySelect = document.getElementById('community-select');
+    if (communitySelect && currentConfig.communities) {
+        communitySelect.innerHTML = '';
+        currentConfig.communities.forEach(comm => {
+            const option = document.createElement('option');
+            option.value = comm.id;
+            option.textContent = comm.name;
+            if (comm.id === currentConfig.current_community) {
+                option.selected = true;
+            }
+            communitySelect.appendChild(option);
+        });
+    }
+
+    const windCommunitySelect = document.getElementById('wind-community-select');
+    if (windCommunitySelect && currentConfig.wind_communities) {
+        windCommunitySelect.innerHTML = '';
+        currentConfig.wind_communities.forEach(comm => {
+            const option = document.createElement('option');
+            option.value = comm.id;
+            option.textContent = comm.name;
+            if (comm.id === currentConfig.current_wind_community) {
+                option.selected = true;
+            }
+            windCommunitySelect.appendChild(option);
+        });
+        updateWindTurbineCountInput();
+    }
+
     const panelSelect = document.getElementById('panel-select');
     panelSelect.innerHTML = '';
     currentConfig.panels.forEach(panel => {
@@ -152,11 +194,110 @@ function updateUI() {
     document.getElementById('storage-initial-soc').value = storageConfig.initial_soc;
     document.getElementById('storage-min-soc').value = storageConfig.min_soc;
     document.getElementById('storage-max-soc').value = storageConfig.max_soc;
-
-    document.getElementById('electricity-price').value = currentConfig.electricity_price;
-    document.getElementById('feed-in-price').value = currentConfig.feed_in_price;
     
     loadPanelDetail();
+}
+
+function updateWindTurbineCountInput() {
+    const windCommunitySelect = document.getElementById('wind-community-select');
+    const turbineCountInput = document.getElementById('wind-turbine-count');
+    if (windCommunitySelect && turbineCountInput && currentConfig.wind_communities) {
+        const selectedCommunityId = windCommunitySelect.value;
+        const community = currentConfig.wind_communities.find(c => c.id === selectedCommunityId);
+        if (community) {
+            turbineCountInput.value = community.coefficient;
+        }
+    }
+    loadWindTurbineDetail();
+}
+
+async function switchWindCommunity() {
+    const communityId = document.getElementById('wind-community-select').value;
+    showLoading();
+    try {
+        const result = await fetchAPI('/api/wind/communities/switch', 'POST', { community_id: communityId });
+        if (result.success) {
+            await loadConfig();
+        } else {
+            alert('切换风电社区失败: ' + result.error);
+        }
+    } catch (e) {
+        alert('切换风电社区失败: ' + e.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function saveWindTurbineCount() {
+    const communityId = document.getElementById('wind-community-select').value;
+    const turbineCount = parseInt(document.getElementById('wind-turbine-count').value);
+    if (isNaN(turbineCount) || turbineCount < 0) {
+        alert('请输入有效的风机台数');
+        return;
+    }
+    showLoading();
+    try {
+        const result = await fetchAPI('/api/wind/coefficient', 'POST', {
+            community_id: communityId,
+            coefficient: turbineCount
+        });
+        if (result.success) {
+            alert(result.message);
+            await recalculate();
+        } else {
+            alert('保存失败: ' + result.error);
+        }
+    } catch (e) {
+        alert('保存失败: ' + e.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function loadWindTurbineDetail() {
+    const detailDiv = document.getElementById('wind-turbine-detail');
+    if (!detailDiv) return;
+    try {
+        const result = await fetchAPI('/api/wind/communities', 'GET');
+        if (result.success && result.data.turbine_config) {
+            const tc = result.data.turbine_config;
+            detailDiv.innerHTML = `
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>风机型号:</label>
+                        <input type="text" value="${tc.turbine_type || ''}" readonly style="background:#f8f9fa;">
+                    </div>
+                    <div class="form-group">
+                        <label>轮毂高度 (m):</label>
+                        <input type="text" value="${tc.hub_height || ''}" readonly style="background:#f8f9fa;">
+                    </div>
+                    <div class="form-group">
+                        <label>额定功率 (kW):</label>
+                        <input type="text" value="${tc.nominal_power_kw || ''}" readonly style="background:#f8f9fa;">
+                    </div>
+                </div>
+            `;
+        }
+    } catch (e) {
+        console.error('加载风机参数失败:', e);
+    }
+}
+
+async function switchCommunity() {
+    const communityId = document.getElementById('community-select').value;
+    showLoading();
+    try {
+        const result = await fetchAPI('/api/communities/switch', 'POST', { community_id: communityId });
+        if (result.success) {
+            await loadConfig();
+        } else {
+            alert('切换社区失败: ' + result.error);
+        }
+    } catch (e) {
+        alert('切换社区失败: ' + e.message);
+    } finally {
+        hideLoading();
+    }
 }
 
 async function recalculate() {
@@ -176,91 +317,6 @@ async function recalculate() {
 }
 
 function updateCharts(data) {
-    const timestamps = data.timestamps.map(t => t.split('+')[0].replace('T', ' ').slice(0, 16));
-
-    const powerTrace = [
-        {
-            x: timestamps,
-            y: data.solar,
-            name: '光伏发电',
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: '#f1c40f' }
-        },
-        {
-            x: timestamps,
-            y: data.wind,
-            name: '风力发电',
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: '#17becf' }
-        },
-        {
-            x: timestamps,
-            y: data.consumption,
-            name: '负荷',
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: '#e74c3c' }
-        },
-        {
-            x: timestamps,
-            y: data.storage_power,
-            name: '储能功率',
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: '#3498db' }
-        },
-        {
-            x: timestamps,
-            y: data.net_load,
-            name: '净负荷',
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: '#2ecc71' }
-        }
-    ];
-
-    const powerLayout = {
-        title: '功率曲线',
-        xaxis: { title: '时间' },
-        yaxis: { title: '功率 (kW)' },
-        legend: { orientation: 'h', y: -0.2 },
-        margin: { t: 50, b: 80, l: 60, r: 20 },
-        autosize: true
-    };
-
-    Plotly.newPlot('power-chart', powerTrace, powerLayout, { 
-        responsive: true,
-        displayModeBar: true
-    }).then(() => {
-        setTimeout(() => Plotly.Plots.resize('power-chart'), 100);
-    });
-
-    const socTrace = [{
-        x: timestamps,
-        y: data.soc.map(v => v * 100),
-        name: 'SOC',
-        type: 'scatter',
-        mode: 'lines',
-        fill: 'tozeroy',
-        line: { color: '#9b59b6' }
-    }];
-
-    const socLayout = {
-        title: '储能荷电状态 (SOC)',
-        xaxis: { title: '时间' },
-        yaxis: { title: 'SOC (%)', range: [0, 100] },
-        margin: { t: 50, b: 80, l: 60, r: 20 },
-        autosize: true
-    };
-
-    Plotly.newPlot('soc-chart', socTrace, socLayout, { 
-        responsive: true,
-        displayModeBar: true
-    }).then(() => {
-        setTimeout(() => Plotly.Plots.resize('soc-chart'), 100);
-    });
 }
 
 async function switchStorage() {
@@ -314,9 +370,15 @@ async function savePanelQuantities() {
         quantities[input.dataset.panelId] = parseInt(input.value) || 0;
     });
     
+    const communityId = document.getElementById('community-select')?.value;
+    
     showLoading();
     try {
-        const result = await fetchAPI('/api/panels/quantities', 'POST', { quantities: quantities });
+        const payload = { quantities: quantities };
+        if (communityId) {
+            payload.community_id = communityId;
+        }
+        const result = await fetchAPI('/api/communities/quantities', 'POST', payload);
         if (result.success) {
             alert(result.message);
             await recalculate();
@@ -376,22 +438,6 @@ async function updateStorageConfig() {
             alert(result.message);
         } else {
             alert('保存失败: ' + result.error);
-        }
-    } catch (e) {
-        alert('保存失败: ' + e.message);
-    }
-}
-
-async function updateElectricityPrice() {
-    const electricityPrice = parseFloat(document.getElementById('electricity-price').value);
-    const feedInPrice = parseFloat(document.getElementById('feed-in-price').value);
-    try {
-        const result1 = await fetchAPI('/api/electricity-price/update', 'POST', { electricity_price: electricityPrice });
-        const result2 = await fetchAPI('/api/feed-in-price/update', 'POST', { feed_in_price: feedInPrice });
-        if (result1.success && result2.success) {
-            alert('电价配置已保存');
-        } else {
-            alert('保存失败: ' + (result1.error || result2.error));
         }
     } catch (e) {
         alert('保存失败: ' + e.message);
@@ -900,183 +946,3 @@ function renderScenariosTable(scenarios, metrics) {
     container.innerHTML = html;
 }
 
-async function loadComparisonImages() {
-    const container = document.getElementById('comparison-images');
-    
-    if (container.innerHTML.trim() !== '') return;
-    
-    try {
-        const costRes = await fetchAPI('/api/optimization/chart/cost-breakdown');
-        if (costRes.success) {
-            renderClickableChart('cost-breakdown-chart', costRes.data, '成本构成分解');
-        }
-        
-        const result = await fetchAPI('/api/optimization/comparison/images');
-        
-        if (result.success) {
-            const imageMap = {};
-            const descMap = {};
-            
-            result.data.forEach(img => {
-                const figNum = img.figure_num;
-                if (!imageMap[figNum]) {
-                    imageMap[figNum] = [];
-                    descMap[figNum] = {
-                        title: img.title,
-                        description: img.description
-                    };
-                }
-                imageMap[figNum].push(img);
-            });
-            
-            const sortedNums = Object.keys(imageMap).sort((a, b) => {
-                const order = ['Fig1', 'Fig4', 'Fig5', 'Fig7a', 'Fig7b', 'Fig8', 'Fig9', 'Fig10'];
-                return order.indexOf(a) - order.indexOf(b);
-            });
-            
-            const singleImageSections = [];
-            const multiImageSections = [];
-            
-            sortedNums.forEach(figNum => {
-                if (imageMap[figNum].length === 1) {
-                    singleImageSections.push({
-                        figNum: figNum,
-                        data: imageMap[figNum],
-                        info: descMap[figNum]
-                    });
-                } else {
-                    multiImageSections.push({
-                        figNum: figNum,
-                        data: imageMap[figNum],
-                        info: descMap[figNum]
-                    });
-                }
-            });
-            
-            for (let i = 0; i < singleImageSections.length; i += 2) {
-                const rowContainer = document.createElement('div');
-                rowContainer.className = 'comparison-row';
-                
-                for (let j = 0; j < 2 && i + j < singleImageSections.length; j++) {
-                    const item = singleImageSections[i + j];
-                    const section = document.createElement('div');
-                    section.className = 'comparison-section comparison-section-half';
-                    
-                    const titleEl = document.createElement('h4');
-                    titleEl.textContent = item.info.title;
-                    section.appendChild(titleEl);
-                    
-                    const descEl = document.createElement('p');
-                    descEl.className = 'comparison-description';
-                    descEl.textContent = item.info.description;
-                    section.appendChild(descEl);
-                    
-                    const grid = document.createElement('div');
-                    grid.className = 'comparison-images-grid';
-                    grid.style.gridTemplateColumns = '1fr';
-                    
-                    item.data.forEach(img => {
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'comparison-image-wrapper';
-                        wrapper.onclick = () => showFullscreenImage(img.data, img.scenario, img.title);
-                        
-                        const scenarioLabel = document.createElement('div');
-                        scenarioLabel.className = 'comparison-scenario-label';
-                        scenarioLabel.textContent = img.scenario;
-                        
-                        const imgEl = document.createElement('img');
-                        imgEl.src = `data:image/png;base64,${img.data}`;
-                        imgEl.alt = img.filename;
-                        
-                        wrapper.appendChild(scenarioLabel);
-                        wrapper.appendChild(imgEl);
-                        grid.appendChild(wrapper);
-                    });
-                    
-                    section.appendChild(grid);
-                    rowContainer.appendChild(section);
-                }
-                
-                container.appendChild(rowContainer);
-            }
-            
-            multiImageSections.forEach(item => {
-                const section = document.createElement('div');
-                section.className = 'comparison-section';
-                
-                const titleEl = document.createElement('h4');
-                titleEl.textContent = item.info.title;
-                section.appendChild(titleEl);
-                
-                const descEl = document.createElement('p');
-                descEl.className = 'comparison-description';
-                descEl.textContent = item.info.description;
-                section.appendChild(descEl);
-                
-                const grid = document.createElement('div');
-                grid.className = 'comparison-images-grid';
-                
-                item.data.forEach(img => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'comparison-image-wrapper';
-                    wrapper.onclick = () => showFullscreenImage(img.data, img.scenario, img.title);
-                    
-                    const scenarioLabel = document.createElement('div');
-                    scenarioLabel.className = 'comparison-scenario-label';
-                    scenarioLabel.textContent = img.scenario;
-                    
-                    const imgEl = document.createElement('img');
-                    imgEl.src = `data:image/png;base64,${img.data}`;
-                    imgEl.alt = img.filename;
-                    
-                    wrapper.appendChild(scenarioLabel);
-                    wrapper.appendChild(imgEl);
-                    grid.appendChild(wrapper);
-                });
-                
-                section.appendChild(grid);
-                container.appendChild(section);
-            });
-        }
-    } catch (e) {
-        console.error('加载对比图片失败:', e);
-        container.innerHTML = '<p>加载失败，请重试</p>';
-    }
-}
-
-function showFullscreenImage(imageData, scenario, title) {
-    const overlay = document.createElement('div');
-    overlay.className = 'fullscreen-overlay';
-    overlay.onclick = (e) => {
-        if (e.target === overlay) {
-            document.body.removeChild(overlay);
-        }
-    };
-    
-    const closeBtn = document.createElement('div');
-    closeBtn.className = 'fullscreen-close';
-    closeBtn.innerHTML = '&times;';
-    closeBtn.onclick = () => document.body.removeChild(overlay);
-    
-    const img = document.createElement('img');
-    img.src = `data:image/png;base64,${imageData}`;
-    img.onclick = (e) => e.stopPropagation();
-    
-    const label = document.createElement('div');
-    label.className = 'fullscreen-label';
-    label.innerHTML = `<strong>${title}</strong> - ${scenario}`;
-    
-    overlay.appendChild(closeBtn);
-    overlay.appendChild(img);
-    overlay.appendChild(label);
-    document.body.appendChild(overlay);
-    
-    document.addEventListener('keydown', function escHandler(e) {
-        if (e.key === 'Escape') {
-            if (document.body.contains(overlay)) {
-                document.body.removeChild(overlay);
-            }
-            document.removeEventListener('keydown', escHandler);
-        }
-    });
-}
