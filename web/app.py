@@ -21,6 +21,8 @@ plt.rcParams['axes.unicode_minus'] = False
 matplotlib_lock = threading.Lock()
 
 from main import get_simulation_data, calculate_daily_cost, calculate_renewable_revenue
+from Solar.Solar import calculate_all_communities
+from Wind.Wind import calculate_all_wind_communities
 from config.config_manager import (
     load_electricity_price, save_electricity_price, save_feed_in_price,
     list_available_panels, get_panel_quantities, set_panel_quantities, set_panel_quantity, load_panel_by_id,
@@ -229,6 +231,45 @@ def set_community_quantities():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
+@app.route('/api/community/solar-curve', methods=['GET'])
+def get_community_solar_curve():
+    try:
+        community = request.args.get('community') or get_current_community()
+
+        data_dir = os.path.join(project_root, 'data')
+        csv_path = os.path.join(data_dir, f'solar_{community}.csv')
+
+        if not os.path.exists(csv_path):
+            return jsonify({'success': False, 'error': '该社区的光伏数据尚未生成，请先保存配置'}), 404
+
+        df = pd.read_csv(csv_path, encoding='utf-8-sig')
+
+        time_col = df.columns[0]
+        times = df[time_col].tolist()
+
+        curves = {}
+        for col in df.columns[1:]:
+            curves[col] = df[col].tolist()
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'community': community,
+                'times': times,
+                'curves': curves
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/communities/recalculate-solar', methods=['POST'])
+def recalculate_solar():
+    try:
+        calculate_all_communities()
+        return jsonify({'success': True, 'message': '已重新计算所有社区光伏功率曲线'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/wind/communities', methods=['GET'])
 def get_wind_communities():
     try:
@@ -268,6 +309,45 @@ def update_wind_coefficient():
         return jsonify({'success': True, 'message': f'已更新风电系数为: {coefficient}'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/community/wind-curve', methods=['GET'])
+def get_community_wind_curve():
+    try:
+        community = request.args.get('community') or get_current_wind_community()
+
+        data_dir = os.path.join(project_root, 'data')
+        csv_path = os.path.join(data_dir, f'wind_{community}.csv')
+
+        if not os.path.exists(csv_path):
+            return jsonify({'success': False, 'error': '该社区的风电数据尚未生成，请先保存配置'}), 404
+
+        df = pd.read_csv(csv_path, encoding='utf-8-sig')
+
+        time_col = df.columns[0]
+        times = df[time_col].tolist()
+
+        curves = {}
+        for col in df.columns[1:]:
+            curves[col] = df[col].tolist()
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'community': community,
+                'times': times,
+                'curves': curves
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/communities/recalculate-wind', methods=['POST'])
+def recalculate_wind():
+    try:
+        calculate_all_wind_communities()
+        return jsonify({'success': True, 'message': '已重新计算所有社区风电功率曲线'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/storages/switch', methods=['POST'])
 def switch_storage():

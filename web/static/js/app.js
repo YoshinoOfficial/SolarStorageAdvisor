@@ -120,6 +120,65 @@ async function loadConfig() {
     }
 }
 
+async function loadCommunitySolarCurve() {
+    const communitySelect = document.getElementById('community-select');
+    const community = communitySelect ? communitySelect.value : 'industrial';
+
+    try {
+        const res = await fetchAPI(`/api/community/solar-curve?community=${community}`);
+        if (res.success) {
+            renderSolarCurveChart('community-solar-curve-chart', res.data);
+        }
+    } catch (e) {
+        console.error('加载社区光伏曲线失败:', e);
+    }
+}
+
+function renderSolarCurveChart(containerId, data) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+
+    const weatherColors = {
+        '晴天': '#f39c12',
+        '多云': '#85c1e9',
+        '阴天': '#95a5a6',
+        '雨天': '#2e86c1',
+        '雾天/霾天': '#b2babb'
+    };
+
+    const traces = [];
+    const sortedWeatherKeys = ['晴天', '多云', '阴天', '雨天', '雾天/霾天'];
+
+    sortedWeatherKeys.forEach(wt => {
+        if (data.curves[wt]) {
+            traces.push({
+                x: data.times,
+                y: data.curves[wt],
+                type: 'scatter',
+                mode: 'lines',
+                name: wt,
+                line: { color: weatherColors[wt] || '#333', width: 1.5 },
+                hovertemplate: '%{y:.2f} kW<extra></extra>'
+            });
+        }
+    });
+
+    const layout = {
+        title: { text: '不同天气类型光伏发电曲线', font: { size: 14 } },
+        xaxis: { title: '时间', tickformat: '%H:%M', nticks: 12 },
+        yaxis: { title: '功率 (kW)' },
+        hovermode: 'x unified',
+        legend: { orientation: 'h', y: -0.25, font: { size: 11 } },
+        margin: { t: 50, b: 80, l: 55, r: 20 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(248,249,250,1)'
+    };
+
+    const config = { responsive: true, displayModeBar: true };
+
+    Plotly.newPlot(container, traces, layout, config);
+}
+
 function updateUI() {
     const communitySelect = document.getElementById('community-select');
     if (communitySelect && currentConfig.communities) {
@@ -218,6 +277,7 @@ async function switchWindCommunity() {
         const result = await fetchAPI('/api/wind/communities/switch', 'POST', { community_id: communityId });
         if (result.success) {
             await loadConfig();
+            loadCommunityWindCurve();
         } else {
             alert('切换风电社区失败: ' + result.error);
         }
@@ -243,6 +303,8 @@ async function saveWindTurbineCount() {
         });
         if (result.success) {
             alert(result.message);
+            await fetchAPI('/api/communities/recalculate-wind', 'POST');
+            loadCommunityWindCurve();
             await recalculate();
         } else {
             alert('保存失败: ' + result.error);
@@ -283,6 +345,63 @@ async function loadWindTurbineDetail() {
     }
 }
 
+async function loadCommunityWindCurve() {
+    const communitySelect = document.getElementById('wind-community-select');
+    const community = communitySelect ? communitySelect.value : 'industrial';
+
+    try {
+        const res = await fetchAPI(`/api/community/wind-curve?community=${community}`);
+        if (res.success) {
+            renderWindCurveChart('community-wind-curve-chart', res.data);
+        }
+    } catch (e) {
+        console.error('加载社区风电曲线失败:', e);
+    }
+}
+
+function renderWindCurveChart(containerId, data) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+
+    const windColors = {
+        '多风': '#3498db',
+        '中风': '#85c1e9',
+        '少风': '#aed6f1'
+    };
+
+    const traces = [];
+    const sortedWindKeys = ['多风', '中风', '少风'];
+
+    sortedWindKeys.forEach(wt => {
+        if (data.curves[wt]) {
+            traces.push({
+                x: data.times,
+                y: data.curves[wt],
+                type: 'scatter',
+                mode: 'lines',
+                name: wt,
+                line: { color: windColors[wt], width: 1.5 },
+                hovertemplate: '%{y:.2f} kW<extra></extra>'
+            });
+        }
+    });
+
+    const layout = {
+        title: { text: '不同风况风力发电曲线', font: { size: 14 } },
+        xaxis: { title: '时间', tickformat: '%H:%M', nticks: 12 },
+        yaxis: { title: '功率 (kW)' },
+        hovermode: 'x unified',
+        legend: { orientation: 'h', y: -0.25, font: { size: 11 } },
+        margin: { t: 50, b: 80, l: 55, r: 20 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(248,249,250,1)'
+    };
+
+    const config = { responsive: true, displayModeBar: true };
+
+    Plotly.newPlot(container, traces, layout, config);
+}
+
 async function switchCommunity() {
     const communityId = document.getElementById('community-select').value;
     showLoading();
@@ -290,6 +409,7 @@ async function switchCommunity() {
         const result = await fetchAPI('/api/communities/switch', 'POST', { community_id: communityId });
         if (result.success) {
             await loadConfig();
+            loadCommunitySolarCurve();
         } else {
             alert('切换社区失败: ' + result.error);
         }
@@ -381,6 +501,8 @@ async function savePanelQuantities() {
         const result = await fetchAPI('/api/communities/quantities', 'POST', payload);
         if (result.success) {
             alert(result.message);
+            await fetchAPI('/api/communities/recalculate-solar', 'POST');
+            loadCommunitySolarCurve();
             await recalculate();
         } else {
             alert('保存失败: ' + result.error);
@@ -413,6 +535,8 @@ async function updatePanelConfig() {
         const result = await fetchAPI('/api/panels/update', 'POST', data);
         if (result.success) {
             alert(result.message);
+            await fetchAPI('/api/communities/recalculate-solar', 'POST');
+            loadCommunitySolarCurve();
         } else {
             alert('保存失败: ' + result.error);
         }
@@ -620,6 +744,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     loadConfig();
     loadParkPowerChart();
+    setTimeout(loadCommunitySolarCurve, 1000);
+    setTimeout(loadCommunityWindCurve, 1200);
 });
 
 async function loadOptimizationData() {
@@ -650,7 +776,6 @@ async function loadOptimizationData() {
             renderClickableChart('carbon-chart', carbonRes.data, '碳排放分析');
         }
         
-        loadPowerChartByScenario();
     } catch (e) {
         console.error('加载优化数据失败:', e);
     }
@@ -664,20 +789,6 @@ async function loadConvergenceChart() {
         }
     } catch (e) {
         console.error('加载收敛曲线失败:', e);
-    }
-}
-
-async function loadPowerChartByScenario() {
-    const select = document.getElementById('power-scenario-select');
-    const scenario = select ? select.value : 'S3';
-    
-    try {
-        const res = await fetchAPI(`/api/optimization/chart/hourly-power-data?scenario=${scenario}`);
-        if (res.success) {
-            renderInteractivePowerChart('hourly-power-chart', res);
-        }
-    } catch (e) {
-        console.error('加载功率曲线失败:', e);
     }
 }
 
