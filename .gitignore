@@ -49,3 +49,6 @@ config/model/*.json
 
 # Data
 data/
+
+# Claude
+.claude/

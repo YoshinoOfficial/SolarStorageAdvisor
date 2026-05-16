@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>零碳园区智慧能源监控平台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <header class="dashboard-header">
+            <div class="header-left">
+                <a href="/" class="nav-link">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                    </svg>
+                    配置管理
+                </a>
+            </div>
+            <div class="header-center">
+                <h1>零碳园区智慧能源监控平台</h1>
+                <div class="header-decoration"></div>
+            </div>
+            <div class="header-right">
+                <div class="datetime" id="current-datetime"></div>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="dashboard-overview" id="overview-view">
+                <!-- Main Content Area -->
+                <div class="main-content">
+
+                <!-- Row 1: Map (left) + Power Curve (right) -->
+                <div class="hero-section">
+                    <div class="panel-card community-map-card">
+                        <div class="panel-header">
+                            <h3>园区社区</h3>
+                            <div class="panel-badge">3个区域</div>
+                        </div>
+                        <div class="community-map">
+                            <div class="map-grid">
+                                <div class="map-community residential-map" data-community="residential" onclick="selectCommunity('residential')">
+                                    <div class="map-community-icon">
+                                        <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                                    </div>
+                                    <div class="map-community-name">居民区</div>
+                                    <div class="map-community-status">
+                                        <span class="status-dot online"></span>
+                                        <span>运行中</span>
+                                    </div>
+                                </div>
+                                <div class="map-community commercial-map" data-community="commercial" onclick="selectCommunity('commercial')">
+                                    <div class="map-community-icon">
+                                        <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M17 11V3H7v4H3v14h8v-4h2v4h8V11h-4zM7 19H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm4 4H9v-2h2v2zm0-4H9V9h2v2zm0-4H9V5h2v2zm4 8h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm4 12h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
+                                    </div>
+                                    <div class="map-community-name">商业区</div>
+                                    <div class="map-community-status">
+                                        <span class="status-dot online"></span>
+                                        <span>运行中</span>
+                                    </div>
+                                </div>
+                                <div class="map-community industrial-map" data-community="industrial" onclick="selectCommunity('industrial')">
+                                    <div class="map-community-icon">
+                                        <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M22 22H2v-2h1V10l5-3V3h4v4l4-3h4v4l5 3v10h1v2zM4 12v8h4v-4h2v4h2v-4h2v4h2v-4h2v4h4v-8l-5-3h-4L9 9H7l-5 3z"/></svg>
+                                    </div>
+                                    <div class="map-community-name">工业区</div>
+                                    <div class="map-community-status">
+                                        <span class="status-dot online"></span>
+                                        <span>运行中</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-card chart-panel power-curve-card">
+                        <div class="panel-header">
+                            <h3>园区总功率曲线</h3>
+                            <div class="scenario-selector">
+                                <select id="scenario-select" onchange="loadParkPowerChart()">
+                                    <option value="S1">S1: 无储能无碳交易</option>
+                                    <option value="S2">S2: 有储能无碳交易</option>
+                                    <option value="S3" selected>S3: 有储能有碳交易</option>
+                                    <option value="S4">S4: 高新能源有储能有碳交易</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="overview-power-chart" class="chart-container-hero"></div>
+                    </div>
+                </div>
+
+                <!-- Row 2: Device Status + SOC + Alerts -->
+                <div class="secondary-row">
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h3>设备状态</h3>
+                        </div>
+                        <div class="device-status-list">
+                            <div class="device-item">
+                                <div class="device-icon solar">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                                </div>
+                                <div class="device-info">
+                                    <span class="device-name">光伏发电</span>
+                                    <span class="device-power" id="device-solar-power">-- kW</span>
+                                </div>
+                                <div class="device-status-badge online">正常</div>
+                            </div>
+                            <div class="device-item">
+                                <div class="device-icon wind">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg>
+                                </div>
+                                <div class="device-info">
+                                    <span class="device-name">风力发电</span>
+                                    <span class="device-power" id="device-wind-power">-- kW</span>
+                                </div>
+                                <div class="device-status-badge online">正常</div>
+                            </div>
+                            <div class="device-item">
+                                <div class="device-icon storage">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H7V4h10v16zm-5-1h2V7h-2v12z"/></svg>
+                                </div>
+                                <div class="device-info">
+                                    <span class="device-name">储能系统</span>
+                                    <span class="device-power" id="device-storage-power">-- kW</span>
+                                </div>
+                                <div class="device-status-badge online">正常</div>
+                            </div>
+                            <div class="device-item">
+                                <div class="device-icon load">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+                                </div>
+                                <div class="device-info">
+                                    <span class="device-name">负荷</span>
+                                    <span class="device-power" id="device-load-power">-- kW</span>
+                                </div>
+                                <div class="device-status-badge online">正常</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h3>储能状态</h3>
+                        </div>
+                        <div class="storage-status">
+                            <div class="soc-gauge">
+                                <div class="gauge-circle">
+                                    <svg viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="54" fill="none" stroke="#0f2440" stroke-width="8"/>
+                                        <circle cx="60" cy="60" r="54" fill="none" stroke="url(#socGradient)" stroke-width="8"
+                                            stroke-dasharray="339.292" stroke-dashoffset="339.292"
+                                            stroke-linecap="round" transform="rotate(-90 60 60)" id="soc-arc"/>
+                                        <defs>
+                                            <linearGradient id="socGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stop-color="#00d4ff"/>
+                                                <stop offset="100%" stop-color="#00ff88"/>
+                                            </linearGradient>
+                                        </defs>
+                                    </svg>
+                                    <div class="gauge-text">
+                                        <span class="gauge-value" id="soc-value">--</span>
+                                        <span class="gauge-unit">%</span>
+                                    </div>
+                                </div>
+                                <div class="gauge-label">荷电状态 (SOC)</div>
+                            </div>
+                            <div class="storage-metrics">
+                                <div class="storage-metric">
+                                    <span class="label">容量</span>
+                                    <span class="value" id="storage-capacity">-- kWh</span>
+                                </div>
+                                <div class="storage-metric">
+                                    <span class="label">充电功率</span>
+                                    <span class="value" id="storage-charge">-- kW</span>
+                                </div>
+                                <div class="storage-metric">
+                                    <span class="label">放电功率</span>
+                                    <span class="value" id="storage-discharge">-- kW</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h3>今日告警</h3>
+                        </div>
+                        <div class="alert-list">
+                            <div class="alert-item info">
+                                <span class="alert-icon">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                                </span>
+                                <span class="alert-text">系统运行正常</span>
+                                <span class="alert-time">--:--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 3: Analysis charts (less important) -->
+                <div class="analysis-row">
+                    <div class="panel-card chart-panel">
+                        <div class="panel-header">
+                            <h3>经济性对比</h3>
+                        </div>
+                        <div id="economic-chart" class="chart-container"></div>
+                    </div>
+                    <div class="panel-card chart-panel">
+                        <div class="panel-header">
+                            <h3>可再生能源利用</h3>
+                        </div>
+                        <div id="renewable-chart" class="chart-container"></div>
+                    </div>
+                    <div class="panel-card chart-panel">
+                        <div class="panel-header">
+                            <h3>碳排放分析</h3>
+                        </div>
+                        <div id="carbon-chart" class="chart-container"></div>
+                    </div>
+                </div>
+
+                </div><!-- end main-content -->
+
+                <!-- Right Sidebar: KPI + Summary + Energy Mix + Scenarios -->
+                <div class="right-panel">
+                    <div class="panel-card sidebar-metrics">
+                        <div class="panel-header">
+                            <h3>核心指标</h3>
+                        </div>
+                        <div class="sidebar-compact-kpi">
+                            <div class="metric-card">
+                                <div class="metric-icon">
+                                    <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                                        <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+                                    </svg>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-value" id="total-generation">--</div>
+                                    <div class="metric-unit">MWh</div>
+                                    <div class="metric-label">总发电量</div>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon">
+                                    <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                                        <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+                                    </svg>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-value" id="annual-cost">--</div>
+                                    <div class="metric-unit">万元</div>
+                                    <div class="metric-label">年总成本</div>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon">
+                                    <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                                        <path d="M17.66 8L12 2.35 6.34 8A8.02 8.02 0 004 13.64c0 2 .78 4.11 2.34 5.67a7.99 7.99 0 0011.32 0c1.56-1.56 2.34-3.67 2.34-5.67S19.22 9.56 17.66 8zM6 14c.01-2 .62-3.27 1.76-4.4L12 5.27l4.24 4.38C17.38 10.77 17.99 12 18 14H6z"/>
+                                    </svg>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-value" id="annual-carbon">--</div>
+                                    <div class="metric-unit">tCO₂</div>
+                                    <div class="metric-label">年碳排放</div>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon">
+                                    <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                                        <path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.92 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 18.81 22 15.67 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.82 2 12c0 3.67 2.09 6.81 5.22 8.78L6 17v-5h5v-2.02c-3.95-.49-7-3.85-7-7.93 0-.62.07-1.22.19-1.81L11 2.05z"/>
+                                    </svg>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-value" id="renewable-ratio">--</div>
+                                    <div class="metric-unit">%</div>
+                                    <div class="metric-label">新能源利用率</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sidebar-summary-grid">
+                            <div class="summary-card">
+                                <div class="summary-label">全年购电量</div>
+                                <div class="summary-value" id="annual-grid-energy">--</div>
+                                <div class="summary-unit">MWh</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-label">全年购气量</div>
+                                <div class="summary-value" id="annual-gas-energy">--</div>
+                                <div class="summary-unit">MWh</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-label">碳配额</div>
+                                <div class="summary-value" id="annual-carbon-quota">--</div>
+                                <div class="summary-unit">tCO₂</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-label">碳交易收益</div>
+                                <div class="summary-value" id="annual-carbon-sell">--</div>
+                                <div class="summary-unit">tCO₂</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-label">弃风弃光</div>
+                                <div class="summary-value" id="annual-curtailment">--</div>
+                                <div class="summary-unit">MWh</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-card sidebar-energy-mix">
+                        <div class="panel-header">
+                            <h3>能源构成</h3>
+                        </div>
+                        <div id="energy-mix-chart" class="chart-container"></div>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h3>典型场景数据</h3>
+                        </div>
+                        <div id="scenarios-table" class="data-table-container"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="dashboard-community" id="community-view" style="display: none;">
+                <div class="community-header">
+                    <button class="back-btn" onclick="showOverview()">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                        </svg>
+                        返回总览
+                    </button>
+                    <h2 id="community-title">社区详情</h2>
+                    <a href="/" class="config-link">
+                        设备配置
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="community-content">
+                    <div class="community-metrics-row">
+                        <div class="metric-card">
+                            <div class="metric-label">光伏装机</div>
+                            <div class="metric-value" id="community-solar-capacity">--</div>
+                            <div class="metric-unit">kW</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">风电装机</div>
+                            <div class="metric-value" id="community-wind-capacity">--</div>
+                            <div class="metric-unit">kW</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">储能容量</div>
+                            <div class="metric-value" id="community-storage-capacity">--</div>
+                            <div class="metric-unit">kWh</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">日发电量</div>
+                            <div class="metric-value" id="community-generation">--</div>
+                            <div class="metric-unit">MWh</div>
+                        </div>
+                    </div>
+
+                    <div class="community-charts-grid">
+                        <div class="panel-card chart-panel">
+                            <div class="panel-header">
+                                <h3>供电侧</h3>
+                            </div>
+                            <div id="community-supply-chart" class="chart-container"></div>
+                        </div>
+                        <div class="panel-card chart-panel">
+                            <div class="panel-header">
+                                <h3>用电侧</h3>
+                            </div>
+                            <div id="community-demand-chart" class="chart-container"></div>
+                        </div>
+                        <div class="panel-card chart-panel full-width">
+                            <div class="panel-header">
+                                <h3>储能SOC</h3>
+                            </div>
+                            <div id="community-soc-chart" class="chart-container"></div>
+                        </div>
+                        <div class="panel-card chart-panel">
+                            <div class="panel-header">
+                                <h3>能源构成</h3>
+                            </div>
+                            <div id="community-energy-mix-chart" class="chart-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

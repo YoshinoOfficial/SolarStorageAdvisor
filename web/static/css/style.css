@@ -32,6 +32,26 @@ header {
     z-index: 100;
 }
 
+.dashboard-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    padding: 8px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    font-size: 13px;
+    transition: all 0.2s;
+    position: absolute;
+    right: 30px;
+}
+
+.dashboard-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
 header h1 {
     color: white;
     font-size: 18px;

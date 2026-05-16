@@ -55,6 +55,10 @@ def dataframe_to_json(data):
 def index():
     return render_template('index.html')
 
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+
 @app.route('/api/config', methods=['GET'])
 def get_config():
     try:
@@ -925,6 +929,91 @@ def get_hourly_power_chart():
             plt.close(fig)
         
         return jsonify({'success': True, 'data': image_base64})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/optimization/energy-summary', methods=['GET'])
+def get_energy_summary():
+    try:
+        scenario_param = request.args.get('scenario', 'S3')
+        scenario_map = {
+            'S1': 'S1_Normal_NoStorage_NoCarbon',
+            'S2': 'S2_Normal_WithStorage_NoCarbon',
+            'S3': 'S3_Normal_WithStorage_Carbon',
+            'S4': 'S4_HighRE_WithStorage_Carbon'
+        }
+        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+
+        metrics_path = os.path.join(OPTIMIZATION_DATA_DIR, 'year_typical_scenario_metric_table.csv')
+        df_metrics = pd.read_csv(metrics_path)
+
+        unique_scenarios = df_metrics.drop_duplicates(subset=['TypicalScenario'])
+
+        if unique_scenarios.empty:
+            return jsonify({'success': False, 'error': '未找到场景数据'}), 404
+
+        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+        hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+
+        if not os.path.exists(hourly_file):
+            return jsonify({'success': False, 'error': '数据文件不存在'}), 404
+
+        df_hourly = pd.read_csv(hourly_file)
+
+        daily_pv = float(df_hourly['Sum_PpvUse'].sum())
+        daily_wind = float(df_hourly['Sum_PwindUse'].sum())
+        daily_chp = float(df_hourly['Sum_Pchp'].sum())
+        daily_fc = float(df_hourly['Sum_Pfc'].sum())
+        daily_discharge = float(df_hourly['Sum_Pdis'].sum())
+        daily_grid = float(df_hourly['Sum_Pgrid'].sum())
+
+        annual_pv = 0
+        annual_wind = 0
+        annual_chp = 0
+        annual_fc = 0
+        annual_discharge = 0
+        annual_grid = 0
+
+        for _, row in unique_scenarios.iterrows():
+            days = float(row['RepresentativeDays'])
+            renewable_available = float(row['RenewableAvailable_MWh'])
+            renewable_use = float(row['RenewableUse_MWh'])
+
+            ratio = renewable_use / renewable_available if renewable_available > 0 else 1
+
+            annual_pv += daily_pv * days * ratio
+            annual_wind += daily_wind * days * ratio
+            annual_chp += daily_chp * days
+            annual_fc += daily_fc * days
+            annual_discharge += daily_discharge * days
+            annual_grid += daily_grid * days
+
+        total_generation = annual_pv + annual_wind + annual_chp + annual_fc + annual_discharge
+
+        energy_mix = {
+            'pv': round(annual_pv, 2),
+            'wind': round(annual_wind, 2),
+            'chp': round(annual_chp, 2),
+            'fc': round(annual_fc, 2),
+            'discharge': round(annual_discharge, 2),
+            'grid': round(annual_grid, 2),
+            'total': round(total_generation, 2)
+        }
+
+        if total_generation > 0:
+            energy_mix['pv_ratio'] = round(annual_pv / total_generation * 100, 1)
+            energy_mix['wind_ratio'] = round(annual_wind / total_generation * 100, 1)
+            energy_mix['chp_ratio'] = round(annual_chp / total_generation * 100, 1)
+            energy_mix['fc_ratio'] = round(annual_fc / total_generation * 100, 1)
+            energy_mix['discharge_ratio'] = round(annual_discharge / total_generation * 100, 1)
+        else:
+            energy_mix['pv_ratio'] = 0
+            energy_mix['wind_ratio'] = 0
+            energy_mix['chp_ratio'] = 0
+            energy_mix['fc_ratio'] = 0
+            energy_mix['discharge_ratio'] = 0
+
+        return jsonify({'success': True, 'data': energy_mix})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
