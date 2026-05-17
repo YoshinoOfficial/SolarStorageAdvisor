@@ -1,0 +1,17 @@
+CostItem,Value_Yuan
+TotalAnnualObjective_Yuan,27581684.4365374
+AnnualInvestmentCost_Yuan,295996.487044961
+AnnualFixedOMCost_Yuan,753912.384144446
+AnnualOperationCost_Yuan,22268151.6057644
+AnnualCarbonTradingCost_Yuan,738920.245906168
+AnnualCarbonPenaltyCost_Yuan,3524703.71367741
+InvPV_YuanPerYear,0
+InvWind_YuanPerYear,0
+InvBat_YuanPerYear,0
+InvTh_YuanPerYear,220615.326906681
+InvH2_YuanPerYear,75381.1601382805
+FixOMPV_YuanPerYear,244800
+FixOMWind_YuanPerYear,174000
+FixOMBat_YuanPerYear,185600
+FixOMTh_YuanPerYear,122140.064781443
+FixOMH2_YuanPerYear,27372.3193630026

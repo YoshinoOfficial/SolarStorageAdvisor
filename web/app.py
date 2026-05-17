@@ -13,7 +13,8 @@ import threading
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-OPTIMIZATION_DATA_DIR = os.path.join(project_root, '零碳园区优化_v10')
+OPTIMIZATION_DATA_DIR = os.path.join(project_root, '零碳园区优化_v12')
+PLANNING_DATA_DIR = os.path.join(project_root, '零碳园区优化_v12', '园区规划与容量配置')
 
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
@@ -575,21 +576,21 @@ def get_hourly_power_data():
     try:
         data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
         
-        scenario_param = request.args.get('scenario', 'S3')
+        scenario_param = request.args.get('scenario', 'S4')
         scenario_map = {
-            'S1': 'S1_Normal_NoStorage_NoCarbon',
-            'S2': 'S2_Normal_WithStorage_NoCarbon',
-            'S3': 'S3_Normal_WithStorage_Carbon',
-            'S4': 'S4_HighRE_WithStorage_Carbon'
+            'S1': 'S1_NoCarbon_NoDR',
+            'S2': 'S2_Normal_NoCarbon_DR',
+            'S3': 'S3_Carbon_NoDR',
+            'S4': 'S4_Carbon_DR'
         }
-        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
         scenario_name_map = {
-            'S1_Normal_NoStorage_NoCarbon': 'S1: 无储能无碳交易',
-            'S2_Normal_WithStorage_NoCarbon': 'S2: 有储能无碳交易',
-            'S3_Normal_WithStorage_Carbon': 'S3: 有储能有碳交易',
-            'S4_HighRE_WithStorage_Carbon': 'S4: 高新能源有储能有碳交易'
+            'S1_NoCarbon_NoDR': 'S1: 无碳交易无需求响应（基准）',
+            'S2_Normal_NoCarbon_DR': 'S2: 无碳交易有需求响应',
+            'S3_Carbon_NoDR': 'S3: 有碳交易无需求响应',
+            'S4_Carbon_DR': 'S4: 有碳交易有需求响应'
         }
-        scenario_name = scenario_name_map.get(scenario, 'S3')
+        scenario_name = scenario_name_map.get(scenario, 'S4')
         
         hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
         
@@ -644,23 +645,23 @@ def get_community_power_data():
     try:
         data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
         
-        scenario_param = request.args.get('scenario', 'S3')
+        scenario_param = request.args.get('scenario', 'S4')
         community_id = request.args.get('community', '1')
         
         scenario_map = {
-            'S1': 'S1_Normal_NoStorage_NoCarbon',
-            'S2': 'S2_Normal_WithStorage_NoCarbon',
-            'S3': 'S3_Normal_WithStorage_Carbon',
-            'S4': 'S4_HighRE_WithStorage_Carbon'
+            'S1': 'S1_NoCarbon_NoDR',
+            'S2': 'S2_Normal_NoCarbon_DR',
+            'S3': 'S3_Carbon_NoDR',
+            'S4': 'S4_Carbon_DR'
         }
-        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
         scenario_name_map = {
-            'S1_Normal_NoStorage_NoCarbon': 'S1: 无储能无碳交易',
-            'S2_Normal_WithStorage_NoCarbon': 'S2: 有储能无碳交易',
-            'S3_Normal_WithStorage_Carbon': 'S3: 有储能有碳交易',
-            'S4_HighRE_WithStorage_Carbon': 'S4: 高新能源有储能有碳交易'
+            'S1_NoCarbon_NoDR': 'S1: 无碳交易无需求响应（基准）',
+            'S2_Normal_NoCarbon_DR': 'S2: 无碳交易有需求响应',
+            'S3_Carbon_NoDR': 'S3: 有碳交易无需求响应',
+            'S4_Carbon_DR': 'S4: 有碳交易有需求响应'
         }
-        scenario_name = scenario_name_map.get(scenario, 'S3')
+        scenario_name = scenario_name_map.get(scenario, 'S4')
         
         community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
         
@@ -805,10 +806,10 @@ def get_admm_convergence_chart():
     try:
         convergence_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
         
-        scenarios = ['S1_Normal_NoStorage_NoCarbon', 'S2_Normal_WithStorage_NoCarbon', 
-                     'S3_Normal_WithStorage_Carbon', 'S4_HighRE_WithStorage_Carbon']
-        scenario_labels = ['S1: 无储能无碳交易', 'S2: 有储能无碳交易', 
-                          'S3: 有储能有碳交易', 'S4: 高新能源有储能有碳交易']
+        scenarios = ['S1_NoCarbon_NoDR', 'S2_Normal_NoCarbon_DR',
+                     'S3_Carbon_NoDR', 'S4_Carbon_DR']
+        scenario_labels = ['S1: 无碳交易无需求响应', 'S2: 无碳交易有需求响应',
+                          'S3: 有碳交易无需求响应', 'S4: 有碳交易有需求响应']
         colors = ['#e74c3c', '#3498db', '#2ecc71', '#9b59b6']
         
         with matplotlib_lock:
@@ -852,21 +853,21 @@ def get_hourly_power_chart():
     try:
         data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
         
-        scenario_param = request.args.get('scenario', 'S3')
+        scenario_param = request.args.get('scenario', 'S4')
         scenario_map = {
-            'S1': 'S1_Normal_NoStorage_NoCarbon',
-            'S2': 'S2_Normal_WithStorage_NoCarbon',
-            'S3': 'S3_Normal_WithStorage_Carbon',
-            'S4': 'S4_HighRE_WithStorage_Carbon'
+            'S1': 'S1_NoCarbon_NoDR',
+            'S2': 'S2_Normal_NoCarbon_DR',
+            'S3': 'S3_Carbon_NoDR',
+            'S4': 'S4_Carbon_DR'
         }
-        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
         scenario_name_map = {
-            'S1_Normal_NoStorage_NoCarbon': 'S1: 无储能无碳交易',
-            'S2_Normal_WithStorage_NoCarbon': 'S2: 有储能无碳交易',
-            'S3_Normal_WithStorage_Carbon': 'S3: 有储能有碳交易',
-            'S4_HighRE_WithStorage_Carbon': 'S4: 高新能源有储能有碳交易'
+            'S1_NoCarbon_NoDR': 'S1: 无碳交易无需求响应（基准）',
+            'S2_Normal_NoCarbon_DR': 'S2: 无碳交易有需求响应',
+            'S3_Carbon_NoDR': 'S3: 有碳交易无需求响应',
+            'S4_Carbon_DR': 'S4: 有碳交易有需求响应'
         }
-        scenario_name = scenario_name_map.get(scenario, 'S3')
+        scenario_name = scenario_name_map.get(scenario, 'S4')
         
         hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
         
@@ -935,14 +936,14 @@ def get_hourly_power_chart():
 @app.route('/api/optimization/energy-summary', methods=['GET'])
 def get_energy_summary():
     try:
-        scenario_param = request.args.get('scenario', 'S3')
+        scenario_param = request.args.get('scenario', 'S4')
         scenario_map = {
-            'S1': 'S1_Normal_NoStorage_NoCarbon',
-            'S2': 'S2_Normal_WithStorage_NoCarbon',
-            'S3': 'S3_Normal_WithStorage_Carbon',
-            'S4': 'S4_HighRE_WithStorage_Carbon'
+            'S1': 'S1_NoCarbon_NoDR',
+            'S2': 'S2_Normal_NoCarbon_DR',
+            'S3': 'S3_Carbon_NoDR',
+            'S4': 'S4_Carbon_DR'
         }
-        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
 
         metrics_path = os.path.join(OPTIMIZATION_DATA_DIR, 'year_typical_scenario_metric_table.csv')
         df_metrics = pd.read_csv(metrics_path)
@@ -1075,14 +1076,14 @@ def get_h2_power_data():
     try:
         data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
 
-        scenario_param = request.args.get('scenario', 'S3')
+        scenario_param = request.args.get('scenario', 'S4')
         scenario_map = {
-            'S1': 'S1_Normal_NoStorage_NoCarbon',
-            'S2': 'S2_Normal_WithStorage_NoCarbon',
-            'S3': 'S3_Normal_WithStorage_Carbon',
-            'S4': 'S4_HighRE_WithStorage_Carbon'
+            'S1': 'S1_NoCarbon_NoDR',
+            'S2': 'S2_Normal_NoCarbon_DR',
+            'S3': 'S3_Carbon_NoDR',
+            'S4': 'S4_Carbon_DR'
         }
-        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
 
         hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
 
@@ -1112,14 +1113,14 @@ def get_dr_power_data():
     try:
         data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
 
-        scenario_param = request.args.get('scenario', 'S3')
+        scenario_param = request.args.get('scenario', 'S4')
         scenario_map = {
-            'S1': 'S1_Normal_NoStorage_NoCarbon',
-            'S2': 'S2_Normal_WithStorage_NoCarbon',
-            'S3': 'S3_Normal_WithStorage_Carbon',
-            'S4': 'S4_HighRE_WithStorage_Carbon'
+            'S1': 'S1_NoCarbon_NoDR',
+            'S2': 'S2_Normal_NoCarbon_DR',
+            'S3': 'S3_Carbon_NoDR',
+            'S4': 'S4_Carbon_DR'
         }
-        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
 
         hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
         scalars_file = os.path.join(data_dir, f'{scenario}_admm_solution_scalars.csv')
@@ -1157,14 +1158,14 @@ def get_cost_breakdown():
     try:
         data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
 
-        scenario_param = request.args.get('scenario', 'S3')
+        scenario_param = request.args.get('scenario', 'S4')
         scenario_map = {
-            'S1': 'S1_Normal_NoStorage_NoCarbon',
-            'S2': 'S2_Normal_WithStorage_NoCarbon',
-            'S3': 'S3_Normal_WithStorage_Carbon',
-            'S4': 'S4_HighRE_WithStorage_Carbon'
+            'S1': 'S1_NoCarbon_NoDR',
+            'S2': 'S2_Normal_NoCarbon_DR',
+            'S3': 'S3_Carbon_NoDR',
+            'S4': 'S4_Carbon_DR'
         }
-        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
 
         scalars_file = os.path.join(data_dir, f'{scenario}_admm_solution_scalars.csv')
 
@@ -1197,16 +1198,16 @@ def get_community_h2_dr_data():
     try:
         data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
 
-        scenario_param = request.args.get('scenario', 'S3')
+        scenario_param = request.args.get('scenario', 'S4')
         community_id = request.args.get('community', '1')
 
         scenario_map = {
-            'S1': 'S1_Normal_NoStorage_NoCarbon',
-            'S2': 'S2_Normal_WithStorage_NoCarbon',
-            'S3': 'S3_Normal_WithStorage_Carbon',
-            'S4': 'S4_HighRE_WithStorage_Carbon'
+            'S1': 'S1_NoCarbon_NoDR',
+            'S2': 'S2_Normal_NoCarbon_DR',
+            'S3': 'S3_Carbon_NoDR',
+            'S4': 'S4_Carbon_DR'
         }
-        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
 
         community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
 
@@ -1238,6 +1239,181 @@ def get_community_h2_dr_data():
                 'hdr_cut': df_c['HdrCut'].tolist()
             }
         }
+
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/planning/capacity', methods=['GET'])
+def get_planning_capacity():
+    try:
+        capacity_path = os.path.join(PLANNING_DATA_DIR, 'planning_capacity_result.csv')
+        if not os.path.exists(capacity_path):
+            return jsonify({'success': False, 'error': '容量配置文件不存在'}), 404
+
+        df = pd.read_csv(capacity_path)
+        community_map = {1: '工业区', 2: '商业区', 3: '居民区'}
+
+        communities = []
+        totals = {'PV_MW': 0, 'Wind_MW': 0, 'BatteryEnergy_MWh': 0, 'BatteryPower_MW': 0,
+                  'ThermalStorage_MWh': 0, 'ThermalStoragePower_MW': 0,
+                  'HydrogenStorage_kg': 0, 'HydrogenStoragePower_kg_h': 0}
+
+        for _, row in df.iterrows():
+            c = {
+                'id': int(row['Community']),
+                'name': community_map.get(int(row['Community']), f"社区{int(row['Community'])}"),
+                'pv_mw': float(row['PV_MW']),
+                'pv_new_mw': float(row['PVNew_MW']),
+                'wind_mw': float(row['Wind_MW']),
+                'wind_new_mw': float(row['WindNew_MW']),
+                'battery_mwh': float(row['BatteryEnergy_MWh']),
+                'battery_power_mw': float(row['BatteryPower_MW']),
+                'thermal_mwh': float(row['ThermalStorage_MWh']),
+                'thermal_new_mwh': float(row['ThermalStorageNew_MWh']),
+                'thermal_power_mw': float(row['ThermalStoragePower_MW']),
+                'h2_kg': float(row['HydrogenStorage_kg']),
+                'h2_new_kg': float(row['HydrogenStorageNew_kg']),
+                'h2_power_kg_h': float(row['HydrogenStoragePower_kg_h'])
+            }
+            communities.append(c)
+            for key in totals:
+                totals[key] += float(row[key])
+
+        return jsonify({'success': True, 'data': {'communities': communities, 'totals': totals}})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/planning/annual-cost-breakdown', methods=['GET'])
+def get_annual_cost_breakdown():
+    try:
+        cost_path = os.path.join(PLANNING_DATA_DIR, 'planning_cost_breakdown.csv')
+        if not os.path.exists(cost_path):
+            return jsonify({'success': False, 'error': '成本分解文件不存在'}), 404
+
+        df = pd.read_csv(cost_path)
+        cost_map = dict(zip(df['CostItem'], df['Value_Yuan']))
+
+        cost_data = {
+            'total': float(cost_map.get('TotalAnnualObjective_Yuan', 0)),
+            'investment': {
+                'total': float(cost_map.get('AnnualInvestmentCost_Yuan', 0)),
+                'pv': float(cost_map.get('InvPV_YuanPerYear', 0)),
+                'wind': float(cost_map.get('InvWind_YuanPerYear', 0)),
+                'battery': float(cost_map.get('InvBat_YuanPerYear', 0)),
+                'thermal': float(cost_map.get('InvTh_YuanPerYear', 0)),
+                'h2': float(cost_map.get('InvH2_YuanPerYear', 0))
+            },
+            'fixed_om': {
+                'total': float(cost_map.get('AnnualFixedOMCost_Yuan', 0)),
+                'pv': float(cost_map.get('FixOMPV_YuanPerYear', 0)),
+                'wind': float(cost_map.get('FixOMWind_YuanPerYear', 0)),
+                'battery': float(cost_map.get('FixOMBat_YuanPerYear', 0)),
+                'thermal': float(cost_map.get('FixOMTh_YuanPerYear', 0)),
+                'h2': float(cost_map.get('FixOMH2_YuanPerYear', 0))
+            },
+            'operation': float(cost_map.get('AnnualOperationCost_Yuan', 0)),
+            'carbon_trading': float(cost_map.get('AnnualCarbonTradingCost_Yuan', 0)),
+            'carbon_penalty': float(cost_map.get('AnnualCarbonPenaltyCost_Yuan', 0))
+        }
+
+        return jsonify({'success': True, 'data': cost_data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/planning/device-status', methods=['GET'])
+def get_device_status():
+    try:
+        capacity_path = os.path.join(PLANNING_DATA_DIR, 'planning_capacity_result.csv')
+        if not os.path.exists(capacity_path):
+            return jsonify({'success': False, 'error': '容量配置文件不存在'}), 404
+
+        df = pd.read_csv(capacity_path)
+
+        total_pv = float(df['PV_MW'].sum())
+        total_wind = float(df['Wind_MW'].sum())
+        total_battery_mwh = float(df['BatteryEnergy_MWh'].sum())
+        total_battery_power = float(df['BatteryPower_MW'].sum())
+        total_thermal = float(df['ThermalStorage_MWh'].sum())
+        total_h2 = float(df['HydrogenStorage_kg'].sum())
+
+        alerts = []
+        if total_pv > 0:
+            alerts.append({'level': 'info', 'text': f'光伏总装机 {total_pv:.1f} MW', 'time': '运行中'})
+        if total_wind > 0:
+            alerts.append({'level': 'info', 'text': f'风电总装机 {total_wind:.1f} MW', 'time': '运行中'})
+        if total_battery_mwh > 0:
+            alerts.append({'level': 'info', 'text': f'电池储能 {total_battery_mwh:.1f} MWh / {total_battery_power:.1f} MW', 'time': '运行中'})
+        if total_thermal > 0:
+            alerts.append({'level': 'info', 'text': f'热储能总容量 {total_thermal:.1f} MWh', 'time': '运行中'})
+        if total_h2 > 0:
+            alerts.append({'level': 'info', 'text': f'氢储能总容量 {total_h2:.0f} kg', 'time': '运行中'})
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'pv_mw': total_pv,
+                'wind_mw': total_wind,
+                'battery_mwh': total_battery_mwh,
+                'battery_power_mw': total_battery_power,
+                'thermal_mwh': total_thermal,
+                'h2_kg': total_h2,
+                'alerts': alerts
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/optimization/scenario-metrics', methods=['GET'])
+def get_scenario_metrics():
+    try:
+        frames = []
+
+        # New 4 scenarios (S1-S4: carbon × DR)
+        metrics_path = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_metric_table.csv')
+        if os.path.exists(metrics_path):
+            df = pd.read_csv(metrics_path, encoding='utf-8-sig')
+            df = df[df['Method'].str.contains('admm', na=False)]
+            frames.append(df)
+
+        if not frames:
+            return jsonify({'success': False, 'error': '无场景指标数据'}), 404
+
+        df = pd.concat(frames, ignore_index=True)
+
+        scenario_key_map = {
+            'S1_NoCarbon_NoDR': 'S1',
+            'S2_Normal_NoCarbon_DR': 'S2',
+            'S3_Carbon_NoDR': 'S3',
+            'S4__Carbon_DR': 'S4',
+            'S4_Carbon_DR': 'S4'
+        }
+
+        result = {}
+        for _, row in df.iterrows():
+            key = scenario_key_map.get(row['Scenario'], row['Scenario'])
+            result[key] = {
+                'scenario': row['Scenario'],
+                'scenario_cn': row.get('ScenarioCN', row['Scenario']),
+                'total_objective': float(row['TotalObjective_Yuan']),
+                'grid_energy': float(row['GridEnergy_MWh']),
+                'gas_energy': float(row['GasEnergy_MWhth']),
+                'carbon_emission': float(row['CarbonEmission_kg']),
+                'carbon_quota': float(row['CarbonQuota_kg']),
+                'carbon_surplus': float(row.get('CarbonSurplusBeforeTrade_kg', 0)),
+                'carbon_buy': float(row.get('CarbonBuyMarket_kg', 0)),
+                'carbon_sell': float(row.get('CarbonSellMarket_kg', 0)),
+                'renewable_available': float(row['RenewableAvailable_MWh']),
+                'renewable_use': float(row['RenewableUse_MWh']),
+                'renewable_curtailment': float(row['RenewableCurtailment_MWh']),
+                'renewable_use_rate': float(row['RenewableUseRate_percent']),
+                'avg_voltage': float(row.get('AvgMinimumVoltage_pu', 0)),
+                'voltage_deviation': float(row.get('GridVoltageDeviation_pu', 0))
+            }
 
         return jsonify({'success': True, 'data': result})
     except Exception as e:

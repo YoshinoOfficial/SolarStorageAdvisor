@@ -1,0 +1,4 @@
+Community,PVExisting_MW,PVNew_MW,PV_MW,WindExisting_MW,WindNew_MW,Wind_MW,BatteryExisting_MWh,BatteryNew_MWh,BatteryEnergy_MWh,BatteryPower_MW,ThermalStorageExisting_MWh,ThermalStorageNew_MWh,ThermalStorage_MWh,ThermalStoragePower_MW,HydrogenStorageExisting_kg,HydrogenStorageNew_kg,HydrogenStorage_kg,HydrogenStoragePower_kg_h,PVInverter_MVA,WindConverter_MVA,ESReactiveCapability_Mvar
+1,1.6,0,1.6,0,0,0,3.2,0,3.2,0.8,10,0,10,2.5,40,66.2914171964749,106.291417196475,13.2864271495594,1.68,0,0.88
+2,2,0,2,1.2,0,1.2,4.8,0,4.8,1.2,8,8.57068394171823,16.5706839417182,4.14267098542956,100,42.5,142.5,17.8125,2.1,1.26,1.32
+3,1.5,0,1.5,0,0,0,3.6,0,3.6,0.9,6,0,6,1.5,40,200,240,30,1.575,0,0.99

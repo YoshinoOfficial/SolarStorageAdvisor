@@ -81,11 +81,11 @@
                         <div class="panel-header">
                             <h3>园区总功率曲线</h3>
                             <div class="scenario-selector">
-                                <select id="scenario-select" onchange="loadParkPowerChart()">
-                                    <option value="S1">S1: 无储能无碳交易</option>
-                                    <option value="S2">S2: 有储能无碳交易</option>
-                                    <option value="S3" selected>S3: 有储能有碳交易</option>
-                                    <option value="S4">S4: 高新能源有储能有碳交易</option>
+                                <select id="scenario-select" onchange="syncAndLoad('scenario-select')">
+                                    <option value="S1">S1: 无碳交易无需求响应（基准）</option>
+                                    <option value="S2">S2: 无碳交易有需求响应</option>
+                                    <option value="S3">S3: 有碳交易无需求响应</option>
+                                    <option value="S4" selected>S4: 有碳交易有需求响应</option>
                                 </select>
                             </div>
                         </div>
@@ -99,11 +99,11 @@
                         <div class="panel-header">
                             <h3>氢气供需曲线</h3>
                             <div class="scenario-selector">
-                                <select id="h2-scenario-select" onchange="loadH2PowerChart()">
+                                <select id="h2-scenario-select" onchange="syncAndLoad('h2-scenario-select')">
                                     <option value="S1">S1</option>
                                     <option value="S2">S2</option>
-                                    <option value="S3" selected>S3</option>
-                                    <option value="S4">S4</option>
+                                    <option value="S3">S3</option>
+                                    <option value="S4" selected>S4</option>
                                 </select>
                             </div>
                         </div>
@@ -113,11 +113,11 @@
                         <div class="panel-header">
                             <h3>需求响应功率曲线</h3>
                             <div class="scenario-selector">
-                                <select id="dr-scenario-select" onchange="loadDRPowerChart()">
+                                <select id="dr-scenario-select" onchange="syncAndLoad('dr-scenario-select')">
                                     <option value="S1">S1</option>
                                     <option value="S2">S2</option>
-                                    <option value="S3" selected>S3</option>
-                                    <option value="S4">S4</option>
+                                    <option value="S3">S3</option>
+                                    <option value="S4" selected>S4</option>
                                 </select>
                             </div>
                         </div>
@@ -126,15 +126,7 @@
                     </div>
                     <div class="panel-card chart-panel">
                         <div class="panel-header">
-                            <h3>日成本构成分析</h3>
-                            <div class="scenario-selector">
-                                <select id="cost-scenario-select" onchange="loadCostBreakdownChart()">
-                                    <option value="S1">S1</option>
-                                    <option value="S2">S2</option>
-                                    <option value="S3" selected>S3</option>
-                                    <option value="S4">S4</option>
-                                </select>
-                            </div>
+                            <h3>年度成本构成分析</h3>
                         </div>
                         <div id="cost-breakdown-chart" class="chart-container"></div>
                     </div>
@@ -180,8 +172,8 @@
                                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
                                 </div>
                                 <div class="device-info">
-                                    <span class="device-name">光伏发电</span>
-                                    <span class="device-power" id="device-solar-power">-- kW</span>
+                                    <span class="device-name">光伏总装机</span>
+                                    <span class="device-power" id="device-solar-power">-- MW</span>
                                 </div>
                                 <div class="device-status-badge online">正常</div>
                             </div>
@@ -190,8 +182,8 @@
                                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg>
                                 </div>
                                 <div class="device-info">
-                                    <span class="device-name">风力发电</span>
-                                    <span class="device-power" id="device-wind-power">-- kW</span>
+                                    <span class="device-name">风电总装机</span>
+                                    <span class="device-power" id="device-wind-power">-- MW</span>
                                 </div>
                                 <div class="device-status-badge online">正常</div>
                             </div>
@@ -200,8 +192,8 @@
                                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H7V4h10v16zm-5-1h2V7h-2v12z"/></svg>
                                 </div>
                                 <div class="device-info">
-                                    <span class="device-name">储能系统</span>
-                                    <span class="device-power" id="device-storage-power">-- kW</span>
+                                    <span class="device-name">电池储能</span>
+                                    <span class="device-power" id="device-storage-power">-- MWh</span>
                                 </div>
                                 <div class="device-status-badge online">正常</div>
                             </div>
@@ -210,8 +202,8 @@
                                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
                                 </div>
                                 <div class="device-info">
-                                    <span class="device-name">负荷</span>
-                                    <span class="device-power" id="device-load-power">-- kW</span>
+                                    <span class="device-name">储能功率</span>
+                                    <span class="device-power" id="device-load-power">-- MW</span>
                                 </div>
                                 <div class="device-status-badge online">正常</div>
                             </div>
@@ -382,6 +374,13 @@
                             <h3>典型场景数据</h3>
                         </div>
                         <div id="scenarios-table" class="data-table-container"></div>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h3>容量配置规划</h3>
+                        </div>
+                        <div id="capacity-table" class="data-table-container"></div>
                     </div>
                 </div>
 

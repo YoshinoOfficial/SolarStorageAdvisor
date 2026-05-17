@@ -1,0 +1,9 @@
+﻿Scenario,ScenarioCN,Method,Status,TotalObjective_Yuan,Iterations,CarbonTradingCost_Yuan,ADMMPrimalResidual,ADMMDualResidual,MaxConsensusP_MW,MaxConsensusQ_MVAr,MaxConsensusCarbon_kg
+S1_NoCarbon_NoDR,Scenario 1 - No carbon trading - No demand response,centralized-multi-energy-pq,Solved,39835.5581525821,NaN,1357.20208486161,NaN,NaN,NaN,NaN,NaN
+S1_NoCarbon_NoDR,Scenario 1 - No carbon trading - No demand response,admm-fixed-multi-energy-rhoPQ-rhoC-relative-residual-gurobi-feeder,Solved,39839.331165728,41,1353.10902679784,0.000352301662281423,0.00307983438483727,0.00254168682788158,0.00086604000831203,0
+S2_Normal_NoCarbon_DR,Scenario 2 - No carbon trading - With demand response,centralized-multi-energy-pq,Solved,38742.4817548398,NaN,315.473330216435,NaN,NaN,NaN,NaN,NaN
+S2_Normal_NoCarbon_DR,Scenario 2 - No carbon trading - With demand response,admm-fixed-multi-energy-rhoPQ-rhoC-relative-residual-gurobi-feeder,Solved,38749.1624422159,23,315.472929514116,0.000404602242106668,0.00482662587035629,0.00146210126395174,0.00120826754305531,0
+S3_Carbon_NoDR,Scenario 3 - With carbon trading - No demand response,centralized-multi-energy-pq,Solved,39311.6423310249,NaN,392.251466666839,NaN,NaN,NaN,NaN,NaN
+S3_Carbon_NoDR,Scenario 3 - With carbon trading - No demand response,admm-fixed-multi-energy-rhoPQ-rhoC-relative-residual-gurobi-feeder,Solved,39311.8904886713,176,431.39575944709,0.000438750984032231,0.000634013288466512,0.000219529268750573,0.000157558546698744,1.6189639132872
+S4__Carbon_DR,Scenario 4 - With carbon trading - With demand response,centralized-multi-energy-pq,Solved,38117.9901631311,NaN,-381.386915977791,NaN,NaN,NaN,NaN,NaN
+S4__Carbon_DR,Scenario 4 - With carbon trading - With demand response,admm-fixed-multi-energy-rhoPQ-rhoC-relative-residual-gurobi-feeder,Solved,38118.6114902719,56,-382.285232956364,0.000468494184432949,0.00233031430709846,0.000514131060531442,0.000424873357862343,1.36819059717974

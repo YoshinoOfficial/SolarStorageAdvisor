@@ -32,6 +32,28 @@ const communityMap = {
 
 let currentView = 'overview';
 
+const scenarioSelectors = ['scenario-select', 'h2-scenario-select', 'dr-scenario-select'];
+
+function syncAndLoad(sourceId) {
+    const source = document.getElementById(sourceId);
+    if (!source) return;
+    const value = source.value;
+
+    scenarioSelectors.forEach(id => {
+        if (id !== sourceId) {
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+        }
+    });
+
+    if (sourceId === 'scenario-select') {
+        loadParkPowerChart();
+    }
+    loadH2PowerChart();
+    loadDRPowerChart();
+    loadEnergySummary();
+}
+
 function updateDateTime() {
     const now = new Date();
     const options = {
@@ -93,6 +115,7 @@ async function loadOverviewData() {
     loadDRPowerChart();
     loadCostBreakdownChart();
     loadScenariosTable();
+    loadCapacityTable();
     loadDeviceStatus();
     loadEnergySummary();
 }
@@ -136,8 +159,7 @@ async function loadAnnualSummary() {
         if (result.success && result.data.length > 0) {
             const summary = result.data[0];
 
-            document.getElementById('annual-cost').textContent =
-                (summary.annual_objective / 10000).toFixed(2);
+            // Annual cost will be updated from planning cost breakdown for consistency
             document.getElementById('annual-carbon').textContent =
                 summary.annual_carbon_emission.toFixed(0);
             document.getElementById('renewable-ratio').textContent =
@@ -166,7 +188,7 @@ async function loadAnnualSummary() {
 
 async function loadParkPowerChart() {
     const select = document.getElementById('scenario-select');
-    const scenario = select ? select.value : 'S3';
+    const scenario = select ? select.value : 'S4';
 
     try {
         const res = await fetch(`/api/optimization/chart/hourly-power-data?scenario=${scenario}`);
@@ -333,7 +355,7 @@ function renderCarbonChart(imageData) {
 async function loadEnergySummary() {
     try {
         const select = document.getElementById('scenario-select');
-        const scenario = select ? select.value : 'S3';
+        const scenario = select ? select.value : 'S4';
         const response = await fetch(`/api/optimization/energy-summary?scenario=${scenario}`);
         const result = await response.json();
 
@@ -435,21 +457,42 @@ function renderScenariosTable(metrics) {
 
 async function loadDeviceStatus() {
     try {
-        const response = await fetch('/api/calculate', { method: 'POST' });
+        const response = await fetch('/api/planning/device-status');
         const result = await response.json();
 
-        if (result.success && result.data.chart) {
-            const chart = result.data.chart;
-            const lastIndex = chart.solar.length - 1;
+        if (result.success) {
+            const d = result.data;
 
             document.getElementById('device-solar-power').textContent =
-                (chart.solar[lastIndex] || 0).toFixed(1) + ' kW';
+                d.pv_mw.toFixed(1) + ' MW';
             document.getElementById('device-wind-power').textContent =
-                (chart.wind[lastIndex] || 0).toFixed(1) + ' kW';
+                d.wind_mw.toFixed(1) + ' MW';
             document.getElementById('device-storage-power').textContent =
-                (chart.storage_power[lastIndex] || 0).toFixed(1) + ' kW';
+                d.battery_mwh.toFixed(1) + ' MWh';
             document.getElementById('device-load-power').textContent =
-                (chart.consumption[lastIndex] || 0).toFixed(1) + ' kW';
+                d.battery_power_mw.toFixed(1) + ' MW';
+
+            // Update storage gauge with battery capacity info
+            const storageCapacity = document.getElementById('storage-capacity');
+            if (storageCapacity) storageCapacity.textContent = d.battery_mwh.toFixed(1) + ' MWh';
+            const storageCharge = document.getElementById('storage-charge');
+            if (storageCharge) storageCharge.textContent = d.battery_power_mw.toFixed(1) + ' MW';
+            const storageDischarge = document.getElementById('storage-discharge');
+            if (storageDischarge) storageDischarge.textContent = d.battery_power_mw.toFixed(1) + ' MW';
+
+            // Update alerts
+            const alertList = document.querySelector('.alert-list');
+            if (alertList && d.alerts && d.alerts.length > 0) {
+                alertList.innerHTML = d.alerts.map(a => `
+                    <div class="alert-item ${a.level}">
+                        <span class="alert-icon">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                        </span>
+                        <span class="alert-text">${a.text}</span>
+                        <span class="alert-time">${a.time}</span>
+                    </div>
+                `).join('');
+            }
         }
     } catch (error) {
         console.error('加载设备状态失败:', error);
@@ -631,7 +674,7 @@ function renderCommunityDRChart(data) {
 
 async function loadH2PowerChart() {
     const select = document.getElementById('h2-scenario-select');
-    const scenario = select ? select.value : 'S3';
+    const scenario = select ? select.value : 'S4';
 
     try {
         const res = await fetch(`/api/optimization/chart/h2-power-data?scenario=${scenario}`);
@@ -729,7 +772,7 @@ function renderH2ShortageChart(imageData) {
 
 async function loadDRPowerChart() {
     const select = document.getElementById('dr-scenario-select');
-    const scenario = select ? select.value : 'S3';
+    const scenario = select ? select.value : 'S4';
 
     try {
         const res = await fetch(`/api/optimization/chart/dr-power-data?scenario=${scenario}`);
@@ -821,18 +864,17 @@ function renderDRPowerChart(data) {
 }
 
 async function loadCostBreakdownChart() {
-    const select = document.getElementById('cost-scenario-select');
-    const scenario = select ? select.value : 'S3';
-
     try {
-        const res = await fetch(`/api/optimization/chart/cost-breakdown?scenario=${scenario}`);
+        const res = await fetch('/api/planning/annual-cost-breakdown');
         const result = await res.json();
 
         if (result.success) {
             renderCostBreakdownChart(result.data);
+            document.getElementById('annual-cost').textContent =
+                (result.data.total / 10000).toFixed(2);
         }
     } catch (e) {
-        console.error('加载成本构成失败:', e);
+        console.error('加载年度成本构成失败:', e);
     }
 }
 
@@ -840,62 +882,147 @@ function renderCostBreakdownChart(data) {
     const container = document.getElementById('cost-breakdown-chart');
     if (!container) return;
 
+    const inv = data.investment;
+    const om = data.fixed_om;
+
     const items = [
-        { label: '购电成本', value: data.grid, color: '#3498db' },
-        { label: '购气成本', value: data.gas, color: '#e74c3c' },
+        { label: '运行成本', value: data.operation, color: '#3498db' },
+        { label: '碳罚成本', value: data.carbon_penalty, color: '#e74c3c' },
         { label: '碳交易成本', value: data.carbon_trading, color: '#2ecc71' },
-        { label: '需求响应成本', value: data.demand_response, color: '#f39c12' },
-        { label: '弃风成本', value: data.wind_curt, color: '#9b59b6' },
-        { label: '无功支撑成本', value: data.q_support, color: '#1abc9c' },
-        { label: '弃光成本', value: data.pv_curt, color: '#f1c40f' },
-        { label: '氢短缺成本', value: data.h2_short, color: '#e67e22' },
-        { label: '燃气碳成本', value: data.gas_carbon, color: '#95a5a6' }
+        { label: '固定运维', value: om.total, color: '#f39c12' },
+        { label: '投资成本', value: inv.total, color: '#9b59b6' }
     ];
 
-    const positiveItems = items.filter(x => Math.abs(x.value) > 0.01);
+    const subItems = [
+        { label: '热储投资', value: inv.thermal, color: '#e67e22' },
+        { label: '氢储投资', value: inv.h2, color: '#1abc9c' },
+        { label: '光伏运维', value: om.pv, color: '#f1c40f' },
+        { label: '风电运维', value: om.wind, color: '#3498db' },
+        { label: '电池运维', value: om.battery, color: '#2ecc71' },
+        { label: '热储运维', value: om.thermal, color: '#e74c3c' },
+        { label: '氢储运维', value: om.h2, color: '#8e44ad' }
+    ];
+
+    const positiveMain = items.filter(x => Math.abs(x.value) > 0.01);
+    const positiveSub = subItems.filter(x => Math.abs(x.value) > 0.01);
 
     container.innerHTML = '';
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;min-height:360px;';
-    const pieDiv = document.createElement('div');
-    pieDiv.style.height = '320px';
-    pieDiv.style.width = '100%';
-    wrapper.appendChild(pieDiv);
-    container.appendChild(wrapper);
 
-    const absValues = positiveItems.map(x => Math.abs(x.value));
-    const total = absValues.reduce((a, b) => a + b, 0);
+    const mainDiv = document.createElement('div');
+    mainDiv.style.height = '250px';
 
-    const traces = [{
-        values: absValues,
-        labels: positiveItems.map(x => x.label),
+    const subDiv = document.createElement('div');
+    subDiv.style.height = '250px';
+
+    container.appendChild(mainDiv);
+    container.appendChild(subDiv);
+
+    const total = data.total;
+
+    const mainTrace = [{
+        values: positiveMain.map(x => Math.abs(x.value)),
+        labels: positiveMain.map(x => x.label),
         type: 'pie',
-        hole: 0.55,
-        marker: { colors: positiveItems.map(x => x.color) },
-        textinfo: 'label+percent',
+        hole: 0.45,
+        marker: { colors: positiveMain.map(x => x.color) },
+        textinfo: 'percent',
         textfont: { size: 11, color: '#e2ecf7' },
         hoverinfo: 'label+value+percent',
-        hovertemplate: '%{label}<br>%{value:,.0f} 元<br>%{percent}<extra></extra>',
-        insidetextorientation: 'radial'
+        hovertemplate: '%{label}<br>%{value:,.0f} 元<br>%{percent}<extra></extra>'
     }];
 
-    const layout = {
+    const subTrace = [{
+        values: positiveSub.map(x => Math.abs(x.value)),
+        labels: positiveSub.map(x => x.label),
+        type: 'pie',
+        hole: 0.45,
+        marker: { colors: positiveSub.map(x => x.color) },
+        textinfo: 'percent',
+        textfont: { size: 10, color: '#e2ecf7' },
+        hoverinfo: 'label+value+percent',
+        hovertemplate: '%{label}<br>%{value:,.0f} 元<br>%{percent}<extra></extra>'
+    }];
+
+    const mainLayout = {
         ...darkLayout,
-        title: { text: `总成本: ${total.toLocaleString('zh-CN', {maximumFractionDigits: 0})} 元`, font: { size: 13, color: '#e2ecf7' } },
+        title: { text: `年总成本 ${(total / 10000).toFixed(1)}万元`, font: { size: 12, color: '#e2ecf7' } },
         showlegend: true,
-        legend: {
-            font: { size: 10, color: '#7b8fa8' },
-            bgcolor: 'rgba(0,0,0,0)',
-            x: 0.5,
-            y: -0.12,
-            xanchor: 'center',
-            yanchor: 'top',
-            orientation: 'h'
-        },
-        margin: { t: 40, b: 60, l: 10, r: 10 }
+        legend: { font: { size: 9, color: '#7b8fa8' }, bgcolor: 'rgba(0,0,0,0)', x: 0.5, y: -0.15, xanchor: 'center', orientation: 'h' },
+        margin: { t: 30, b: 45, l: 10, r: 10 }
     };
 
-    Plotly.newPlot(pieDiv, traces, layout, plotlyConfig);
+    const subLayout = {
+        ...darkLayout,
+        title: { text: '投资/运维明细', font: { size: 12, color: '#e2ecf7' } },
+        showlegend: true,
+        legend: { font: { size: 9, color: '#7b8fa8' }, bgcolor: 'rgba(0,0,0,0)', x: 0.5, y: -0.15, xanchor: 'center', orientation: 'h' },
+        margin: { t: 30, b: 45, l: 10, r: 10 }
+    };
+
+    Plotly.newPlot(mainDiv, mainTrace, mainLayout, plotlyConfig);
+    Plotly.newPlot(subDiv, subTrace, subLayout, plotlyConfig);
+}
+
+async function loadCapacityTable() {
+    try {
+        const res = await fetch('/api/planning/capacity');
+        const result = await res.json();
+
+        if (result.success) {
+            renderCapacityTable(result.data);
+        }
+    } catch (e) {
+        console.error('加载容量配置失败:', e);
+    }
+}
+
+function renderCapacityTable(data) {
+    const container = document.getElementById('capacity-table');
+    if (!container) return;
+
+    const { communities, totals } = data;
+
+    let html = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>区域</th>
+                    <th>PV (MW)</th>
+                    <th>风电 (MW)</th>
+                    <th>电池 (MWh)</th>
+                    <th>热储 (MWh)</th>
+                    <th>氢储 (kg)</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    communities.forEach(c => {
+        html += `
+            <tr>
+                <td>${c.name}</td>
+                <td>${c.pv_mw.toFixed(1)}</td>
+                <td>${c.wind_mw.toFixed(1)}</td>
+                <td>${c.battery_mwh.toFixed(1)}</td>
+                <td>${c.thermal_mwh.toFixed(1)}</td>
+                <td>${c.h2_kg.toFixed(0)}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            <tr style="font-weight:bold;border-top:2px solid var(--border-color)">
+                <td>园区合计</td>
+                <td>${totals.PV_MW.toFixed(1)}</td>
+                <td>${totals.Wind_MW.toFixed(1)}</td>
+                <td>${totals.BatteryEnergy_MWh.toFixed(1)}</td>
+                <td>${totals.ThermalStorage_MWh.toFixed(1)}</td>
+                <td>${totals.HydrogenStorage_kg.toFixed(0)}</td>
+            </tr>
+        </tbody></table>
+    `;
+
+    container.innerHTML = html;
 }
 
 const plotlyDarkTemplate = {

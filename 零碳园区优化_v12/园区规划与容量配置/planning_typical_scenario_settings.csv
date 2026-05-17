@@ -1,0 +1,6 @@
+TypicalScenario,TypicalScenarioCN,DDREScenarioId,PVLabel,WindLabel,RepresentativeDays,AvailablePVUnit_MWh_per_MW,AvailableWindUnit_MWh_per_MW,TotalElectricLoad_MWh,TotalHeatLoad_MWh,TotalH2Load_kg
+Sunny_LowWind,晴天少风,116,0,0,94,8.37175076845167,8.83948038495192,61.73,70.295,617.5
+Sunny_HighWind,晴天多风,178,0,2,51,8.54730778698226,35.0480053123444,61.73,70.295,617.5
+Cloudy_MidWind,多云中风,137,1,1,72,5.66244799441893,12.9931199985678,61.73,70.295,617.5
+Rainy_LowWind,阴天少风,183,2,0,69,0.817590104901864,7.1698610007102,61.73,70.295,617.5
+Rainy_HighWind,阴天多风,40,2,2,79,0.592617384452127,29.7120563721849,61.73,70.295,617.5
