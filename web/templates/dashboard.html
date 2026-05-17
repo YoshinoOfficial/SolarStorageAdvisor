@@ -34,18 +34,18 @@
                 <!-- Main Content Area -->
                 <div class="main-content">
 
-                <!-- Row 1: Map (left) + Power Curve (right) -->
+                <!-- Row 1: Map (compact) + Park Power Curve (core) -->
                 <div class="hero-section">
-                    <div class="panel-card community-map-card">
+                    <div class="panel-card community-map-card community-map-compact">
                         <div class="panel-header">
                             <h3>园区社区</h3>
                             <div class="panel-badge">3个区域</div>
                         </div>
                         <div class="community-map">
-                            <div class="map-grid">
+                            <div class="map-grid map-grid-compact">
                                 <div class="map-community residential-map" data-community="residential" onclick="selectCommunity('residential')">
                                     <div class="map-community-icon">
-                                        <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                                     </div>
                                     <div class="map-community-name">居民区</div>
                                     <div class="map-community-status">
@@ -55,7 +55,7 @@
                                 </div>
                                 <div class="map-community commercial-map" data-community="commercial" onclick="selectCommunity('commercial')">
                                     <div class="map-community-icon">
-                                        <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M17 11V3H7v4H3v14h8v-4h2v4h8V11h-4zM7 19H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm4 4H9v-2h2v2zm0-4H9V9h2v2zm0-4H9V5h2v2zm4 8h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm4 12h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
+                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M17 11V3H7v4H3v14h8v-4h2v4h8V11h-4zM7 19H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm4 4H9v-2h2v2zm0-4H9V9h2v2zm0-4H9V5h2v2zm4 8h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm4 12h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
                                     </div>
                                     <div class="map-community-name">商业区</div>
                                     <div class="map-community-status">
@@ -65,7 +65,7 @@
                                 </div>
                                 <div class="map-community industrial-map" data-community="industrial" onclick="selectCommunity('industrial')">
                                     <div class="map-community-icon">
-                                        <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M22 22H2v-2h1V10l5-3V3h4v4l4-3h4v4l5 3v10h1v2zM4 12v8h4v-4h2v4h2v-4h2v4h2v-4h2v4h4v-8l-5-3h-4L9 9H7l-5 3z"/></svg>
+                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M22 22H2v-2h1V10l5-3V3h4v4l4-3h4v4l5 3v10h1v2zM4 12v8h4v-4h2v4h2v-4h2v4h2v-4h2v4h4v-8l-5-3h-4L9 9H7l-5 3z"/></svg>
                                     </div>
                                     <div class="map-community-name">工业区</div>
                                     <div class="map-community-status">
@@ -93,7 +93,82 @@
                     </div>
                 </div>
 
-                <!-- Row 2: Device Status + SOC + Alerts -->
+                <!-- Row 2: Important interactive charts -->
+                <div class="key-charts-row">
+                    <div class="panel-card chart-panel">
+                        <div class="panel-header">
+                            <h3>氢气供需曲线</h3>
+                            <div class="scenario-selector">
+                                <select id="h2-scenario-select" onchange="loadH2PowerChart()">
+                                    <option value="S1">S1</option>
+                                    <option value="S2">S2</option>
+                                    <option value="S3" selected>S3</option>
+                                    <option value="S4">S4</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="h2-power-chart" class="chart-container"></div>
+                    </div>
+                    <div class="panel-card chart-panel">
+                        <div class="panel-header">
+                            <h3>需求响应功率曲线</h3>
+                            <div class="scenario-selector">
+                                <select id="dr-scenario-select" onchange="loadDRPowerChart()">
+                                    <option value="S1">S1</option>
+                                    <option value="S2">S2</option>
+                                    <option value="S3" selected>S3</option>
+                                    <option value="S4">S4</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="dr-summary-metrics" class="dr-summary-bar"></div>
+                        <div id="dr-power-chart" class="chart-container"></div>
+                    </div>
+                    <div class="panel-card chart-panel">
+                        <div class="panel-header">
+                            <h3>日成本构成分析</h3>
+                            <div class="scenario-selector">
+                                <select id="cost-scenario-select" onchange="loadCostBreakdownChart()">
+                                    <option value="S1">S1</option>
+                                    <option value="S2">S2</option>
+                                    <option value="S3" selected>S3</option>
+                                    <option value="S4">S4</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="cost-breakdown-chart" class="chart-container"></div>
+                    </div>
+                </div>
+
+                <!-- Row 3: Static analysis charts (image-based) -->
+                <div class="analysis-row">
+                    <div class="panel-card chart-panel">
+                        <div class="panel-header">
+                            <h3>经济性对比</h3>
+                        </div>
+                        <div id="economic-chart" class="chart-container"></div>
+                    </div>
+                    <div class="panel-card chart-panel">
+                        <div class="panel-header">
+                            <h3>可再生能源利用</h3>
+                        </div>
+                        <div id="renewable-chart" class="chart-container"></div>
+                    </div>
+                    <div class="panel-card chart-panel">
+                        <div class="panel-header">
+                            <h3>碳排放分析</h3>
+                        </div>
+                        <div id="carbon-chart" class="chart-container"></div>
+                    </div>
+                    <div class="panel-card chart-panel">
+                        <div class="panel-header">
+                            <h3>氢气短缺分析</h3>
+                        </div>
+                        <div id="h2-shortage-chart" class="chart-container"></div>
+                    </div>
+                </div>
+
+                <!-- Row 4: Device Status + SOC + Alerts (placeholder) -->
                 <div class="secondary-row">
                     <div class="panel-card">
                         <div class="panel-header">
@@ -202,28 +277,6 @@
                     </div>
                 </div>
 
-                <!-- Row 3: Analysis charts (less important) -->
-                <div class="analysis-row">
-                    <div class="panel-card chart-panel">
-                        <div class="panel-header">
-                            <h3>经济性对比</h3>
-                        </div>
-                        <div id="economic-chart" class="chart-container"></div>
-                    </div>
-                    <div class="panel-card chart-panel">
-                        <div class="panel-header">
-                            <h3>可再生能源利用</h3>
-                        </div>
-                        <div id="renewable-chart" class="chart-container"></div>
-                    </div>
-                    <div class="panel-card chart-panel">
-                        <div class="panel-header">
-                            <h3>碳排放分析</h3>
-                        </div>
-                        <div id="carbon-chart" class="chart-container"></div>
-                    </div>
-                </div>
-
                 </div><!-- end main-content -->
 
                 <!-- Right Sidebar: KPI + Summary + Energy Mix + Scenarios -->
@@ -309,6 +362,11 @@
                                 <div class="summary-value" id="annual-curtailment">--</div>
                                 <div class="summary-unit">MWh</div>
                             </div>
+                            <div class="summary-card">
+                                <div class="summary-label">氢气短缺</div>
+                                <div class="summary-value" id="annual-h2-shortage">--</div>
+                                <div class="summary-unit">kg</div>
+                            </div>
                         </div>
                     </div>
 
@@ -388,6 +446,18 @@
                                 <h3>储能SOC</h3>
                             </div>
                             <div id="community-soc-chart" class="chart-container"></div>
+                        </div>
+                        <div class="panel-card chart-panel">
+                            <div class="panel-header">
+                                <h3>氢气供需</h3>
+                            </div>
+                            <div id="community-h2-chart" class="chart-container"></div>
+                        </div>
+                        <div class="panel-card chart-panel">
+                            <div class="panel-header">
+                                <h3>需求响应</h3>
+                            </div>
+                            <div id="community-dr-chart" class="chart-container"></div>
                         </div>
                         <div class="panel-card chart-panel">
                             <div class="panel-header">

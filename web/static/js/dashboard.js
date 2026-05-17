@@ -88,6 +88,10 @@ async function loadOverviewData() {
     loadEconomicChart();
     loadRenewableChart();
     loadCarbonChart();
+    loadH2PowerChart();
+    loadH2ShortageChart();
+    loadDRPowerChart();
+    loadCostBreakdownChart();
     loadScenariosTable();
     loadDeviceStatus();
     loadEnergySummary();
@@ -148,6 +152,8 @@ async function loadAnnualSummary() {
                 summary.annual_carbon_sell.toFixed(0);
             document.getElementById('annual-curtailment').textContent =
                 summary.annual_renewable_curtailment.toFixed(0);
+            document.getElementById('annual-h2-shortage').textContent =
+                summary.annual_h2_shortage.toFixed(0);
 
             const totalGeneration = summary.annual_renewable_use / 1000;
             document.getElementById('total-generation').textContent =
@@ -181,15 +187,15 @@ function renderParkPowerChart(data) {
     container.innerHTML = '';
 
     const supplyDiv = document.createElement('div');
-    supplyDiv.style.height = '280px';
-    supplyDiv.style.marginBottom = '10px';
+    supplyDiv.style.height = '200px';
+    supplyDiv.style.marginBottom = '8px';
 
     const demandDiv = document.createElement('div');
-    demandDiv.style.height = '280px';
-    demandDiv.style.marginBottom = '10px';
+    demandDiv.style.height = '200px';
+    demandDiv.style.marginBottom = '8px';
 
     const socDiv = document.createElement('div');
-    socDiv.style.height = '250px';
+    socDiv.style.height = '160px';
 
     container.appendChild(supplyDiv);
     container.appendChild(demandDiv);
@@ -461,6 +467,18 @@ async function loadCommunityData(communityId) {
     } catch (error) {
         console.error('加载社区数据失败:', error);
     }
+
+    try {
+        const h2drRes = await fetch(`/api/optimization/chart/community-h2-dr-data?scenario=S3&community=${communityId}`);
+        const h2drResult = await h2drRes.json();
+
+        if (h2drResult.success) {
+            renderCommunityH2Chart(h2drResult.data);
+            renderCommunityDRChart(h2drResult.data);
+        }
+    } catch (error) {
+        console.error('加载社区H2/DR数据失败:', error);
+    }
 }
 
 function renderCommunityCharts(data) {
@@ -559,6 +577,325 @@ function renderCommunityCharts(data) {
     };
 
     Plotly.newPlot('community-energy-mix-chart', mixTraces, mixLayout, plotlyConfig);
+}
+
+function renderCommunityH2Chart(data) {
+    const hours = data.hours;
+    const h2 = data.h2;
+
+    const traces = [
+        { x: hours, y: h2.production, type: 'scatter', mode: 'lines', stackgroup: 'supply', name: '电解制氢', line: { color: '#3498db' } },
+        { x: hours, y: h2.storage_discharge, type: 'scatter', mode: 'lines', stackgroup: 'supply', name: '储氢放氢', line: { color: '#2ecc71' } },
+        { x: hours, y: h2.fuel_cell, type: 'scatter', mode: 'lines', stackgroup: 'demand', name: '燃料电池', line: { color: '#8e44ad' } },
+        { x: hours, y: h2.storage_charge, type: 'scatter', mode: 'lines', stackgroup: 'demand', name: '储氢充氢', line: { color: '#f39c12' } },
+        { x: hours, y: h2.load, type: 'scatter', mode: 'lines', stackgroup: 'demand', name: '氢负荷', line: { color: '#e74c3c' } }
+    ];
+
+    const layout = {
+        ...darkLayout,
+        title: { text: '社区氢气供需', font: { size: 14, color: '#e2ecf7' } },
+        xaxis: { ...darkLayout.xaxis, title: { text: '时间 (h)' }, dtick: 2 },
+        yaxis: { ...darkLayout.yaxis, title: { text: '氢气流量 (kg)' } },
+        hovermode: 'x unified',
+        legend: { ...darkLayout.legend, x: 0, y: -0.35, orientation: 'h', font: { size: 10, color: '#7b8fa8' } },
+        margin: { t: 40, b: 80, l: 55, r: 25 }
+    };
+
+    Plotly.newPlot('community-h2-chart', traces, layout, plotlyConfig);
+}
+
+function renderCommunityDRChart(data) {
+    const hours = data.hours;
+    const dr = data.dr;
+
+    const traces = [
+        { x: hours, y: dr.load_original, type: 'scatter', mode: 'lines', name: '原始负荷', line: { color: '#e74c3c', width: 2, dash: 'dash' } },
+        { x: hours, y: dr.load_after_dr, type: 'scatter', mode: 'lines', name: 'DR调整后', line: { color: '#3498db', width: 2.5 } },
+        { x: hours, y: dr.shift, type: 'scatter', mode: 'lines', name: '负荷转移', line: { color: '#f39c12' }, visible: 'legendonly' },
+        { x: hours, y: dr.cut_e, type: 'scatter', mode: 'lines', name: '电力削减', line: { color: '#9b59b6' }, visible: 'legendonly' },
+        { x: hours, y: dr.hdr_cut, type: 'scatter', mode: 'lines', name: '热力削减', line: { color: '#1abc9c' }, visible: 'legendonly' }
+    ];
+
+    const layout = {
+        ...darkLayout,
+        title: { text: '社区需求响应', font: { size: 14, color: '#e2ecf7' } },
+        xaxis: { ...darkLayout.xaxis, title: { text: '时间 (h)' }, dtick: 2 },
+        yaxis: { ...darkLayout.yaxis, title: { text: '功率 (MW)' } },
+        hovermode: 'x unified',
+        legend: { ...darkLayout.legend, x: 0, y: -0.35, orientation: 'h', font: { size: 10, color: '#7b8fa8' } },
+        margin: { t: 40, b: 80, l: 55, r: 25 }
+    };
+
+    Plotly.newPlot('community-dr-chart', traces, layout, plotlyConfig);
+}
+
+async function loadH2PowerChart() {
+    const select = document.getElementById('h2-scenario-select');
+    const scenario = select ? select.value : 'S3';
+
+    try {
+        const res = await fetch(`/api/optimization/chart/h2-power-data?scenario=${scenario}`);
+        const result = await res.json();
+
+        if (result.success) {
+            renderH2PowerChart(result.data);
+        }
+    } catch (e) {
+        console.error('加载氢气供需曲线失败:', e);
+    }
+}
+
+function renderH2PowerChart(data) {
+    const container = document.getElementById('h2-power-chart');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const h2Div = document.createElement('div');
+    h2Div.style.height = '260px';
+    h2Div.style.marginBottom = '5px';
+
+    const socDiv = document.createElement('div');
+    socDiv.style.height = '180px';
+
+    container.appendChild(h2Div);
+    container.appendChild(socDiv);
+
+    const hours = data.hours;
+
+    const h2Traces = [
+        { x: hours, y: data.production, type: 'scatter', mode: 'lines', stackgroup: 'supply', name: '电解制氢', line: { color: '#3498db' }, hovertemplate: '电解制氢: %{y:.3f} kg<extra></extra>' },
+        { x: hours, y: data.storage_discharge, type: 'scatter', mode: 'lines', stackgroup: 'supply', name: '储氢放氢', line: { color: '#2ecc71' }, hovertemplate: '储氢放氢: %{y:.3f} kg<extra></extra>' },
+        { x: hours, y: data.fuel_cell, type: 'scatter', mode: 'lines', stackgroup: 'demand', name: '燃料电池', line: { color: '#8e44ad' }, hovertemplate: '燃料电池: %{y:.3f} kg<extra></extra>' },
+        { x: hours, y: data.storage_charge, type: 'scatter', mode: 'lines', stackgroup: 'demand', name: '储氢充氢', line: { color: '#f39c12' }, hovertemplate: '储氢充氢: %{y:.3f} kg<extra></extra>' },
+        { x: hours, y: data.load, type: 'scatter', mode: 'lines', stackgroup: 'demand', name: '氢负荷', line: { color: '#e74c3c' }, hovertemplate: '氢负荷: %{y:.3f} kg<extra></extra>' },
+    ];
+
+    if (data.shortage.some(v => Math.abs(v) > 1e-6)) {
+        h2Traces.push({ x: hours, y: data.shortage, type: 'bar', name: '短缺', marker: { color: '#e74c3c', opacity: 0.6 }, yaxis: 'y2', hovertemplate: '短缺: %{y:.3f} kg<extra></extra>' });
+    }
+
+    const h2Layout = {
+        ...darkLayout,
+        title: { text: '氢气供需平衡', font: { size: 13, color: '#e2ecf7' } },
+        xaxis: { ...darkLayout.xaxis, title: { text: '时间 (h)', font: { size: 11 } }, dtick: 2 },
+        yaxis: { ...darkLayout.yaxis, title: { text: '氢气流量 (kg)', font: { size: 11 } }, side: 'left' },
+        yaxis2: { title: { text: '短缺 (kg)', font: { size: 11 } }, side: 'right', overlaying: 'y', gridcolor: 'rgba(0,0,0,0)', tickfont: { size: 10, color: '#7b8fa8' } },
+        hovermode: 'x unified',
+        legend: { ...darkLayout.legend, x: 0, y: -0.3, orientation: 'h', font: { size: 9, color: '#7b8fa8' } },
+        margin: { t: 35, b: 70, l: 50, r: 45 },
+        barmode: 'group'
+    };
+
+    const socTraces = [
+        { x: hours, y: data.soc_h2, type: 'scatter', mode: 'lines+markers', name: '氢储能SOC', line: { color: '#2ecc71', width: 2 }, marker: { size: 4 }, hovertemplate: 'SOC: %{y:.2f} kg<extra></extra>' }
+    ];
+
+    const socLayout = {
+        ...darkLayout,
+        title: { text: '氢储能状态', font: { size: 12, color: '#e2ecf7' } },
+        xaxis: { ...darkLayout.xaxis, title: { text: '时间 (h)', font: { size: 11 } }, dtick: 2 },
+        yaxis: { ...darkLayout.yaxis, title: { text: '储氢量 (kg)', font: { size: 11 } } },
+        hovermode: 'x unified',
+        showlegend: false,
+        margin: { t: 30, b: 45, l: 50, r: 20 }
+    };
+
+    Plotly.newPlot(h2Div, h2Traces, h2Layout, plotlyConfig);
+    Plotly.newPlot(socDiv, socTraces, socLayout, plotlyConfig);
+}
+
+async function loadH2ShortageChart() {
+    try {
+        const response = await fetch('/api/optimization/chart/h2-shortage');
+        const result = await response.json();
+
+        if (result.success) {
+            renderH2ShortageChart(result.data);
+        }
+    } catch (error) {
+        console.error('加载氢气短缺分析失败:', error);
+    }
+}
+
+function renderH2ShortageChart(imageData) {
+    const container = document.getElementById('h2-shortage-chart');
+    if (!container) return;
+    const img = document.createElement('img');
+    img.src = `data:image/png;base64,${imageData}`;
+    img.style.cssText = 'width:100%;height:auto;max-height:300px;object-fit:contain;';
+    container.innerHTML = '';
+    container.appendChild(img);
+}
+
+async function loadDRPowerChart() {
+    const select = document.getElementById('dr-scenario-select');
+    const scenario = select ? select.value : 'S3';
+
+    try {
+        const res = await fetch(`/api/optimization/chart/dr-power-data?scenario=${scenario}`);
+        const result = await res.json();
+
+        if (result.success) {
+            renderDRSummaryMetrics(result.data.summary);
+            renderDRPowerChart(result.data);
+        }
+    } catch (e) {
+        console.error('加载需求响应曲线失败:', e);
+    }
+}
+
+function renderDRSummaryMetrics(summary) {
+    const container = document.getElementById('dr-summary-metrics');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="dr-metric-item">
+            <div class="dr-metric-value">${summary.total_shift_mwh.toFixed(2)}</div>
+            <div class="dr-metric-label">负荷转移 (MWh)</div>
+        </div>
+        <div class="dr-metric-item">
+            <div class="dr-metric-value">${summary.total_cut_e_mwh.toFixed(2)}</div>
+            <div class="dr-metric-label">电力削减 (MWh)</div>
+        </div>
+        <div class="dr-metric-item">
+            <div class="dr-metric-value">${summary.total_cut_h_mwh.toFixed(2)}</div>
+            <div class="dr-metric-label">热力削减 (MWh)</div>
+        </div>
+        <div class="dr-metric-item">
+            <div class="dr-metric-value">${summary.total_cut_h2_kg.toFixed(2)}</div>
+            <div class="dr-metric-label">氢削减 (kg)</div>
+        </div>
+    `;
+}
+
+function renderDRPowerChart(data) {
+    const container = document.getElementById('dr-power-chart');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const loadDiv = document.createElement('div');
+    loadDiv.style.height = '200px';
+    loadDiv.style.marginBottom = '5px';
+
+    const drDiv = document.createElement('div');
+    drDiv.style.height = '260px';
+
+    container.appendChild(loadDiv);
+    container.appendChild(drDiv);
+
+    const hours = data.hours;
+
+    const loadTraces = [
+        { x: hours, y: data.load_original, type: 'scatter', mode: 'lines', name: '原始负荷', line: { color: '#e74c3c', width: 2, dash: 'dash' }, hovertemplate: '原始: %{y:.3f} MW<extra></extra>' },
+        { x: hours, y: data.load_after_dr, type: 'scatter', mode: 'lines', name: 'DR调整后', line: { color: '#3498db', width: 2.5 }, hovertemplate: '调整后: %{y:.3f} MW<extra></extra>' }
+    ];
+
+    const loadLayout = {
+        ...darkLayout,
+        title: { text: '负荷曲线对比', font: { size: 13, color: '#e2ecf7' } },
+        xaxis: { ...darkLayout.xaxis, dtick: 2, showticklabels: false },
+        yaxis: { ...darkLayout.yaxis, title: { text: '功率 (MW)', font: { size: 11 } } },
+        hovermode: 'x unified',
+        legend: { ...darkLayout.legend, x: 0, y: -0.12, orientation: 'h', font: { size: 10, color: '#7b8fa8' } },
+        margin: { t: 35, b: 35, l: 50, r: 20 }
+    };
+
+    const drTraces = [
+        { x: hours, y: data.shift, type: 'scatter', mode: 'lines', stackgroup: 'dr', name: '负荷转移', line: { color: '#f39c12' }, hovertemplate: '转移: %{y:.3f} MW<extra></extra>' },
+        { x: hours, y: data.cut_e, type: 'scatter', mode: 'lines', stackgroup: 'dr', name: '电力削减', line: { color: '#e74c3c' }, hovertemplate: '电力削减: %{y:.3f} MW<extra></extra>' },
+        { x: hours, y: data.hdr_cut, type: 'scatter', mode: 'lines', stackgroup: 'dr', name: '热力削减', line: { color: '#9b59b6' }, hovertemplate: '热力削减: %{y:.3f} MW<extra></extra>' }
+    ];
+
+    const drLayout = {
+        ...darkLayout,
+        title: { text: '需求响应动作', font: { size: 13, color: '#e2ecf7' } },
+        xaxis: { ...darkLayout.xaxis, dtick: 2 },
+        yaxis: { ...darkLayout.yaxis, title: { text: '功率 (MW)', font: { size: 11 } } },
+        hovermode: 'x unified',
+        legend: { ...darkLayout.legend, x: 0, y: -0.15, orientation: 'h', font: { size: 10, color: '#7b8fa8' } },
+        margin: { t: 30, b: 45, l: 50, r: 20 }
+    };
+
+    Plotly.newPlot(loadDiv, loadTraces, loadLayout, plotlyConfig);
+    Plotly.newPlot(drDiv, drTraces, drLayout, plotlyConfig);
+}
+
+async function loadCostBreakdownChart() {
+    const select = document.getElementById('cost-scenario-select');
+    const scenario = select ? select.value : 'S3';
+
+    try {
+        const res = await fetch(`/api/optimization/chart/cost-breakdown?scenario=${scenario}`);
+        const result = await res.json();
+
+        if (result.success) {
+            renderCostBreakdownChart(result.data);
+        }
+    } catch (e) {
+        console.error('加载成本构成失败:', e);
+    }
+}
+
+function renderCostBreakdownChart(data) {
+    const container = document.getElementById('cost-breakdown-chart');
+    if (!container) return;
+
+    const items = [
+        { label: '购电成本', value: data.grid, color: '#3498db' },
+        { label: '购气成本', value: data.gas, color: '#e74c3c' },
+        { label: '碳交易成本', value: data.carbon_trading, color: '#2ecc71' },
+        { label: '需求响应成本', value: data.demand_response, color: '#f39c12' },
+        { label: '弃风成本', value: data.wind_curt, color: '#9b59b6' },
+        { label: '无功支撑成本', value: data.q_support, color: '#1abc9c' },
+        { label: '弃光成本', value: data.pv_curt, color: '#f1c40f' },
+        { label: '氢短缺成本', value: data.h2_short, color: '#e67e22' },
+        { label: '燃气碳成本', value: data.gas_carbon, color: '#95a5a6' }
+    ];
+
+    const positiveItems = items.filter(x => Math.abs(x.value) > 0.01);
+
+    container.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;min-height:360px;';
+    const pieDiv = document.createElement('div');
+    pieDiv.style.height = '320px';
+    pieDiv.style.width = '100%';
+    wrapper.appendChild(pieDiv);
+    container.appendChild(wrapper);
+
+    const absValues = positiveItems.map(x => Math.abs(x.value));
+    const total = absValues.reduce((a, b) => a + b, 0);
+
+    const traces = [{
+        values: absValues,
+        labels: positiveItems.map(x => x.label),
+        type: 'pie',
+        hole: 0.55,
+        marker: { colors: positiveItems.map(x => x.color) },
+        textinfo: 'label+percent',
+        textfont: { size: 11, color: '#e2ecf7' },
+        hoverinfo: 'label+value+percent',
+        hovertemplate: '%{label}<br>%{value:,.0f} 元<br>%{percent}<extra></extra>',
+        insidetextorientation: 'radial'
+    }];
+
+    const layout = {
+        ...darkLayout,
+        title: { text: `总成本: ${total.toLocaleString('zh-CN', {maximumFractionDigits: 0})} 元`, font: { size: 13, color: '#e2ecf7' } },
+        showlegend: true,
+        legend: {
+            font: { size: 10, color: '#7b8fa8' },
+            bgcolor: 'rgba(0,0,0,0)',
+            x: 0.5,
+            y: -0.12,
+            xanchor: 'center',
+            yanchor: 'top',
+            orientation: 'h'
+        },
+        margin: { t: 40, b: 60, l: 10, r: 10 }
+    };
+
+    Plotly.newPlot(pieDiv, traces, layout, plotlyConfig);
 }
 
 const plotlyDarkTemplate = {

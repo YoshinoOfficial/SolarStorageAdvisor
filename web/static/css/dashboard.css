@@ -225,9 +225,9 @@ body::before {
 
 .hero-section {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 3fr;
     gap: var(--gap-lg);
-    min-height: 520px;
+    align-items: stretch;
 }
 
 .power-curve-card {
@@ -237,7 +237,7 @@ body::before {
 
 .chart-container-hero {
     flex: 1;
-    min-height: 420px;
+    min-height: 300px;
 }
 
 /* --- Secondary Row: Device Status + SOC + Alerts --- */
@@ -257,12 +257,92 @@ body::before {
     padding-bottom: var(--gap-xs);
 }
 
-/* --- Analysis Row: 3 charts --- */
+/* --- Analysis Row --- */
 
 .analysis-row {
     display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gap-lg);
+}
+
+/* --- Key Charts Row --- */
+
+.key-charts-row {
+    display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: var(--gap-lg);
+}
+
+/* --- Compact Community Map --- */
+
+.community-map-compact {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.community-map-compact .community-map {
+    flex: 1;
+    display: flex;
+    padding: var(--gap-xs);
+    min-height: 0;
+}
+
+.map-grid-compact {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: auto;
+    min-height: 0;
+}
+
+.map-grid-compact .map-community {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.map-grid-compact .map-community-icon svg {
+    width: 32px;
+    height: 32px;
+}
+
+.map-grid-compact .map-community-name {
+    font-size: 14px;
+    margin-top: 6px;
+}
+
+.dr-summary-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 10px 15px;
+    margin-bottom: 5px;
+}
+
+.dr-metric-item {
+    text-align: center;
+    padding: 8px 4px;
+    background: rgba(13, 36, 64, 0.6);
+    border-radius: 6px;
+    border: 1px solid rgba(0, 212, 255, 0.15);
+}
+
+.dr-metric-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #00d4ff;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.dr-metric-label {
+    font-size: 11px;
+    color: #7b8fa8;
+    margin-top: 2px;
 }
 
 /* --- Right Sidebar (new layout) --- */
@@ -1122,12 +1202,8 @@ body::before {
         gap: 28px;
     }
 
-    .hero-section {
-        min-height: 600px;
-    }
-
     .chart-container-hero {
-        min-height: 500px;
+        min-height: 380px;
     }
 
     .dashboard-main {
@@ -1170,12 +1246,8 @@ body::before {
         grid-template-columns: 1fr 280px;
     }
 
-    .hero-section {
-        min-height: 440px;
-    }
-
     .chart-container-hero {
-        min-height: 340px;
+        min-height: 280px;
     }
 }
 
@@ -1187,6 +1259,10 @@ body::before {
     .hero-section {
         grid-template-columns: 1fr;
         min-height: auto;
+    }
+
+    .key-charts-row {
+        grid-template-columns: 1fr;
     }
 
     .secondary-row {

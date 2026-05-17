@@ -13,7 +13,7 @@ import threading
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-OPTIMIZATION_DATA_DIR = os.path.join(project_root, '零碳园区优化_v8')
+OPTIMIZATION_DATA_DIR = os.path.join(project_root, '零碳园区优化_v10')
 
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
@@ -1016,6 +1016,233 @@ def get_energy_summary():
         return jsonify({'success': True, 'data': energy_mix})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/optimization/chart/h2-shortage', methods=['GET'])
+def get_h2_shortage_chart():
+    try:
+        metrics_path = os.path.join(OPTIMIZATION_DATA_DIR, 'year_typical_scenario_metric_table.csv')
+        df = pd.read_csv(metrics_path)
+
+        unique_scenarios = df.drop_duplicates(subset=['TypicalScenario'])
+
+        with matplotlib_lock:
+            fig, ax = plt.subplots(figsize=(10, 6))
+
+            scenarios = unique_scenarios['TypicalScenarioCN'].tolist()
+            h2_shortage = unique_scenarios['H2Shortage_kg'].tolist()
+            annual_h2_shortage = unique_scenarios['AnnualH2Shortage_kg'].tolist()
+
+            x = range(len(scenarios))
+            width = 0.35
+
+            bars1 = ax.bar([i - width/2 for i in x], h2_shortage, width, label='日短缺量 (kg)', color='#e74c3c')
+            ax2 = ax.twinx()
+            bars2 = ax2.bar([i + width/2 for i in x], annual_h2_shortage, width, label='年短缺量 (kg)', color='#f39c12', alpha=0.7)
+
+            ax.set_xlabel('典型场景')
+            ax.set_ylabel('日短缺量 (kg)')
+            ax2.set_ylabel('年短缺量 (kg)')
+            ax.set_title('各典型场景氢气短缺情况')
+            ax.set_xticks(x)
+            ax.set_xticklabels(scenarios, rotation=15, ha='right')
+
+            all_near_zero = all(abs(v) < 0.01 for v in h2_shortage)
+            if all_near_zero:
+                ax.annotate('各场景氢气供应充足，短缺量趋近于零', xy=(0.5, 0.95), xycoords='axes fraction',
+                           ha='center', va='top', fontsize=11, color='#2ecc71',
+                           bbox=dict(boxstyle='round,pad=0.3', facecolor='#1a3a2a', edgecolor='#2ecc71', alpha=0.8))
+
+            lines1, labels1 = ax.get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=9)
+            ax.grid(axis='y', alpha=0.3)
+
+            plt.tight_layout()
+
+            buffer = BytesIO()
+            plt.savefig(buffer, format='png', dpi=100)
+            buffer.seek(0)
+            image_base64 = base64.b64encode(buffer.getvalue()).decode()
+            plt.close(fig)
+
+        return jsonify({'success': True, 'data': image_base64})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/optimization/chart/h2-power-data', methods=['GET'])
+def get_h2_power_data():
+    try:
+        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+
+        scenario_param = request.args.get('scenario', 'S3')
+        scenario_map = {
+            'S1': 'S1_Normal_NoStorage_NoCarbon',
+            'S2': 'S2_Normal_WithStorage_NoCarbon',
+            'S3': 'S3_Normal_WithStorage_Carbon',
+            'S4': 'S4_HighRE_WithStorage_Carbon'
+        }
+        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+
+        hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+
+        if not os.path.exists(hourly_file):
+            return jsonify({'success': False, 'error': '数据文件不存在'}), 404
+
+        df = pd.read_csv(hourly_file)
+
+        h2_data = {
+            'hours': list(range(1, 25)),
+            'production': df['Sum_H2prod'].tolist(),
+            'storage_discharge': df['Sum_H2dis'].tolist(),
+            'fuel_cell': df['Sum_H2cons_fc'].tolist(),
+            'storage_charge': df['Sum_H2ch'].tolist(),
+            'load': df['DataSum_H2load'].tolist(),
+            'shortage': df['Sum_H2short'].tolist(),
+            'soc_h2': df['Mean_SOC_h2'].tolist()
+        }
+
+        return jsonify({'success': True, 'data': h2_data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/optimization/chart/dr-power-data', methods=['GET'])
+def get_dr_power_data():
+    try:
+        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+
+        scenario_param = request.args.get('scenario', 'S3')
+        scenario_map = {
+            'S1': 'S1_Normal_NoStorage_NoCarbon',
+            'S2': 'S2_Normal_WithStorage_NoCarbon',
+            'S3': 'S3_Normal_WithStorage_Carbon',
+            'S4': 'S4_HighRE_WithStorage_Carbon'
+        }
+        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+
+        hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+        scalars_file = os.path.join(data_dir, f'{scenario}_admm_solution_scalars.csv')
+
+        if not os.path.exists(hourly_file):
+            return jsonify({'success': False, 'error': '数据文件不存在'}), 404
+
+        df = pd.read_csv(hourly_file)
+        df_s = pd.read_csv(scalars_file)
+
+        dr_data = {
+            'hours': list(range(1, 25)),
+            'load_original': df['DataSum_Pload'].tolist(),
+            'load_after_dr': df['Sum_PloadDR'].tolist(),
+            'shift': df['Sum_PdrShift'].tolist(),
+            'shift_dev': df['Sum_PdrShiftDev'].tolist(),
+            'cut_e': df['Sum_PdrCutE'].tolist(),
+            'hdr_cut': df['Sum_HdrCut'].tolist(),
+            'h2dr_cut': df['Sum_H2drCut'].tolist(),
+            'summary': {
+                'total_shift_mwh': float(df_s['TotalPdrShiftDeviation_MWh'].iloc[0]),
+                'total_cut_e_mwh': float(df_s['TotalElectricCurtailmentDR_MWh'].iloc[0]),
+                'total_cut_h_mwh': float(df_s['TotalHeatCurtailmentDR_MWh'].iloc[0]),
+                'total_cut_h2_kg': float(df_s['TotalHydrogenCurtailmentDR_kg'].iloc[0]),
+            }
+        }
+
+        return jsonify({'success': True, 'data': dr_data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/optimization/chart/cost-breakdown', methods=['GET'])
+def get_cost_breakdown():
+    try:
+        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+
+        scenario_param = request.args.get('scenario', 'S3')
+        scenario_map = {
+            'S1': 'S1_Normal_NoStorage_NoCarbon',
+            'S2': 'S2_Normal_WithStorage_NoCarbon',
+            'S3': 'S3_Normal_WithStorage_Carbon',
+            'S4': 'S4_HighRE_WithStorage_Carbon'
+        }
+        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+
+        scalars_file = os.path.join(data_dir, f'{scenario}_admm_solution_scalars.csv')
+
+        if not os.path.exists(scalars_file):
+            return jsonify({'success': False, 'error': '数据文件不存在'}), 404
+
+        df = pd.read_csv(scalars_file)
+        row = df.iloc[0]
+
+        cost_data = {
+            'grid': float(row['Part_gridCost']),
+            'carbon_trading': float(row['Part_carbonTradingCost']),
+            'gas': float(row['Part_gasCost']),
+            'gas_carbon': float(row['Part_gasCarbonCost']),
+            'pv_curt': float(row['Part_pvCurtCost']),
+            'wind_curt': float(row['Part_windCurtCost']),
+            'h2_short': float(row['Part_h2ShortCost']),
+            'demand_response': float(row['Part_demandResponseCost']),
+            'q_support': float(row['Part_qSupportCost']),
+            'total': float(row['Objective_Yuan'])
+        }
+
+        return jsonify({'success': True, 'data': cost_data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/optimization/chart/community-h2-dr-data', methods=['GET'])
+def get_community_h2_dr_data():
+    try:
+        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+
+        scenario_param = request.args.get('scenario', 'S3')
+        community_id = request.args.get('community', '1')
+
+        scenario_map = {
+            'S1': 'S1_Normal_NoStorage_NoCarbon',
+            'S2': 'S2_Normal_WithStorage_NoCarbon',
+            'S3': 'S3_Normal_WithStorage_Carbon',
+            'S4': 'S4_HighRE_WithStorage_Carbon'
+        }
+        scenario = scenario_map.get(scenario_param, 'S3_Normal_WithStorage_Carbon')
+
+        community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
+
+        if not os.path.exists(community_file):
+            return jsonify({'success': False, 'error': '数据文件不存在'}), 404
+
+        df = pd.read_csv(community_file)
+        df_c = df[df['Community'] == int(community_id)]
+
+        if df_c.empty:
+            return jsonify({'success': False, 'error': f'社区 {community_id} 无数据'}), 404
+
+        result = {
+            'hours': list(range(1, 25)),
+            'h2': {
+                'production': df_c['H2prod'].tolist(),
+                'fuel_cell': df_c['H2cons_fc'].tolist(),
+                'storage_charge': df_c['H2ch'].tolist(),
+                'storage_discharge': df_c['H2dis'].tolist(),
+                'load': df_c['Data_H2load'].tolist(),
+                'shortage': df_c['H2short'].tolist(),
+                'soc': df_c['SOC_h2'].tolist()
+            },
+            'dr': {
+                'load_original': df_c['Data_Pload'].tolist(),
+                'load_after_dr': df_c['PloadDR'].tolist(),
+                'shift': df_c['PdrShift'].tolist(),
+                'cut_e': df_c['PdrCutE'].tolist(),
+                'hdr_cut': df_c['HdrCut'].tolist()
+            }
+        }
+
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

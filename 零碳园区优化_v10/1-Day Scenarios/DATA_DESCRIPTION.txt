@@ -1,0 +1,70 @@
+1-Day Scenarios
+
+Dataset Overview
+This dataset contains 200 synthetic daily scenarios of distributed wind and solar power generation, designed for power distribution system analysis and optimization studies. Each scenario represents a complete 24-hour period with 15-minute resolution data (96 time points per day).
+
+Dataset Structure
+The dataset consists of:
+200 individual CSV files: scenario_001.csv to scenario_200.csv
+1 label file: scenario_labels.csv - Contains the classification labels for each scenario
+
+Individual Scenario Files (scenario_XXX.csv)
+Each scenario file contains the following columns:
+scenario_id: Scenario identifier (1-200)
+timestamp: Date and time in 15-minute intervals (96 points per day)
+node_22_wind: Wind power output at Node 22 (normalized 0-1)
+node_25_wind: Wind power output at Node 25 (normalized 0-1)
+node_18_PV: Solar PV power output at Node 18 (normalized 0-1)
+node_33_PV: Solar PV power output at Node 33 (normalized 0-1)
+
+Label File (scenario_labels.csv)
+Contains the following columns:
+scenario_index: Scenario identifier (1-200)
+wind_label: Wind power generation level classification (0, 1, 2)
+pv_label: Solar power generation level classification (0, 1, 2)
+
+Wind Power Labels (wind_label)
+The wind power scenarios are classified into three categories based on daily generation patterns:
+
+Label 0 - Low Wind Generation
+Characterized by consistently low wind speeds
+Daily average power output: Low range
+Typical of calm weather conditions
+Lower variability in power output
+
+
+Label 1 - Medium Wind Generation
+Characterized by moderate wind speeds
+Daily average power output: Medium range
+Typical of normal wind conditions
+Moderate variability in power output
+
+
+Label 2 - High Wind Generation
+Characterized by strong wind speeds
+Daily average power output: High range
+Typical of windy weather conditions
+Higher variability in power output
+
+Solar Power Labels (pv_label)
+The solar power scenarios are classified into three categories based on weather conditions and irradiance levels:
+
+Label 0 - High Solar Generation (Clear/Sunny Weather)
+Clear sky conditions with high solar irradiance
+Maximum daily solar power output
+Smooth, bell-shaped daily generation curve
+Minimal cloud interference
+
+
+Label 1 - Medium Solar Generation (Partly Cloudy Weather)
+Partly cloudy conditions with moderate solar irradiance
+Medium daily solar power output
+Irregular generation patterns due to cloud movements
+Intermittent power fluctuations
+
+
+Label 2 - Low Solar Generation (Overcast/Rainy Weather)
+Overcast, rainy, or snowy weather conditions
+Low solar irradiance and minimal power generation
+Consistently low output throughout the day
+Severely limited by weather conditions
