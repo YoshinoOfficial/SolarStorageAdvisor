@@ -574,25 +574,39 @@ def get_renewable_utilization_chart():
 @app.route('/api/optimization/chart/hourly-power-data', methods=['GET'])
 def get_hourly_power_data():
     try:
-        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
-        
-        scenario_param = request.args.get('scenario', 'S4')
-        scenario_map = {
-            'S1': 'S1_NoCarbon_NoDR',
-            'S2': 'S2_Normal_NoCarbon_DR',
-            'S3': 'S3_Carbon_NoDR',
-            'S4': 'S4_Carbon_DR'
-        }
-        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
-        scenario_name_map = {
-            'S1_NoCarbon_NoDR': 'S1: 无碳交易无需求响应（基准）',
-            'S2_Normal_NoCarbon_DR': 'S2: 无碳交易有需求响应',
-            'S3_Carbon_NoDR': 'S3: 有碳交易无需求响应',
-            'S4_Carbon_DR': 'S4: 有碳交易有需求响应'
-        }
-        scenario_name = scenario_name_map.get(scenario, 'S4')
-        
-        hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+        mode = request.args.get('mode', 'scenario')
+
+        if mode == 'weather':
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
+            weather_param = request.args.get('weather', 'Sunny_LowWind')
+            weather_name_map = {
+                'Sunny_LowWind': '晴天少风',
+                'Sunny_HighWind': '晴天多风',
+                'Cloudy_MidWind': '多云中风',
+                'Rainy_LowWind': '阴天少风',
+                'Rainy_HighWind': '阴天多风'
+            }
+            scenario = weather_param
+            scenario_name = weather_name_map.get(weather_param, weather_param)
+            hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+        else:
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+            scenario_param = request.args.get('scenario', 'S4')
+            scenario_map = {
+                'S1': 'S1_NoCarbon_NoDR',
+                'S2': 'S2_Normal_NoCarbon_DR',
+                'S3': 'S3_Carbon_NoDR',
+                'S4': 'S4_Carbon_DR'
+            }
+            scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
+            scenario_name_map = {
+                'S1_NoCarbon_NoDR': 'S1: 无碳交易无需求响应（基准）',
+                'S2_Normal_NoCarbon_DR': 'S2: 无碳交易有需求响应',
+                'S3_Carbon_NoDR': 'S3: 有碳交易无需求响应',
+                'S4_Carbon_DR': 'S4: 有碳交易有需求响应'
+            }
+            scenario_name = scenario_name_map.get(scenario, 'S4')
+            hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
         
         if not os.path.exists(hourly_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -643,27 +657,38 @@ def get_hourly_power_data():
 @app.route('/api/optimization/chart/community-power-data', methods=['GET'])
 def get_community_power_data():
     try:
-        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
-        
-        scenario_param = request.args.get('scenario', 'S4')
+        mode = request.args.get('mode', 'scenario')
         community_id = request.args.get('community', '1')
-        
-        scenario_map = {
-            'S1': 'S1_NoCarbon_NoDR',
-            'S2': 'S2_Normal_NoCarbon_DR',
-            'S3': 'S3_Carbon_NoDR',
-            'S4': 'S4_Carbon_DR'
-        }
-        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
-        scenario_name_map = {
-            'S1_NoCarbon_NoDR': 'S1: 无碳交易无需求响应（基准）',
-            'S2_Normal_NoCarbon_DR': 'S2: 无碳交易有需求响应',
-            'S3_Carbon_NoDR': 'S3: 有碳交易无需求响应',
-            'S4_Carbon_DR': 'S4: 有碳交易有需求响应'
-        }
-        scenario_name = scenario_name_map.get(scenario, 'S4')
-        
-        community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
+
+        if mode == 'weather':
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
+            weather_param = request.args.get('weather', 'Sunny_LowWind')
+            weather_name_map = {
+                'Sunny_LowWind': '晴天少风', 'Sunny_HighWind': '晴天多风',
+                'Cloudy_MidWind': '多云中风', 'Rainy_LowWind': '阴天少风',
+                'Rainy_HighWind': '阴天多风'
+            }
+            scenario = weather_param
+            scenario_name = weather_name_map.get(weather_param, weather_param)
+            community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
+        else:
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+            scenario_param = request.args.get('scenario', 'S4')
+            scenario_map = {
+                'S1': 'S1_NoCarbon_NoDR',
+                'S2': 'S2_Normal_NoCarbon_DR',
+                'S3': 'S3_Carbon_NoDR',
+                'S4': 'S4_Carbon_DR'
+            }
+            scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
+            scenario_name_map = {
+                'S1_NoCarbon_NoDR': 'S1: 无碳交易无需求响应（基准）',
+                'S2_Normal_NoCarbon_DR': 'S2: 无碳交易有需求响应',
+                'S3_Carbon_NoDR': 'S3: 有碳交易无需求响应',
+                'S4_Carbon_DR': 'S4: 有碳交易有需求响应'
+            }
+            scenario_name = scenario_name_map.get(scenario, 'S4')
+            community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
         
         if not os.path.exists(community_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -933,17 +958,100 @@ def get_hourly_power_chart():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/optimization/daily-kpis', methods=['GET'])
+def get_daily_kpis():
+    try:
+        mode = request.args.get('mode', 'scenario')
+
+        if mode == 'weather':
+            weather_param = request.args.get('weather', 'Sunny_LowWind')
+            metrics_path = os.path.join(OPTIMIZATION_DATA_DIR, 'year_typical_scenario_metric_table.csv')
+            df = pd.read_csv(metrics_path)
+            row = df[df['TypicalScenario'] == weather_param]
+            if row.empty:
+                return jsonify({'success': False, 'error': '未找到天气场景数据'}), 404
+            row = row.iloc[0]
+            kpis = {
+                'cost': round(float(row['TotalObjective_Yuan']), 0),
+                'grid_energy': round(float(row['GridEnergy_MWh']), 1),
+                'carbon_emission': round(float(row['CarbonEmission_tCO2']), 1),
+                'renewable_rate': round(float(row['RenewableUseRate_percent']), 1)
+            }
+        else:
+            scenario_param = request.args.get('scenario', 'S4')
+            scenario_map = {
+                'S1': 'S1_NoCarbon_NoDR',
+                'S2': 'S2_Normal_NoCarbon_DR',
+                'S3': 'S3_Carbon_NoDR',
+                'S4': 'S4__Carbon_DR'
+            }
+            scenario = scenario_map.get(scenario_param, 'S4__Carbon_DR')
+            metrics_path = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_metric_table.csv')
+            df = pd.read_csv(metrics_path)
+            df = df[df['Method'].str.contains('admm')]
+            row = df[df['Scenario'] == scenario]
+            if row.empty:
+                return jsonify({'success': False, 'error': '未找到场景数据'}), 404
+            row = row.iloc[0]
+            kpis = {
+                'cost': round(float(row['TotalObjective_Yuan']), 0),
+                'grid_energy': round(float(row['GridEnergy_MWh']), 1),
+                'carbon_emission': round(float(row['CarbonEmission_kg']) / 1000, 1),
+                'renewable_rate': round(float(row['RenewableUseRate_percent']), 1)
+            }
+
+        return jsonify({'success': True, 'data': kpis})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/optimization/energy-summary', methods=['GET'])
 def get_energy_summary():
     try:
-        scenario_param = request.args.get('scenario', 'S4')
-        scenario_map = {
-            'S1': 'S1_NoCarbon_NoDR',
-            'S2': 'S2_Normal_NoCarbon_DR',
-            'S3': 'S3_Carbon_NoDR',
-            'S4': 'S4_Carbon_DR'
-        }
-        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
+        mode = request.args.get('mode', 'scenario')
+
+        if mode == 'weather':
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
+            weather_param = request.args.get('weather', 'Sunny_LowWind')
+            hourly_file = os.path.join(data_dir, f'{weather_param}_admm_hourly_aggregate.csv')
+
+            if not os.path.exists(hourly_file):
+                return jsonify({'success': False, 'error': '数据文件不存在'}), 404
+
+            df_hourly = pd.read_csv(hourly_file)
+
+            daily_pv = float(df_hourly['Sum_PpvUse'].sum())
+            daily_wind = float(df_hourly['Sum_PwindUse'].sum())
+            daily_chp = float(df_hourly['Sum_Pchp'].sum())
+            daily_fc = float(df_hourly['Sum_Pfc'].sum())
+            daily_discharge = float(df_hourly['Sum_Pdis'].sum())
+            daily_grid = float(df_hourly['Sum_Pgrid'].sum())
+
+            total_generation = daily_pv + daily_wind + daily_chp + daily_fc + daily_discharge
+
+            energy_mix = {
+                'pv': round(daily_pv, 2),
+                'wind': round(daily_wind, 2),
+                'chp': round(daily_chp, 2),
+                'fc': round(daily_fc, 2),
+                'discharge': round(daily_discharge, 2),
+                'grid': round(daily_grid, 2),
+                'total': round(total_generation, 2)
+            }
+
+            if total_generation > 0:
+                energy_mix['pv_ratio'] = round(daily_pv / total_generation * 100, 1)
+                energy_mix['wind_ratio'] = round(daily_wind / total_generation * 100, 1)
+                energy_mix['chp_ratio'] = round(daily_chp / total_generation * 100, 1)
+                energy_mix['fc_ratio'] = round(daily_fc / total_generation * 100, 1)
+                energy_mix['discharge_ratio'] = round(daily_discharge / total_generation * 100, 1)
+            else:
+                energy_mix['pv_ratio'] = 0
+                energy_mix['wind_ratio'] = 0
+                energy_mix['chp_ratio'] = 0
+                energy_mix['fc_ratio'] = 0
+                energy_mix['discharge_ratio'] = 0
+
+            return jsonify({'success': True, 'data': energy_mix})
 
         metrics_path = os.path.join(OPTIMIZATION_DATA_DIR, 'year_typical_scenario_metric_table.csv')
         df_metrics = pd.read_csv(metrics_path)
@@ -953,6 +1061,14 @@ def get_energy_summary():
         if unique_scenarios.empty:
             return jsonify({'success': False, 'error': '未找到场景数据'}), 404
 
+        scenario_param = request.args.get('scenario', 'S4')
+        scenario_map = {
+            'S1': 'S1_NoCarbon_NoDR',
+            'S2': 'S2_Normal_NoCarbon_DR',
+            'S3': 'S3_Carbon_NoDR',
+            'S4': 'S4_Carbon_DR'
+        }
+        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
         data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
         hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
 
@@ -1074,18 +1190,23 @@ def get_h2_shortage_chart():
 @app.route('/api/optimization/chart/h2-power-data', methods=['GET'])
 def get_h2_power_data():
     try:
-        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+        mode = request.args.get('mode', 'scenario')
 
-        scenario_param = request.args.get('scenario', 'S4')
-        scenario_map = {
-            'S1': 'S1_NoCarbon_NoDR',
-            'S2': 'S2_Normal_NoCarbon_DR',
-            'S3': 'S3_Carbon_NoDR',
-            'S4': 'S4_Carbon_DR'
-        }
-        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
-
-        hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+        if mode == 'weather':
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
+            weather_param = request.args.get('weather', 'Sunny_LowWind')
+            hourly_file = os.path.join(data_dir, f'{weather_param}_admm_hourly_aggregate.csv')
+        else:
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+            scenario_param = request.args.get('scenario', 'S4')
+            scenario_map = {
+                'S1': 'S1_NoCarbon_NoDR',
+                'S2': 'S2_Normal_NoCarbon_DR',
+                'S3': 'S3_Carbon_NoDR',
+                'S4': 'S4_Carbon_DR'
+            }
+            scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
+            hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
 
         if not os.path.exists(hourly_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -1111,19 +1232,25 @@ def get_h2_power_data():
 @app.route('/api/optimization/chart/dr-power-data', methods=['GET'])
 def get_dr_power_data():
     try:
-        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+        mode = request.args.get('mode', 'scenario')
 
-        scenario_param = request.args.get('scenario', 'S4')
-        scenario_map = {
-            'S1': 'S1_NoCarbon_NoDR',
-            'S2': 'S2_Normal_NoCarbon_DR',
-            'S3': 'S3_Carbon_NoDR',
-            'S4': 'S4_Carbon_DR'
-        }
-        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
-
-        hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
-        scalars_file = os.path.join(data_dir, f'{scenario}_admm_solution_scalars.csv')
+        if mode == 'weather':
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
+            weather_param = request.args.get('weather', 'Sunny_LowWind')
+            hourly_file = os.path.join(data_dir, f'{weather_param}_admm_hourly_aggregate.csv')
+            scalars_file = os.path.join(data_dir, f'{weather_param}_admm_solution_scalars.csv')
+        else:
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+            scenario_param = request.args.get('scenario', 'S4')
+            scenario_map = {
+                'S1': 'S1_NoCarbon_NoDR',
+                'S2': 'S2_Normal_NoCarbon_DR',
+                'S3': 'S3_Carbon_NoDR',
+                'S4': 'S4_Carbon_DR'
+            }
+            scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
+            hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+            scalars_file = os.path.join(data_dir, f'{scenario}_admm_solution_scalars.csv')
 
         if not os.path.exists(hourly_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -1196,20 +1323,24 @@ def get_cost_breakdown():
 @app.route('/api/optimization/chart/community-h2-dr-data', methods=['GET'])
 def get_community_h2_dr_data():
     try:
-        data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
-
-        scenario_param = request.args.get('scenario', 'S4')
+        mode = request.args.get('mode', 'scenario')
         community_id = request.args.get('community', '1')
 
-        scenario_map = {
-            'S1': 'S1_NoCarbon_NoDR',
-            'S2': 'S2_Normal_NoCarbon_DR',
-            'S3': 'S3_Carbon_NoDR',
-            'S4': 'S4_Carbon_DR'
-        }
-        scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
-
-        community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
+        if mode == 'weather':
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
+            weather_param = request.args.get('weather', 'Sunny_LowWind')
+            community_file = os.path.join(data_dir, f'{weather_param}_admm_community_hourly.csv')
+        else:
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+            scenario_param = request.args.get('scenario', 'S4')
+            scenario_map = {
+                'S1': 'S1_NoCarbon_NoDR',
+                'S2': 'S2_Normal_NoCarbon_DR',
+                'S3': 'S3_Carbon_NoDR',
+                'S4': 'S4_Carbon_DR'
+            }
+            scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
+            community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
 
         if not os.path.exists(community_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404

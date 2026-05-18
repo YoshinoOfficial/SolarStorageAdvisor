@@ -31,24 +31,53 @@ const communityMap = {
 };
 
 let currentView = 'overview';
+let currentMode = 'scenario';
 
 const scenarioSelectors = ['scenario-select', 'h2-scenario-select', 'dr-scenario-select'];
+const weatherSelectors = ['weather-select', 'h2-weather-select', 'dr-weather-select'];
+
+function switchMode(mode) {
+    currentMode = mode;
+
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+
+    const showScenario = mode === 'scenario';
+    scenarioSelectors.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = showScenario ? '' : 'none';
+    });
+    weatherSelectors.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = showScenario ? 'none' : '';
+    });
+
+    loadDailyKPIs();
+    loadParkPowerChart();
+    loadH2PowerChart();
+    loadDRPowerChart();
+    loadEnergySummary();
+}
 
 function syncAndLoad(sourceId) {
+    const isWeather = sourceId.includes('weather');
+    const selectors = isWeather ? weatherSelectors : scenarioSelectors;
     const source = document.getElementById(sourceId);
     if (!source) return;
     const value = source.value;
 
-    scenarioSelectors.forEach(id => {
+    selectors.forEach(id => {
         if (id !== sourceId) {
             const el = document.getElementById(id);
             if (el) el.value = value;
         }
     });
 
-    if (sourceId === 'scenario-select') {
+    if (sourceId === 'scenario-select' || sourceId === 'weather-select') {
         loadParkPowerChart();
     }
+    loadDailyKPIs();
     loadH2PowerChart();
     loadDRPowerChart();
     loadEnergySummary();
@@ -101,11 +130,71 @@ function selectCommunity(type) {
     document.getElementById('community-title').textContent = community.name + ' - 运行监控';
     currentView = 'community';
 
+    // Sync community mode toggle and select values with current mode
+    const commView = document.getElementById('community-view');
+    commView.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === currentMode);
+    });
+    const cSel = document.getElementById('community-scenario-select');
+    const wSel = document.getElementById('community-weather-select');
+    if (cSel) cSel.style.display = currentMode === 'scenario' ? '' : 'none';
+    if (wSel) wSel.style.display = currentMode === 'scenario' ? 'none' : '';
+    // Sync select values
+    const ovScenario = document.getElementById('scenario-select');
+    const ovWeather = document.getElementById('weather-select');
+    if (cSel && ovScenario) cSel.value = ovScenario.value;
+    if (wSel && ovWeather) wSel.value = ovWeather.value;
+
     loadCommunityData(community.id);
+}
+
+function switchCommunityMode(mode) {
+    const view = document.getElementById('community-view');
+    view.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+
+    const showScenario = mode === 'scenario';
+    const cSel = document.getElementById('community-scenario-select');
+    const wSel = document.getElementById('community-weather-select');
+    if (cSel) cSel.style.display = showScenario ? '' : 'none';
+    if (wSel) wSel.style.display = showScenario ? 'none' : '';
+
+    // Sync with overview mode
+    currentMode = mode;
+    document.querySelectorAll('#overview-view .mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    scenarioSelectors.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = showScenario ? '' : 'none';
+    });
+    weatherSelectors.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = showScenario ? 'none' : '';
+    });
+
+    // Reload community data with current community
+    const activeCard = document.querySelector('.map-community.active');
+    if (activeCard) {
+        const type = activeCard.dataset.community;
+        const community = communityMap[type];
+        if (community) loadCommunityData(community.id);
+    }
+}
+
+function onCommunitySelectChange() {
+    const activeCard = document.querySelector('.map-community.active');
+    if (activeCard) {
+        const type = activeCard.dataset.community;
+        const community = communityMap[type];
+        if (community) loadCommunityData(community.id);
+    }
 }
 
 async function loadOverviewData() {
     loadAnnualSummary();
+    loadDailyKPIs();
     loadParkPowerChart();
     loadEconomicChart();
     loadRenewableChart();
@@ -186,12 +275,67 @@ async function loadAnnualSummary() {
     }
 }
 
-async function loadParkPowerChart() {
-    const select = document.getElementById('scenario-select');
-    const scenario = select ? select.value : 'S4';
+async function loadDailyKPIs() {
+    let url;
+    if (currentMode === 'weather') {
+        const select = document.getElementById('weather-select');
+        const weather = select ? select.value : 'Sunny_LowWind';
+        url = `/api/optimization/daily-kpis?mode=weather&weather=${weather}`;
+    } else {
+        const select = document.getElementById('scenario-select');
+        const scenario = select ? select.value : 'S4';
+        url = `/api/optimization/daily-kpis?scenario=${scenario}`;
+    }
 
     try {
-        const res = await fetch(`/api/optimization/chart/hourly-power-data?scenario=${scenario}`);
+        const res = await fetch(url);
+        const result = await res.json();
+        if (result.success) {
+            const d = result.data;
+            animateKPI('kpi-cost', d.cost, 0);
+            animateKPI('kpi-grid', d.grid_energy, 1);
+            animateKPI('kpi-carbon', d.carbon_emission, 1);
+            animateKPI('kpi-renewable', d.renewable_rate, 1);
+        }
+    } catch (e) {
+        console.error('加载日核心指标失败:', e);
+    }
+}
+
+function animateKPI(id, target, decimals) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    const current = parseFloat(el.textContent.replace(/,/g, '')) || 0;
+    const diff = target - current;
+    const steps = 20;
+    const stepVal = diff / steps;
+    let frame = 0;
+
+    function tick() {
+        frame++;
+        const val = frame >= steps ? target : current + stepVal * frame;
+        el.textContent = val.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        if (frame < steps) requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+}
+
+async function loadParkPowerChart() {
+    let url;
+    if (currentMode === 'weather') {
+        const select = document.getElementById('weather-select');
+        const weather = select ? select.value : 'Sunny_LowWind';
+        url = `/api/optimization/chart/hourly-power-data?mode=weather&weather=${weather}`;
+    } else {
+        const select = document.getElementById('scenario-select');
+        const scenario = select ? select.value : 'S4';
+        url = `/api/optimization/chart/hourly-power-data?scenario=${scenario}`;
+    }
+
+    try {
+        const res = await fetch(url);
         const result = await res.json();
 
         if (result.success) {
@@ -354,16 +498,26 @@ function renderCarbonChart(imageData) {
 
 async function loadEnergySummary() {
     try {
-        const select = document.getElementById('scenario-select');
-        const scenario = select ? select.value : 'S4';
-        const response = await fetch(`/api/optimization/energy-summary?scenario=${scenario}`);
+        let url;
+        if (currentMode === 'weather') {
+            const select = document.getElementById('weather-select');
+            const weather = select ? select.value : 'Sunny_LowWind';
+            url = `/api/optimization/energy-summary?mode=weather&weather=${weather}`;
+        } else {
+            const select = document.getElementById('scenario-select');
+            const scenario = select ? select.value : 'S4';
+            url = `/api/optimization/energy-summary?scenario=${scenario}`;
+        }
+        const response = await fetch(url);
         const result = await response.json();
 
         if (result.success) {
             const data = result.data;
 
-            document.getElementById('total-generation').textContent =
-                (data.total / 1000).toFixed(1);
+            if (currentMode !== 'weather') {
+                document.getElementById('total-generation').textContent =
+                    (data.total / 1000).toFixed(1);
+            }
 
             const traces = [{
                 values: [data.pv, data.wind, data.grid, data.chp, data.fc, data.discharge],
@@ -500,19 +654,35 @@ async function loadDeviceStatus() {
 }
 
 async function loadCommunityData(communityId) {
+    let param;
+    if (currentMode === 'weather') {
+        const sel = document.getElementById('community-weather-select');
+        const weather = sel ? sel.value : 'Sunny_LowWind';
+        param = `mode=weather&weather=${weather}`;
+    } else {
+        const sel = document.getElementById('community-scenario-select');
+        const scenario = sel ? sel.value : 'S4';
+        param = `scenario=${scenario}`;
+    }
+
     try {
-        const response = await fetch(`/api/optimization/chart/community-power-data?scenario=S3&community=${communityId}`);
+        const response = await fetch(`/api/optimization/chart/community-power-data?${param}&community=${communityId}`);
         const result = await response.json();
 
         if (result.success) {
             renderCommunityCharts(result);
+            // Compute daily generation from supply data
+            const s = result.supply;
+            const sum = arr => arr.reduce((a, b) => a + Math.max(0, b), 0);
+            const dailyGen = sum(s.pv) + sum(s.wind) + sum(s.chp) + sum(s.fc) + sum(s.discharge);
+            document.getElementById('community-generation').textContent = dailyGen.toFixed(1);
         }
     } catch (error) {
         console.error('加载社区数据失败:', error);
     }
 
     try {
-        const h2drRes = await fetch(`/api/optimization/chart/community-h2-dr-data?scenario=S3&community=${communityId}`);
+        const h2drRes = await fetch(`/api/optimization/chart/community-h2-dr-data?${param}&community=${communityId}`);
         const h2drResult = await h2drRes.json();
 
         if (h2drResult.success) {
@@ -521,6 +691,26 @@ async function loadCommunityData(communityId) {
         }
     } catch (error) {
         console.error('加载社区H2/DR数据失败:', error);
+    }
+
+    // Load capacity data
+    try {
+        const capRes = await fetch('/api/planning/capacity');
+        const capResult = await capRes.json();
+
+        if (capResult.success) {
+            const c = capResult.data.communities.find(x => String(x.id) === String(communityId));
+            if (c) {
+                document.getElementById('community-solar-capacity').textContent = c.pv_mw.toFixed(1);
+                document.getElementById('community-wind-capacity').textContent = c.wind_mw.toFixed(1);
+                document.getElementById('community-storage-capacity').textContent = c.battery_mwh.toFixed(1);
+                document.getElementById('community-thermal-capacity').textContent = c.thermal_mwh.toFixed(1);
+                document.getElementById('community-h2-capacity').textContent = c.h2_kg.toFixed(0);
+                document.getElementById('community-battery-power').textContent = c.battery_power_mw.toFixed(1);
+            }
+        }
+    } catch (error) {
+        console.error('加载社区容量数据失败:', error);
     }
 }
 
@@ -673,11 +863,19 @@ function renderCommunityDRChart(data) {
 }
 
 async function loadH2PowerChart() {
-    const select = document.getElementById('h2-scenario-select');
-    const scenario = select ? select.value : 'S4';
+    let url;
+    if (currentMode === 'weather') {
+        const select = document.getElementById('h2-weather-select');
+        const weather = select ? select.value : 'Sunny_LowWind';
+        url = `/api/optimization/chart/h2-power-data?mode=weather&weather=${weather}`;
+    } else {
+        const select = document.getElementById('h2-scenario-select');
+        const scenario = select ? select.value : 'S4';
+        url = `/api/optimization/chart/h2-power-data?scenario=${scenario}`;
+    }
 
     try {
-        const res = await fetch(`/api/optimization/chart/h2-power-data?scenario=${scenario}`);
+        const res = await fetch(url);
         const result = await res.json();
 
         if (result.success) {
@@ -771,11 +969,19 @@ function renderH2ShortageChart(imageData) {
 }
 
 async function loadDRPowerChart() {
-    const select = document.getElementById('dr-scenario-select');
-    const scenario = select ? select.value : 'S4';
+    let url;
+    if (currentMode === 'weather') {
+        const select = document.getElementById('dr-weather-select');
+        const weather = select ? select.value : 'Sunny_LowWind';
+        url = `/api/optimization/chart/dr-power-data?mode=weather&weather=${weather}`;
+    } else {
+        const select = document.getElementById('dr-scenario-select');
+        const scenario = select ? select.value : 'S4';
+        url = `/api/optimization/chart/dr-power-data?scenario=${scenario}`;
+    }
 
     try {
-        const res = await fetch(`/api/optimization/chart/dr-power-data?scenario=${scenario}`);
+        const res = await fetch(url);
         const result = await res.json();
 
         if (result.success) {

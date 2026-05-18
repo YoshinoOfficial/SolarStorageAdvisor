@@ -1,158 +1,204 @@
 # 零碳园区智慧能源可视化平台
 
-## 平台概述
+## 1. 简介
 
-本平台是面向零碳园区多能互补能源系统的可视化监控与配置管理平台，基于 Flask + Plotly.js 构建，提供实时功率曲线展示、设备状态监控、优化结果分析等功能。平台采用深空蓝（NASA 控制中心风格）暗色主题，针对 2560x1440 大屏进行了适配优化。
+本平台是面向零碳园区多能互补能源系统的可视化监控与配置管理平台，基于 Flask + Plotly.js 构建，提供场景对比、天气切换、社区详情、容量配置等功能。平台采用深空蓝暗色主题，针对 2560x1440 大屏适配。
 
-## 技术栈
+平台包含两个页面：
+- **配置管理页**（`/`）— 设备参数配置、光伏/风电/储能管理
+- **监控大屏**（`/dashboard`）— 优化结果可视化、运行监控
 
-| 层级 | 技术 |
-|------|------|
-| 后端框架 | Flask (Python) |
-| 数据处理 | Pandas |
-| 图表渲染（静态） | Matplotlib |
-| 图表渲染（交互） | Plotly.js 2.27 |
-| 前端样式 | 原生 CSS（CSS 变量体系） |
-| 字体 | Orbitron（标题）、JetBrains Mono（数据）、Microsoft YaHei（正文） |
+---
 
-## 页面结构
+## 2. 快速上手
 
-平台包含两个核心页面，通过顶部导航栏互相跳转：
+### 2.1 环境依赖
 
-### 1. 配置管理页（`/`）
+需要 Python 3.8+，安装以下库：
 
-设备参数的可视化配置界面，包含三个功能标签页：
+```bash
+pip install flask pandas matplotlib
+```
 
-- **功率曲线图** — 查看园区总功率曲线和分社区功率曲线，支持切换四种典型场景（S1-S4）
-- **设备配置** — 光伏、风电、储能的参数管理
-- **优化算法** — 年度汇总指标、典型场景详细数据、ADMM 算法收敛曲线
+| 库 | 用途 | 版本建议 |
+|----|------|---------|
+| Flask | Web 服务器 | >= 2.0 |
+| Pandas | CSV 数据读取 | >= 1.5 |
+| Matplotlib | 静态图表生成 | >= 3.5 |
 
-### 2. 监控大屏（`/dashboard`）
+> Plotly.js 通过 CDN 前端加载，无需安装 Python 包。
 
-实时能源监控主界面，包含总览视图和社区详情视图两个层级。
+### 2.2 启动步骤
 
-## 监控大屏 — 总览视图
+```bash
+# 1. 进入项目目录
+cd C:\Code\SolarStorageAdvisor
 
-总览视图采用 `主内容区 + 右侧边栏` 的两栏布局。
+# 2. 启动 Flask 服务器
+python web/app.py
 
-### 主内容区
+# 3. 浏览器打开
+#    配置管理页：http://localhost:5000/
+#    监控大屏：  http://localhost:5000/dashboard
+```
 
-#### 核心区域：社区地图 + 园区总功率曲线
+启动后终端会显示 `Running on http://0.0.0.0:5000`，保持终端窗口不要关闭。按 `Ctrl+C` 停止服务。
 
-左侧展示园区三个社区（居民区、商业区、工业区）的实时运行状态卡片，点击可进入该社区的详情视图。右侧为园区总功率曲线，包含三个子图：
+---
 
-- **供电侧** — 光伏、风电、电网、储能放电、CHP、燃料电池的堆叠面积图
-- **用电侧** — 电负荷、电解槽、电锅炉、压缩机、储能充电的堆叠面积图
-- **储能 SOC** — 电储能、热储能（MWh）和氢储能（kg）的状态曲线
+## 3. 监控大屏功能说明
 
-支持通过下拉菜单切换四种典型场景：S1（无储能无碳交易）、S2（有储能无碳交易）、S3（有储能有碳交易）、S4（高新能源有储能有碳交易）。
+监控大屏（`/dashboard`）是平台的核心页面，包含 **总览视图** 和 **社区详情视图** 两个层级。
 
-#### 交互图表行
+### 3.1 数据维度切换
 
-三个并排的交互式图表，均支持场景切换：
+页面顶部提供两种数据查看维度，通过切换按钮选择：
 
-- **氢气供需曲线** — 电解制氢、储氢充放、燃料电池、氢负荷的供需平衡图 + 氢储能 SOC 状态图
-- **需求响应功率曲线** — 原始负荷与 DR 调整后负荷的对比图 + 负荷转移/电力削减/热力削减动作图，顶部汇总指标栏显示各项 DR 动作的总量
-- **日成本构成分析** — 购电、购气、碳交易、需求响应、弃风弃光等 9 项成本的环形图
+| 维度 | 数据来源 | 选项 |
+|------|---------|------|
+| **场景**（碳交易×需求响应） | `comparison_plot_data_csv/` | S1（基准）、S2（仅DR）、S3（仅碳交易）、S4（完整） |
+| **天气** | `year_plot_data_csv/` | 晴天少风、晴天多风、多云中风、阴天少风、阴天多风 |
 
-#### 静态分析图表行
+切换后，功率曲线、氢气供需、需求响应、能源构成、日核心指标等所有图表同步更新。
 
-四张基于 Matplotlib 生成的静态分析图：
+### 3.2 总览视图布局
 
-- **经济性对比** — 各典型场景日优化成本柱状图
-- **可再生能源利用** — 可利用量、实际利用量、弃能量的分组柱状图
-- **碳排放分析** — 碳排放与配额对比 + 碳配额盈余的双面板图
-- **氢气短缺分析** — 日/年氢气短缺量的双轴柱状图
+总览视图采用 **主内容区 + 右侧边栏** 的两栏布局。
 
-#### 设备状态 + 储能状态 + 告警
+#### 主内容区
 
-- **设备状态** — 光伏发电、风力发电、储能系统、负荷四项设备的实时功率和运行状态
-- **储能状态** — SOC 环形仪表盘 + 容量/充放电功率指标
-- **今日告警** — 系统运行告警列表
+**第一行：社区地图 + 园区总功率曲线**
+- 左侧三个社区卡片（居民区、商业区、工业区），点击进入社区详情
+- 右侧功率曲线含三个子图：供电侧堆叠图、用电侧堆叠图、储能SOC曲线
 
-### 右侧边栏
+**日核心指标栏**
+- 4 个指标卡，随场景/天气切换实时更新（带数值过渡动画）：
+  - 日运行成本（元）
+  - 日购电量（MWh）
+  - 日碳排放（tCO₂）
+  - 新能源消纳率（%）
 
-- **核心指标** — 总发电量（MWh）、年总成本（万元）、年碳排放（tCO2）、新能源利用率（%）
-- **辅助指标** — 全年购电量、购气量、碳配额、碳交易收益、弃风弃光量、氢气短缺量
-- **能源构成** — 光伏/风电/市电/CHP/燃料电池/储能放电的环形比例图
-- **典型场景数据** — 四种场景的天数、成本、碳排放、新能源率汇总表
+**交互图表行**
+- 氢气供需曲线 — 供需平衡堆叠图 + 氢储能SOC
+- 需求响应功率曲线 — 负荷对比图 + DR动作图 + 汇总指标栏
+- 年度成本构成 — 投资/运维/运行/碳交易等成本环形图
 
-## 监控大屏 — 社区详情视图
+**静态分析图表行**
+- 经济性对比、可再生能源利用、碳排放分析、氢气短缺分析
 
-点击总览视图中的社区卡片进入，展示单个社区的详细运行数据：
+**设备状态栏**
+- 设备状态（光伏/风电/储能/负荷）、储能SOC仪表盘、今日告警
 
-- **社区指标** — 光伏装机、风电装机、储能容量、日发电量
-- **供电侧** — 该社区的光伏/风电/电网/储能/CHP/燃料电池堆叠图
-- **用电侧** — 该社区的电负荷/电解槽/电锅炉/压缩机/储能充电堆叠图
-- **储能 SOC** — 电/热/氢储能的状态曲线
-- **氢气供需** — 社区级别的氢气供需平衡
-- **需求响应** — 社区级别的负荷曲线对比与 DR 动作
-- **能源构成** — 社区级别的能源比例环形图
+#### 右侧边栏
 
-## 配置管理页详情
+- **核心指标** — 总发电量、年总成本、年碳排放、新能源利用率
+- **辅助指标** — 全年购电量、购气量、碳配额、碳交易收益、弃风弃光、氢气短缺
+- **能源构成** — 各电源占比环形图（随场景/天气切换）
+- **典型场景数据** — 5种天气场景的天数、成本、碳排放、新能源率汇总表
+- **容量配置规划** — 3个社区的PV/风电/电池/热储/氢储容量表
 
-### 光伏配置
+### 3.3 社区详情视图
 
-- 按社区管理，支持切换工业区/商业区/居民区
-- 配置各类光伏板的数量
-- 查看不同天气类型（晴天/多云/阴天/雨天/雾天）的光伏发电曲线
-- 光伏板详细参数：面积、倾角、方位角、经纬度、海拔、环境温度、风速
+点击总览视图中的社区卡片进入。顶部有独立的场景/天气切换器，与总览视图联动。
 
-### 风电配置
+**容量指标栏（7列）**
 
-- 按社区管理风机台数
-- 查看不同风况（多风/中风/少风）的风力发电曲线
-- 查看风机参数（型号、轮毂高度、额定功率）
+| 指标 | 数据来源 |
+|------|---------|
+| 光伏（MW） | `planning_capacity_result.csv` |
+| 风电（MW） | 同上 |
+| 电储能（MWh） | 同上 |
+| 热储能（MWh） | 同上 |
+| 氢储能（kg） | 同上 |
+| 储能功率（MW） | 同上 |
+| 日发电量（MWh） | 从图表数据实时计算 |
 
-### 储能配置
+**图表区域（3×2 网格）**
+- 供电侧、用电侧、储能SOC（全宽）、氢气供需、需求响应、能源构成
+- 所有图表均支持场景/天气切换
 
-- 支持多套储能配置的创建、切换、删除
-- 参数包括：容量、最大充放电功率、充放电效率、SOC 上下限
+---
 
-## API 接口
+## 4. 配置管理页
 
-### 配置管理接口
+配置管理页（`/`）提供设备参数的可视化配置，包含三个标签页：
+
+- **功率曲线图** — 园区总功率曲线和分社区功率曲线，支持 S1-S4 场景切换
+- **设备配置** — 光伏板参数（面积、倾角、方位角等）、风机台数、储能参数（容量、充放电效率、SOC上下限）
+- **优化算法** — 年度汇总指标、典型场景详细数据、ADMM 收敛曲线
+
+---
+
+## 5. API 接口
+
+### 5.1 优化结果接口
+
+| 方法 | 路径 | 说明 | 支持 mode 参数 |
+|------|------|------|---------------|
+| GET | `/api/optimization/annual-summary` | 年度加权汇总 | - |
+| GET | `/api/optimization/daily-kpis` | 日核心指标（成本/购电/碳排/消纳率） | scenario / weather |
+| GET | `/api/optimization/energy-summary` | 能源构成汇总 | scenario / weather |
+| GET | `/api/optimization/chart/hourly-power-data` | 24h 功率数据 | scenario / weather |
+| GET | `/api/optimization/chart/community-power-data` | 社区级功率数据 | scenario / weather |
+| GET | `/api/optimization/chart/h2-power-data` | 氢气供需数据 | scenario / weather |
+| GET | `/api/optimization/chart/dr-power-data` | 需求响应数据 | scenario / weather |
+| GET | `/api/optimization/chart/community-h2-dr-data` | 社区级氢气/DR | scenario / weather |
+| GET | `/api/optimization/chart/cost-breakdown` | 成本构成 | scenario |
+| GET | `/api/optimization/typical-metrics` | 典型场景指标 | - |
+| GET | `/api/optimization/typical-scenarios` | 典型场景配置 | - |
+
+**mode 参数说明：**
+
+```
+# 场景模式（默认）
+GET /api/optimization/chart/hourly-power-data?scenario=S4
+
+# 天气模式
+GET /api/optimization/chart/hourly-power-data?mode=weather&weather=Sunny_LowWind
+```
+
+### 5.2 规划配置接口
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/config` | 获取完整配置信息 |
-| POST | `/api/calculate` | 触发模拟计算 |
-| GET/POST | `/api/panels/*` | 光伏板 CRUD 操作 |
-| POST | `/api/storages/*` | 储能配置 CRUD 操作 |
-| POST | `/api/communities/switch` | 切换当前社区 |
-| POST | `/api/communities/quantities` | 更新社区光伏板数量 |
-| GET | `/api/community/solar-curve` | 获取社区光伏发电曲线 |
-| GET | `/api/community/wind-curve` | 获取社区风力发电曲线 |
-| POST | `/api/wind/coefficient` | 更新风机台数 |
+| GET | `/api/planning/capacity` | 分社区容量配置（PV/风电/储能/热储/氢储） |
+| GET | `/api/planning/device-status` | 设备状态汇总 |
+| GET | `/api/planning/annual-cost-breakdown` | 年成本分解 |
 
-### 优化结果接口
+### 5.3 静态图表接口
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/optimization/typical-scenarios` | 典型场景配置 |
-| GET | `/api/optimization/typical-metrics` | 典型场景指标数据 |
-| GET | `/api/optimization/annual-summary` | 年度加权汇总 |
-| GET | `/api/optimization/energy-summary` | 能源构成汇总 |
-| GET | `/api/optimization/chart/hourly-power-data` | 24 小时功率数据 |
-| GET | `/api/optimization/chart/community-power-data` | 社区级功率数据 |
-| GET | `/api/optimization/chart/h2-power-data` | 氢气供需数据 |
-| GET | `/api/optimization/chart/dr-power-data` | 需求响应数据 |
-| GET | `/api/optimization/chart/cost-breakdown` | 成本构成数据 |
-| GET | `/api/optimization/chart/community-h2-dr-data` | 社区级氢气/DR 数据 |
-| GET | `/api/optimization/chart/economic-comparison` | 经济性对比图 |
-| GET | `/api/optimization/chart/renewable-utilization` | 可再生能源利用图 |
-| GET | `/api/optimization/chart/carbon-analysis` | 碳排放分析图 |
-| GET | `/api/optimization/chart/h2-shortage` | 氢气短缺分析图 |
+| GET | `/api/optimization/chart/economic-comparison` | 经济性对比（Matplotlib PNG） |
+| GET | `/api/optimization/chart/renewable-utilization` | 可再生能源利用 |
+| GET | `/api/optimization/chart/carbon-analysis` | 碳排放分析 |
+| GET | `/api/optimization/chart/h2-shortage` | 氢气短缺分析 |
 | GET | `/api/optimization/chart/admm-convergence` | ADMM 收敛曲线 |
 
-## 目录结构
+### 5.4 配置管理接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/config` | 获取完整配置 |
+| POST | `/api/calculate` | 触发模拟计算 |
+| GET/POST | `/api/panels/*` | 光伏板 CRUD |
+| POST | `/api/storages/*` | 储能配置 CRUD |
+| POST | `/api/communities/switch` | 切换当前社区 |
+| POST | `/api/communities/quantities` | 更新光伏板数量 |
+| GET | `/api/community/solar-curve` | 光伏发电曲线 |
+| GET | `/api/community/wind-curve` | 风力发电曲线 |
+| POST | `/api/wind/coefficient` | 更新风机台数 |
+
+---
+
+## 6. 目录结构
 
 ```
 web/
 ├── app.py                    # Flask 后端，API 路由与数据处理
 ├── templates/
 │   ├── index.html            # 配置管理页
-│   └── dashboard.html        # 监控大屏页
+│   └── dashboard.html        # 监控大屏
 └── static/
     ├── css/
     │   ├── style.css          # 配置管理页样式
@@ -161,12 +207,3 @@ web/
         ├── app.js             # 配置管理页逻辑
         └── dashboard.js       # 监控大屏逻辑
 ```
-
-## 启动方式
-
-```bash
-cd web
-python app.py
-```
-
-服务默认运行在 `http://0.0.0.0:5000`，访问 `/` 进入配置管理页，访问 `/dashboard` 进入监控大屏。

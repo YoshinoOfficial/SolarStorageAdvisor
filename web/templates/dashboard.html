@@ -81,15 +81,70 @@
                         <div class="panel-header">
                             <h3>园区总功率曲线</h3>
                             <div class="scenario-selector">
+                                <div class="mode-toggle">
+                                    <button class="mode-btn active" data-mode="scenario" onclick="switchMode('scenario')">场景</button>
+                                    <button class="mode-btn" data-mode="weather" onclick="switchMode('weather')">天气</button>
+                                </div>
                                 <select id="scenario-select" onchange="syncAndLoad('scenario-select')">
                                     <option value="S1">S1: 无碳交易无需求响应（基准）</option>
                                     <option value="S2">S2: 无碳交易有需求响应</option>
                                     <option value="S3">S3: 有碳交易无需求响应</option>
                                     <option value="S4" selected>S4: 有碳交易有需求响应</option>
                                 </select>
+                                <select id="weather-select" onchange="syncAndLoad('weather-select')" style="display:none;">
+                                    <option value="Sunny_LowWind" selected>晴天少风 (94天)</option>
+                                    <option value="Sunny_HighWind">晴天多风 (51天)</option>
+                                    <option value="Cloudy_MidWind">多云中风 (72天)</option>
+                                    <option value="Rainy_LowWind">阴天少风 (69天)</option>
+                                    <option value="Rainy_HighWind">阴天多风 (79天)</option>
+                                </select>
                             </div>
                         </div>
                         <div id="overview-power-chart" class="chart-container-hero"></div>
+                    </div>
+                </div>
+
+                <!-- Daily KPIs -->
+                <div class="daily-kpi-bar" id="daily-kpi-bar">
+                    <div class="daily-kpi-item">
+                        <div class="daily-kpi-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+                        </div>
+                        <div class="daily-kpi-content">
+                            <div class="daily-kpi-value" id="kpi-cost">--</div>
+                            <div class="daily-kpi-unit">元</div>
+                            <div class="daily-kpi-label">日运行成本</div>
+                        </div>
+                    </div>
+                    <div class="daily-kpi-item">
+                        <div class="daily-kpi-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+                        </div>
+                        <div class="daily-kpi-content">
+                            <div class="daily-kpi-value" id="kpi-grid">--</div>
+                            <div class="daily-kpi-unit">MWh</div>
+                            <div class="daily-kpi-label">日购电量</div>
+                        </div>
+                    </div>
+                    <div class="daily-kpi-item">
+                        <div class="daily-kpi-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.66 8L12 2.35 6.34 8A8.02 8.02 0 004 13.64c0 2 .78 4.11 2.34 5.67a7.99 7.99 0 0011.32 0c1.56-1.56 2.34-3.67 2.34-5.67S19.22 9.56 17.66 8z"/></svg>
+                        </div>
+                        <div class="daily-kpi-content">
+                            <div class="daily-kpi-value" id="kpi-carbon">--</div>
+                            <div class="daily-kpi-unit">tCO₂</div>
+                            <div class="daily-kpi-label">日碳排放</div>
+                        </div>
+                    </div>
+                    <div class="daily-kpi-item">
+                        <div class="daily-kpi-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                        </div>
+                        <div class="daily-kpi-content">
+                            <div class="daily-kpi-value" id="kpi-renewable">--</div>
+                            <div class="daily-kpi-unit">%</div>
+                            <div class="daily-kpi-label">新能源消纳率</div>
+                        </div>
                     </div>
                 </div>
 
@@ -105,6 +160,13 @@
                                     <option value="S3">S3</option>
                                     <option value="S4" selected>S4</option>
                                 </select>
+                                <select id="h2-weather-select" onchange="syncAndLoad('h2-weather-select')" style="display:none;">
+                                    <option value="Sunny_LowWind" selected>晴天少风</option>
+                                    <option value="Sunny_HighWind">晴天多风</option>
+                                    <option value="Cloudy_MidWind">多云中风</option>
+                                    <option value="Rainy_LowWind">阴天少风</option>
+                                    <option value="Rainy_HighWind">阴天多风</option>
+                                </select>
                             </div>
                         </div>
                         <div id="h2-power-chart" class="chart-container"></div>
@@ -118,6 +180,13 @@
                                     <option value="S2">S2</option>
                                     <option value="S3">S3</option>
                                     <option value="S4" selected>S4</option>
+                                </select>
+                                <select id="dr-weather-select" onchange="syncAndLoad('dr-weather-select')" style="display:none;">
+                                    <option value="Sunny_LowWind" selected>晴天少风</option>
+                                    <option value="Sunny_HighWind">晴天多风</option>
+                                    <option value="Cloudy_MidWind">多云中风</option>
+                                    <option value="Rainy_LowWind">阴天少风</option>
+                                    <option value="Rainy_HighWind">阴天多风</option>
                                 </select>
                             </div>
                         </div>
@@ -395,6 +464,25 @@
                         返回总览
                     </button>
                     <h2 id="community-title">社区详情</h2>
+                    <div class="community-controls">
+                        <div class="mode-toggle">
+                            <button class="mode-btn active" data-mode="scenario" onclick="switchCommunityMode('scenario')">场景</button>
+                            <button class="mode-btn" data-mode="weather" onclick="switchCommunityMode('weather')">天气</button>
+                        </div>
+                        <select id="community-scenario-select" onchange="onCommunitySelectChange()">
+                            <option value="S1">S1</option>
+                            <option value="S2">S2</option>
+                            <option value="S3">S3</option>
+                            <option value="S4" selected>S4</option>
+                        </select>
+                        <select id="community-weather-select" onchange="onCommunitySelectChange()" style="display:none;">
+                            <option value="Sunny_LowWind" selected>晴天少风</option>
+                            <option value="Sunny_HighWind">晴天多风</option>
+                            <option value="Cloudy_MidWind">多云中风</option>
+                            <option value="Rainy_LowWind">阴天少风</option>
+                            <option value="Rainy_HighWind">阴天多风</option>
+                        </select>
+                    </div>
                     <a href="/" class="config-link">
                         设备配置
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
@@ -405,22 +493,37 @@
 
                 <div class="community-content">
                     <div class="community-metrics-row">
-                        <div class="metric-card">
-                            <div class="metric-label">光伏装机</div>
+                        <div class="metric-card compact">
+                            <div class="metric-label">光伏</div>
                             <div class="metric-value" id="community-solar-capacity">--</div>
-                            <div class="metric-unit">kW</div>
+                            <div class="metric-unit">MW</div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label">风电装机</div>
+                        <div class="metric-card compact">
+                            <div class="metric-label">风电</div>
                             <div class="metric-value" id="community-wind-capacity">--</div>
-                            <div class="metric-unit">kW</div>
+                            <div class="metric-unit">MW</div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label">储能容量</div>
+                        <div class="metric-card compact">
+                            <div class="metric-label">电储能</div>
                             <div class="metric-value" id="community-storage-capacity">--</div>
-                            <div class="metric-unit">kWh</div>
+                            <div class="metric-unit">MWh</div>
                         </div>
-                        <div class="metric-card">
+                        <div class="metric-card compact">
+                            <div class="metric-label">热储能</div>
+                            <div class="metric-value" id="community-thermal-capacity">--</div>
+                            <div class="metric-unit">MWh</div>
+                        </div>
+                        <div class="metric-card compact">
+                            <div class="metric-label">氢储能</div>
+                            <div class="metric-value" id="community-h2-capacity">--</div>
+                            <div class="metric-unit">kg</div>
+                        </div>
+                        <div class="metric-card compact">
+                            <div class="metric-label">储能功率</div>
+                            <div class="metric-value" id="community-battery-power">--</div>
+                            <div class="metric-unit">MW</div>
+                        </div>
+                        <div class="metric-card compact">
                             <div class="metric-label">日发电量</div>
                             <div class="metric-value" id="community-generation">--</div>
                             <div class="metric-unit">MWh</div>
@@ -429,40 +532,28 @@
 
                     <div class="community-charts-grid">
                         <div class="panel-card chart-panel">
-                            <div class="panel-header">
-                                <h3>供电侧</h3>
-                            </div>
-                            <div id="community-supply-chart" class="chart-container"></div>
+                            <div class="panel-header"><h3>供电侧</h3></div>
+                            <div id="community-supply-chart" class="chart-container-sm"></div>
                         </div>
                         <div class="panel-card chart-panel">
-                            <div class="panel-header">
-                                <h3>用电侧</h3>
-                            </div>
-                            <div id="community-demand-chart" class="chart-container"></div>
+                            <div class="panel-header"><h3>用电侧</h3></div>
+                            <div id="community-demand-chart" class="chart-container-sm"></div>
                         </div>
                         <div class="panel-card chart-panel full-width">
-                            <div class="panel-header">
-                                <h3>储能SOC</h3>
-                            </div>
-                            <div id="community-soc-chart" class="chart-container"></div>
+                            <div class="panel-header"><h3>储能SOC</h3></div>
+                            <div id="community-soc-chart" class="chart-container-sm"></div>
                         </div>
                         <div class="panel-card chart-panel">
-                            <div class="panel-header">
-                                <h3>氢气供需</h3>
-                            </div>
-                            <div id="community-h2-chart" class="chart-container"></div>
+                            <div class="panel-header"><h3>氢气供需</h3></div>
+                            <div id="community-h2-chart" class="chart-container-sm"></div>
                         </div>
                         <div class="panel-card chart-panel">
-                            <div class="panel-header">
-                                <h3>需求响应</h3>
-                            </div>
-                            <div id="community-dr-chart" class="chart-container"></div>
+                            <div class="panel-header"><h3>需求响应</h3></div>
+                            <div id="community-dr-chart" class="chart-container-sm"></div>
                         </div>
                         <div class="panel-card chart-panel">
-                            <div class="panel-header">
-                                <h3>能源构成</h3>
-                            </div>
-                            <div id="community-energy-mix-chart" class="chart-container"></div>
+                            <div class="panel-header"><h3>能源构成</h3></div>
+                            <div id="community-energy-mix-chart" class="chart-container-sm"></div>
                         </div>
                     </div>
                 </div>
