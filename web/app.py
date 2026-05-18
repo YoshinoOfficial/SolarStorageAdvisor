@@ -1142,47 +1142,13 @@ def get_h2_shortage_chart():
 
         unique_scenarios = df.drop_duplicates(subset=['TypicalScenario'])
 
-        with matplotlib_lock:
-            fig, ax = plt.subplots(figsize=(10, 6))
+        data = {
+            'scenarios': unique_scenarios['TypicalScenarioCN'].tolist(),
+            'daily_shortage_kg': [float(v) for v in unique_scenarios['H2Shortage_kg']],
+            'annual_shortage_kg': [float(v) for v in unique_scenarios['AnnualH2Shortage_kg']],
+        }
 
-            scenarios = unique_scenarios['TypicalScenarioCN'].tolist()
-            h2_shortage = unique_scenarios['H2Shortage_kg'].tolist()
-            annual_h2_shortage = unique_scenarios['AnnualH2Shortage_kg'].tolist()
-
-            x = range(len(scenarios))
-            width = 0.35
-
-            bars1 = ax.bar([i - width/2 for i in x], h2_shortage, width, label='日短缺量 (kg)', color='#e74c3c')
-            ax2 = ax.twinx()
-            bars2 = ax2.bar([i + width/2 for i in x], annual_h2_shortage, width, label='年短缺量 (kg)', color='#f39c12', alpha=0.7)
-
-            ax.set_xlabel('典型场景')
-            ax.set_ylabel('日短缺量 (kg)')
-            ax2.set_ylabel('年短缺量 (kg)')
-            ax.set_title('各典型场景氢气短缺情况')
-            ax.set_xticks(x)
-            ax.set_xticklabels(scenarios, rotation=15, ha='right')
-
-            all_near_zero = all(abs(v) < 0.01 for v in h2_shortage)
-            if all_near_zero:
-                ax.annotate('各场景氢气供应充足，短缺量趋近于零', xy=(0.5, 0.95), xycoords='axes fraction',
-                           ha='center', va='top', fontsize=11, color='#2ecc71',
-                           bbox=dict(boxstyle='round,pad=0.3', facecolor='#1a3a2a', edgecolor='#2ecc71', alpha=0.8))
-
-            lines1, labels1 = ax.get_legend_handles_labels()
-            lines2, labels2 = ax2.get_legend_handles_labels()
-            ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=9)
-            ax.grid(axis='y', alpha=0.3)
-
-            plt.tight_layout()
-
-            buffer = BytesIO()
-            plt.savefig(buffer, format='png', dpi=100)
-            buffer.seek(0)
-            image_base64 = base64.b64encode(buffer.getvalue()).decode()
-            plt.close(fig)
-
-        return jsonify({'success': True, 'data': image_base64})
+        return jsonify({'success': True, 'data': data})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

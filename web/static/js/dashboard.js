@@ -196,16 +196,12 @@ async function loadOverviewData() {
     loadAnnualSummary();
     loadDailyKPIs();
     loadParkPowerChart();
-    loadEconomicChart();
-    loadRenewableChart();
-    loadCarbonChart();
     loadH2PowerChart();
     loadH2ShortageChart();
     loadDRPowerChart();
     loadCostBreakdownChart();
     loadScenariosTable();
     loadCapacityTable();
-    loadDeviceStatus();
     loadEnergySummary();
 }
 
@@ -430,70 +426,51 @@ function renderParkPowerChart(data) {
     Plotly.newPlot(socDiv, socTraces, socLayout, plotlyConfig);
 }
 
-async function loadEconomicChart() {
+async function loadH2ShortageChart() {
     try {
-        const response = await fetch('/api/optimization/chart/economic-comparison');
-        const result = await response.json();
+        const res = await fetch('/api/optimization/chart/h2-shortage');
+        const result = await res.json();
 
         if (result.success) {
-            renderEconomicChart(result.data);
+            renderH2ShortageChart(result.data);
         }
-    } catch (error) {
-        console.error('加载经济性对比失败:', error);
+    } catch (e) {
+        console.error('加载氢气短缺数据失败:', e);
     }
 }
 
-function renderEconomicChart(imageData) {
-    const container = document.getElementById('economic-chart');
-    const img = document.createElement('img');
-    img.src = `data:image/png;base64,${imageData}`;
-    img.style.cssText = 'width:100%;height:auto;max-height:300px;object-fit:contain;';
+function renderH2ShortageChart(data) {
+    const container = document.getElementById('h2-shortage-chart');
+    if (!container) return;
     container.innerHTML = '';
-    container.appendChild(img);
-}
 
-async function loadRenewableChart() {
-    try {
-        const response = await fetch('/api/optimization/chart/renewable-utilization');
-        const result = await response.json();
+    const div = document.createElement('div');
+    div.style.height = '280px';
+    container.appendChild(div);
 
-        if (result.success) {
-            renderRenewableChart(result.data);
+    const traces = [
+        {
+            x: data.scenarios, y: data.daily_shortage_kg,
+            type: 'bar', name: '日短缺量',
+            marker: { color: '#e74c3c' },
+            text: data.daily_shortage_kg.map(v => v.toExponential(2)),
+            textposition: 'outside',
+            cliponaxis: false,
+            textfont: { size: 10, color: '#7b8fa8' },
+            hovertemplate: '%{x}<br>日短缺: %{y:.2e} kg<extra></extra>'
         }
-    } catch (error) {
-        console.error('加载可再生能源利用失败:', error);
-    }
-}
+    ];
 
-function renderRenewableChart(imageData) {
-    const container = document.getElementById('renewable-chart');
-    const img = document.createElement('img');
-    img.src = `data:image/png;base64,${imageData}`;
-    img.style.cssText = 'width:100%;height:auto;max-height:300px;object-fit:contain;';
-    container.innerHTML = '';
-    container.appendChild(img);
-}
+    const layout = {
+        ...darkLayout,
+        title: { text: '各天气场景氢气日短缺量 (kg)', font: { size: 13, color: '#e2ecf7' } },
+        xaxis: { ...darkLayout.xaxis, tickangle: -15 },
+        yaxis: { ...darkLayout.yaxis, title: { text: '短缺量 (kg)', font: { size: 11 } }, exponentformat: 'e', rangemode: 'tozero' },
+        showlegend: false,
+        margin: { t: 60, b: 70, l: 70, r: 20 }
+    };
 
-async function loadCarbonChart() {
-    try {
-        const response = await fetch('/api/optimization/chart/carbon-analysis');
-        const result = await response.json();
-
-        if (result.success) {
-            renderCarbonChart(result.data);
-        }
-    } catch (error) {
-        console.error('加载碳排放分析失败:', error);
-    }
-}
-
-function renderCarbonChart(imageData) {
-    const container = document.getElementById('carbon-chart');
-    const img = document.createElement('img');
-    img.src = `data:image/png;base64,${imageData}`;
-    img.style.cssText = 'width:100%;height:auto;max-height:300px;object-fit:contain;';
-    container.innerHTML = '';
-    container.appendChild(img);
+    Plotly.newPlot(div, traces, layout, plotlyConfig);
 }
 
 async function loadEnergySummary() {
@@ -510,15 +487,8 @@ async function loadEnergySummary() {
             pieUrl = `/api/optimization/energy-summary?scenario=${scenario}`;
         }
 
-        // Sidebar KPI: scenario mode uses selected scenario, weather mode uses S4
-        let kpiUrl;
-        if (currentMode === 'weather') {
-            kpiUrl = '/api/optimization/energy-summary?scenario=S4';
-        } else {
-            const select = document.getElementById('scenario-select');
-            const scenario = select ? select.value : 'S4';
-            kpiUrl = `/api/optimization/energy-summary?scenario=${scenario}`;
-        }
+        // Sidebar KPI: always S4 (only S4 has reliable annual data)
+        const kpiUrl = '/api/optimization/energy-summary?scenario=S4';
 
         const [pieRes, kpiRes] = await Promise.all([fetch(pieUrl), fetch(kpiUrl)]);
         const pieResult = await pieRes.json();
@@ -620,50 +590,6 @@ function renderScenariosTable(metrics) {
 
     html += '</tbody></table>';
     container.innerHTML = html;
-}
-
-async function loadDeviceStatus() {
-    try {
-        const response = await fetch('/api/planning/device-status');
-        const result = await response.json();
-
-        if (result.success) {
-            const d = result.data;
-
-            document.getElementById('device-solar-power').textContent =
-                d.pv_mw.toFixed(1) + ' MW';
-            document.getElementById('device-wind-power').textContent =
-                d.wind_mw.toFixed(1) + ' MW';
-            document.getElementById('device-storage-power').textContent =
-                d.battery_mwh.toFixed(1) + ' MWh';
-            document.getElementById('device-load-power').textContent =
-                d.battery_power_mw.toFixed(1) + ' MW';
-
-            // Update storage gauge with battery capacity info
-            const storageCapacity = document.getElementById('storage-capacity');
-            if (storageCapacity) storageCapacity.textContent = d.battery_mwh.toFixed(1) + ' MWh';
-            const storageCharge = document.getElementById('storage-charge');
-            if (storageCharge) storageCharge.textContent = d.battery_power_mw.toFixed(1) + ' MW';
-            const storageDischarge = document.getElementById('storage-discharge');
-            if (storageDischarge) storageDischarge.textContent = d.battery_power_mw.toFixed(1) + ' MW';
-
-            // Update alerts
-            const alertList = document.querySelector('.alert-list');
-            if (alertList && d.alerts && d.alerts.length > 0) {
-                alertList.innerHTML = d.alerts.map(a => `
-                    <div class="alert-item ${a.level}">
-                        <span class="alert-icon">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                        </span>
-                        <span class="alert-text">${a.text}</span>
-                        <span class="alert-time">${a.time}</span>
-                    </div>
-                `).join('');
-            }
-        }
-    } catch (error) {
-        console.error('加载设备状态失败:', error);
-    }
 }
 
 async function loadCommunityData(communityId) {
@@ -958,29 +884,6 @@ function renderH2PowerChart(data) {
     Plotly.newPlot(socDiv, socTraces, socLayout, plotlyConfig);
 }
 
-async function loadH2ShortageChart() {
-    try {
-        const response = await fetch('/api/optimization/chart/h2-shortage');
-        const result = await response.json();
-
-        if (result.success) {
-            renderH2ShortageChart(result.data);
-        }
-    } catch (error) {
-        console.error('加载氢气短缺分析失败:', error);
-    }
-}
-
-function renderH2ShortageChart(imageData) {
-    const container = document.getElementById('h2-shortage-chart');
-    if (!container) return;
-    const img = document.createElement('img');
-    img.src = `data:image/png;base64,${imageData}`;
-    img.style.cssText = 'width:100%;height:auto;max-height:300px;object-fit:contain;';
-    container.innerHTML = '';
-    container.appendChild(img);
-}
-
 async function loadDRPowerChart() {
     let url;
     if (currentMode === 'weather') {
@@ -1264,10 +1167,4 @@ Plotly.setPlotConfig(plotlyDarkTemplate);
 
 document.addEventListener('DOMContentLoaded', () => {
     loadOverviewData();
-
-    setInterval(() => {
-        if (currentView === 'overview') {
-            loadDeviceStatus();
-        }
-    }, 30000);
 });

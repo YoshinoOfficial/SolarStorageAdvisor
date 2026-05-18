@@ -199,142 +199,11 @@
                         </div>
                         <div id="cost-breakdown-chart" class="chart-container"></div>
                     </div>
-                </div>
-
-                <!-- Row 3: Static analysis charts (image-based) -->
-                <div class="analysis-row">
                     <div class="panel-card chart-panel">
                         <div class="panel-header">
-                            <h3>经济性对比</h3>
-                        </div>
-                        <div id="economic-chart" class="chart-container"></div>
-                    </div>
-                    <div class="panel-card chart-panel">
-                        <div class="panel-header">
-                            <h3>可再生能源利用</h3>
-                        </div>
-                        <div id="renewable-chart" class="chart-container"></div>
-                    </div>
-                    <div class="panel-card chart-panel">
-                        <div class="panel-header">
-                            <h3>碳排放分析</h3>
-                        </div>
-                        <div id="carbon-chart" class="chart-container"></div>
-                    </div>
-                    <div class="panel-card chart-panel">
-                        <div class="panel-header">
-                            <h3>氢气短缺分析</h3>
+                            <h3>氢气短缺情况</h3>
                         </div>
                         <div id="h2-shortage-chart" class="chart-container"></div>
-                    </div>
-                </div>
-
-                <!-- Row 4: Device Status + SOC + Alerts (placeholder) -->
-                <div class="secondary-row">
-                    <div class="panel-card">
-                        <div class="panel-header">
-                            <h3>设备状态</h3>
-                        </div>
-                        <div class="device-status-list">
-                            <div class="device-item">
-                                <div class="device-icon solar">
-                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-                                </div>
-                                <div class="device-info">
-                                    <span class="device-name">光伏总装机</span>
-                                    <span class="device-power" id="device-solar-power">-- MW</span>
-                                </div>
-                                <div class="device-status-badge online">正常</div>
-                            </div>
-                            <div class="device-item">
-                                <div class="device-icon wind">
-                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg>
-                                </div>
-                                <div class="device-info">
-                                    <span class="device-name">风电总装机</span>
-                                    <span class="device-power" id="device-wind-power">-- MW</span>
-                                </div>
-                                <div class="device-status-badge online">正常</div>
-                            </div>
-                            <div class="device-item">
-                                <div class="device-icon storage">
-                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H7V4h10v16zm-5-1h2V7h-2v12z"/></svg>
-                                </div>
-                                <div class="device-info">
-                                    <span class="device-name">电池储能</span>
-                                    <span class="device-power" id="device-storage-power">-- MWh</span>
-                                </div>
-                                <div class="device-status-badge online">正常</div>
-                            </div>
-                            <div class="device-item">
-                                <div class="device-icon load">
-                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
-                                </div>
-                                <div class="device-info">
-                                    <span class="device-name">储能功率</span>
-                                    <span class="device-power" id="device-load-power">-- MW</span>
-                                </div>
-                                <div class="device-status-badge online">正常</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="panel-card">
-                        <div class="panel-header">
-                            <h3>储能状态</h3>
-                        </div>
-                        <div class="storage-status">
-                            <div class="soc-gauge">
-                                <div class="gauge-circle">
-                                    <svg viewBox="0 0 120 120">
-                                        <circle cx="60" cy="60" r="54" fill="none" stroke="#0f2440" stroke-width="8"/>
-                                        <circle cx="60" cy="60" r="54" fill="none" stroke="url(#socGradient)" stroke-width="8"
-                                            stroke-dasharray="339.292" stroke-dashoffset="339.292"
-                                            stroke-linecap="round" transform="rotate(-90 60 60)" id="soc-arc"/>
-                                        <defs>
-                                            <linearGradient id="socGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                                <stop offset="0%" stop-color="#00d4ff"/>
-                                                <stop offset="100%" stop-color="#00ff88"/>
-                                            </linearGradient>
-                                        </defs>
-                                    </svg>
-                                    <div class="gauge-text">
-                                        <span class="gauge-value" id="soc-value">--</span>
-                                        <span class="gauge-unit">%</span>
-                                    </div>
-                                </div>
-                                <div class="gauge-label">荷电状态 (SOC)</div>
-                            </div>
-                            <div class="storage-metrics">
-                                <div class="storage-metric">
-                                    <span class="label">容量</span>
-                                    <span class="value" id="storage-capacity">-- kWh</span>
-                                </div>
-                                <div class="storage-metric">
-                                    <span class="label">充电功率</span>
-                                    <span class="value" id="storage-charge">-- kW</span>
-                                </div>
-                                <div class="storage-metric">
-                                    <span class="label">放电功率</span>
-                                    <span class="value" id="storage-discharge">-- kW</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="panel-card">
-                        <div class="panel-header">
-                            <h3>今日告警</h3>
-                        </div>
-                        <div class="alert-list">
-                            <div class="alert-item info">
-                                <span class="alert-icon">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                                </span>
-                                <span class="alert-text">系统运行正常</span>
-                                <span class="alert-time">--:--</span>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -344,7 +213,7 @@
                 <div class="right-panel">
                     <div class="panel-card sidebar-metrics">
                         <div class="panel-header">
-                            <h3>核心指标</h3>
+                            <h3>S4场景年核心指标</h3>
                         </div>
                         <div class="sidebar-compact-kpi">
                             <div class="metric-card">
