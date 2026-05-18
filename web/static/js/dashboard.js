@@ -498,26 +498,39 @@ function renderCarbonChart(imageData) {
 
 async function loadEnergySummary() {
     try {
-        let url;
+        // Pie chart: use current selection
+        let pieUrl;
         if (currentMode === 'weather') {
             const select = document.getElementById('weather-select');
             const weather = select ? select.value : 'Sunny_LowWind';
-            url = `/api/optimization/energy-summary?mode=weather&weather=${weather}`;
+            pieUrl = `/api/optimization/energy-summary?mode=weather&weather=${weather}`;
         } else {
             const select = document.getElementById('scenario-select');
             const scenario = select ? select.value : 'S4';
-            url = `/api/optimization/energy-summary?scenario=${scenario}`;
+            pieUrl = `/api/optimization/energy-summary?scenario=${scenario}`;
         }
-        const response = await fetch(url);
-        const result = await response.json();
 
-        if (result.success) {
-            const data = result.data;
+        // Sidebar KPI: scenario mode uses selected scenario, weather mode uses S4
+        let kpiUrl;
+        if (currentMode === 'weather') {
+            kpiUrl = '/api/optimization/energy-summary?scenario=S4';
+        } else {
+            const select = document.getElementById('scenario-select');
+            const scenario = select ? select.value : 'S4';
+            kpiUrl = `/api/optimization/energy-summary?scenario=${scenario}`;
+        }
 
-            if (currentMode !== 'weather') {
-                document.getElementById('total-generation').textContent =
-                    (data.total / 1000).toFixed(1);
-            }
+        const [pieRes, kpiRes] = await Promise.all([fetch(pieUrl), fetch(kpiUrl)]);
+        const pieResult = await pieRes.json();
+        const kpiResult = await kpiRes.json();
+
+        if (kpiResult.success) {
+            document.getElementById('total-generation').textContent =
+                (kpiResult.data.total / 1000).toFixed(1);
+        }
+
+        if (pieResult.success) {
+            const data = pieResult.data;
 
             const traces = [{
                 values: [data.pv, data.wind, data.grid, data.chp, data.fc, data.discharge],
