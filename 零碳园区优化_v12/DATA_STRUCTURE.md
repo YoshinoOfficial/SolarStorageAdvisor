@@ -44,6 +44,8 @@
 
 根目录包含 5 个 CSV 结果文件和若干 MATLAB 源码/数据文件。
 
+> **关于重复行**：部分 CSV 文件（`year_typical_scenario_metric_table.csv`、`year_annual_weighted_summary.csv`）每个场景/天气包含 2 行数据，分别对应**集中式优化（centralized）**和 **ADMM分布式优化**两种方法的结果。调用时只需取集中式结果，即每组的第一行。有 `Method` 列的文件（如 `comparison_metric_table.csv`）可通过 `Method.str.contains('centralized')` 筛选；无 `Method` 列的文件使用 `drop_duplicates(subset=['TypicalScenario'])` 去重。
+
 ### 2.1 comparison_metric_table.csv — 场景对比优化指标表
 
 **用途**：4种场景 × 2种方法的优化目标和收敛指标对比

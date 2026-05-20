@@ -194,6 +194,7 @@ function onCommunitySelectChange() {
 
 async function loadOverviewData() {
     loadAnnualSummary();
+    loadS4AnnualKPIs();
     loadDailyKPIs();
     loadParkPowerChart();
     loadH2PowerChart();
@@ -244,11 +245,8 @@ async function loadAnnualSummary() {
         if (result.success && result.data.length > 0) {
             const summary = result.data[0];
 
-            // Annual cost will be updated from planning cost breakdown for consistency
             document.getElementById('annual-carbon').textContent =
                 summary.annual_carbon_emission.toFixed(0);
-            document.getElementById('renewable-ratio').textContent =
-                summary.annual_renewable_use_rate.toFixed(1);
             document.getElementById('annual-grid-energy').textContent =
                 summary.annual_grid_energy.toFixed(0);
             document.getElementById('annual-gas-energy').textContent =
@@ -261,13 +259,28 @@ async function loadAnnualSummary() {
                 summary.annual_renewable_curtailment.toFixed(0);
             document.getElementById('annual-h2-shortage').textContent =
                 summary.annual_h2_shortage.toFixed(0);
-
-            const totalGeneration = summary.annual_renewable_use / 1000;
-            document.getElementById('total-generation').textContent =
-                totalGeneration.toFixed(1);
         }
     } catch (error) {
         console.error('加载年度汇总失败:', error);
+    }
+}
+
+async function loadS4AnnualKPIs() {
+    try {
+        const res = await fetch('/api/optimization/s4-annual-kpis');
+        const result = await res.json();
+
+        if (result.success) {
+            const d = result.data;
+            document.getElementById('total-generation').textContent =
+                (d.annual_renewable_generation_mwh / 1000).toFixed(1);
+            document.getElementById('annual-cost').textContent =
+                (d.annual_cost / 10000).toFixed(0);
+            document.getElementById('renewable-ratio').textContent =
+                d.renewable_use_rate.toFixed(1);
+        }
+    } catch (e) {
+        console.error('加载S4年指标失败:', e);
     }
 }
 
@@ -475,32 +488,22 @@ function renderH2ShortageChart(data) {
 
 async function loadEnergySummary() {
     try {
-        // Pie chart: use current selection
-        let pieUrl;
+        let url;
         if (currentMode === 'weather') {
             const select = document.getElementById('weather-select');
             const weather = select ? select.value : 'Sunny_LowWind';
-            pieUrl = `/api/optimization/energy-summary?mode=weather&weather=${weather}`;
+            url = `/api/optimization/energy-summary?mode=weather&weather=${weather}`;
         } else {
             const select = document.getElementById('scenario-select');
             const scenario = select ? select.value : 'S4';
-            pieUrl = `/api/optimization/energy-summary?scenario=${scenario}`;
+            url = `/api/optimization/energy-summary?scenario=${scenario}`;
         }
 
-        // Sidebar KPI: always S4 (only S4 has reliable annual data)
-        const kpiUrl = '/api/optimization/energy-summary?scenario=S4';
+        const res = await fetch(url);
+        const result = await res.json();
 
-        const [pieRes, kpiRes] = await Promise.all([fetch(pieUrl), fetch(kpiUrl)]);
-        const pieResult = await pieRes.json();
-        const kpiResult = await kpiRes.json();
-
-        if (kpiResult.success) {
-            document.getElementById('total-generation').textContent =
-                (kpiResult.data.total / 1000).toFixed(1);
-        }
-
-        if (pieResult.success) {
-            const data = pieResult.data;
+        if (result.success) {
+            const data = result.data;
 
             const traces = [{
                 values: [data.pv, data.wind, data.grid, data.chp, data.fc, data.discharge],
@@ -992,8 +995,6 @@ async function loadCostBreakdownChart() {
 
         if (result.success) {
             renderCostBreakdownChart(result.data);
-            document.getElementById('annual-cost').textContent =
-                (result.data.total / 10000).toFixed(2);
         }
     } catch (e) {
         console.error('加载年度成本构成失败:', e);
@@ -1165,6 +1166,31 @@ const plotlyDarkTemplate = {
 
 Plotly.setPlotConfig(plotlyDarkTemplate);
 
+async function loadWeatherOptions() {
+    try {
+        const res = await fetch('/api/weather/config');
+        const result = await res.json();
+        if (!result.success) return;
+
+        const selectIds = ['weather-select', 'h2-weather-select', 'dr-weather-select', 'community-weather-select'];
+        selectIds.forEach(id => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            const prev = sel.value;
+            sel.innerHTML = '';
+            result.data.forEach((item, i) => {
+                const opt = document.createElement('option');
+                opt.value = item.scenario;
+                opt.textContent = `${item.name} (${item.days}天)`;
+                if (item.scenario === prev || (i === 0 && !prev)) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        });
+    } catch (e) {
+        console.error('加载天气选项失败:', e);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    loadOverviewData();
+    loadWeatherOptions().then(() => loadOverviewData());
 });

@@ -500,6 +500,76 @@ def get_typical_metrics():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/weather/config', methods=['GET'])
+def get_weather_config():
+    try:
+        metrics_path = os.path.join(OPTIMIZATION_DATA_DIR, 'year_typical_scenario_metric_table.csv')
+        df = pd.read_csv(metrics_path)
+        df = df.drop_duplicates(subset=['TypicalScenario'])
+
+        data = []
+        for _, row in df.iterrows():
+            data.append({
+                'scenario': row['TypicalScenario'],
+                'name': row['TypicalScenarioCN'],
+                'days': int(row['RepresentativeDays'])
+            })
+
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/weather/update', methods=['POST'])
+def update_weather_config():
+    try:
+        days = request.json.get('days', {})
+
+        valid_scenarios = ['Sunny_LowWind', 'Sunny_HighWind', 'Cloudy_MidWind', 'Rainy_LowWind', 'Rainy_HighWind']
+        if set(days.keys()) != set(valid_scenarios):
+            return jsonify({'success': False, 'error': '天气场景名称不正确'}), 400
+
+        for k, v in days.items():
+            if not isinstance(v, int) or v < 0:
+                return jsonify({'success': False, 'error': f'{k} 的天数必须为非负整数'}), 400
+
+        total = sum(days.values())
+        if total != 365:
+            return jsonify({'success': False, 'error': f'总天数必须为365天，当前为{total}天'}), 400
+
+        metrics_path = os.path.join(OPTIMIZATION_DATA_DIR, 'year_typical_scenario_metric_table.csv')
+        df = pd.read_csv(metrics_path)
+
+        annual_cols = [c for c in df.columns if c.startswith('Annual') and c != 'AnnualObjective_Yuan']
+        daily_map = {}
+        for col in ['TotalObjective_Yuan', 'GridEnergy_MWh', 'GasEnergy_MWhth',
+                     'CarbonEmission_tCO2', 'CarbonQuota_tCO2', 'CarbonSurplusBeforeTrade_tCO2',
+                     'CarbonBuyMarket_tCO2', 'CarbonSellMarket_tCO2', 'CarbonTradeAbs_tCO2',
+                     'CarbonUnusedAllowance_tCO2', 'RenewableCurtailment_MWh', 'H2Shortage_kg']:
+            if col in df.columns:
+                daily_map[col] = col
+
+        for scenario, new_days in days.items():
+            mask = df['TypicalScenario'] == scenario
+            df.loc[mask, 'RepresentativeDays'] = new_days
+
+            for daily_col, _ in daily_map.items():
+                annual_col = 'Annual' + daily_col.replace('_Yuan', '_Yuan').replace('_MWh', '_MWh').replace('_tCO2', '_tCO2').replace('_kg', '_kg')
+                if annual_col in df.columns and daily_col in df.columns:
+                    df.loc[mask, annual_col] = df.loc[mask, daily_col] * new_days
+
+            if 'AnnualObjective_Yuan' in df.columns and 'TotalObjective_Yuan' in df.columns:
+                df.loc[mask, 'AnnualObjective_Yuan'] = df.loc[mask, 'TotalObjective_Yuan'] * new_days
+            if 'AnnualRenewableAvailable_MWh' in df.columns and 'RenewableAvailable_MWh' in df.columns:
+                df.loc[mask, 'AnnualRenewableAvailable_MWh'] = df.loc[mask, 'RenewableAvailable_MWh'] * new_days
+            if 'AnnualRenewableUse_MWh' in df.columns and 'RenewableUse_MWh' in df.columns:
+                df.loc[mask, 'AnnualRenewableUse_MWh'] = df.loc[mask, 'RenewableUse_MWh'] * new_days
+
+        df.to_csv(metrics_path, index=False)
+
+        return jsonify({'success': True, 'message': '天气配置已保存'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/optimization/annual-summary', methods=['GET'])
 def get_annual_summary():
     try:
@@ -525,6 +595,28 @@ def get_annual_summary():
             })
         
         return jsonify({'success': True, 'data': results})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/optimization/s4-annual-kpis', methods=['GET'])
+def get_s4_annual_kpis():
+    try:
+        metrics_path = os.path.join(OPTIMIZATION_DATA_DIR, 'year_typical_scenario_metric_table.csv')
+        df = pd.read_csv(metrics_path)
+        df = df.drop_duplicates(subset=['TypicalScenario'])
+
+        annual_cost = float((df['TotalObjective_Yuan'] * df['RepresentativeDays']).sum())
+        annual_gen = float((df['RenewableAvailable_MWh'] * df['RepresentativeDays']).sum())
+        annual_use = float((df['RenewableUse_MWh'] * df['RepresentativeDays']).sum())
+        renewable_rate = annual_use / annual_gen * 100 if annual_gen > 0 else 0
+
+        kpis = {
+            'annual_cost': round(annual_cost, 0),
+            'annual_renewable_generation_mwh': round(annual_gen, 1),
+            'renewable_use_rate': round(renewable_rate, 1)
+        }
+
+        return jsonify({'success': True, 'data': kpis})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

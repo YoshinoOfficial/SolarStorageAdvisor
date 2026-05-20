@@ -740,8 +740,91 @@ async function confirmModal() {
     }
 }
 
+async function loadWeatherConfig() {
+    try {
+        const res = await fetch('/api/weather/config');
+        const result = await res.json();
+
+        if (result.success) {
+            const body = document.getElementById('weather-config-body');
+            body.innerHTML = '';
+            result.data.forEach(item => {
+                const pct = (item.days / 365 * 100).toFixed(1);
+                body.innerHTML += `
+                    <tr>
+                        <td>${item.name} (${item.scenario})</td>
+                        <td><input type="number" class="weather-days-input" data-scenario="${item.scenario}" value="${item.days}" min="0" max="365" onchange="updateWeatherTotal()"></td>
+                        <td class="weather-pct">${pct}%</td>
+                    </tr>
+                `;
+            });
+            updateWeatherTotal();
+        }
+    } catch (e) {
+        console.error('加载天气配置失败:', e);
+    }
+}
+
+function updateWeatherTotal() {
+    const inputs = document.querySelectorAll('.weather-days-input');
+    let total = 0;
+    inputs.forEach(input => {
+        total += parseInt(input.value) || 0;
+    });
+    document.getElementById('weather-total-days').textContent = total;
+
+    inputs.forEach(input => {
+        const pct = ((parseInt(input.value) || 0) / total * 100).toFixed(1);
+        input.closest('tr').querySelector('.weather-pct').textContent = pct + '%';
+    });
+
+    const statusEl = document.getElementById('weather-config-status');
+    if (total !== 365) {
+        statusEl.textContent = `总天数为 ${total}，需为 365`;
+        statusEl.style.color = '#e74c3c';
+    } else {
+        statusEl.textContent = '';
+    }
+}
+
+async function saveWeatherConfig() {
+    const inputs = document.querySelectorAll('.weather-days-input');
+    const days = {};
+    inputs.forEach(input => {
+        days[input.dataset.scenario] = parseInt(input.value) || 0;
+    });
+
+    const total = Object.values(days).reduce((a, b) => a + b, 0);
+    if (total !== 365) {
+        document.getElementById('weather-config-status').textContent = `总天数必须为365天，当前为${total}天`;
+        document.getElementById('weather-config-status').style.color = '#e74c3c';
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/weather/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({days})
+        });
+        const result = await res.json();
+
+        const statusEl = document.getElementById('weather-config-status');
+        if (result.success) {
+            statusEl.textContent = '保存成功';
+            statusEl.style.color = '#2ecc71';
+        } else {
+            statusEl.textContent = result.error || '保存失败';
+            statusEl.style.color = '#e74c3c';
+        }
+    } catch (e) {
+        console.error('保存天气配置失败:', e);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
+    loadWeatherConfig();
     loadConfig();
     loadParkPowerChart();
     setTimeout(loadCommunitySolarCurve, 1000);

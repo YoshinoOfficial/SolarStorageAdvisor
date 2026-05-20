@@ -20,13 +20,43 @@
         </header>
 
         <nav class="tab-nav">
-            <button class="tab-btn active" data-tab="chart">功率曲线图</button>
+            <button class="tab-btn active" data-tab="weather">天气配置</button>
+            <button class="tab-btn" data-tab="chart">功率曲线图</button>
             <button class="tab-btn" data-tab="config">设备配置</button>
             <button class="tab-btn" data-tab="optimization">优化算法</button>
         </nav>
 
         <div class="tab-content">
-            <div id="tab-chart" class="tab-pane active">
+            <div id="tab-weather" class="tab-pane active">
+                <div class="config-section">
+                    <h3>年度典型天气代表天数配置</h3>
+                    <p class="config-desc">修改各天气类型的代表天数，总和必须为 365 天。修改后 dashboard 的年运行成本、总新能源发电量、新能源利用率会根据新天数重新计算。</p>
+                    <table class="weather-config-table">
+                        <thead>
+                            <tr>
+                                <th>天气场景</th>
+                                <th>代表天数</th>
+                                <th>占比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="weather-config-body">
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td><strong>合计</strong></td>
+                                <td><strong id="weather-total-days">365</strong></td>
+                                <td><strong>100%</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div class="weather-config-actions">
+                        <button class="btn-primary" onclick="saveWeatherConfig()">保存配置</button>
+                        <button class="btn-secondary" onclick="loadWeatherConfig()">重置</button>
+                        <span id="weather-config-status" class="config-status"></span>
+                    </div>
+                </div>
+            </div>
+            <div id="tab-chart" class="tab-pane">
                 <div class="chart-sub-tabs">
                     <button class="chart-sub-tab-btn active" data-chart-sub-tab="park">园区总功率曲线</button>
                     <button class="chart-sub-tab-btn" data-chart-sub-tab="community">分园区功率曲线</button>
