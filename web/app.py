@@ -9,6 +9,7 @@ from flask import Flask, render_template, jsonify, request
 import sys
 import os
 import threading
+import subprocess
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
@@ -32,7 +33,8 @@ from config.config_manager import (
     create_new_panel_config, delete_panel_config, save_panel_config,
     list_communities, get_current_community, set_current_community,
     list_wind_communities, get_current_wind_community, set_current_wind_community,
-    get_wind_coefficient, set_wind_coefficient, get_wind_turbine_config
+    get_wind_coefficient, set_wind_coefficient, get_wind_turbine_config,
+    get_matlab_path, set_matlab_path, load_matlab_config
 )
 
 app = Flask(__name__, 
@@ -567,6 +569,260 @@ def update_weather_config():
         df.to_csv(metrics_path, index=False)
 
         return jsonify({'success': True, 'message': '天气配置已保存'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+SCENARIO_DIR = os.path.join(OPTIMIZATION_DATA_DIR, '1-Day Scenarios')
+TYPICAL_SCENARIO_IDS = [116, 178, 137, 183, 40]
+TYPICAL_SCENARIO_NAMES = {
+    116: '晴天少风 (Sunny_LowWind)',
+    178: '晴天多风 (Sunny_HighWind)',
+    137: '多云中风 (Cloudy_MidWind)',
+    183: '阴天少风 (Rainy_LowWind)',
+    40:  '阴天多风 (Rainy_HighWind)',
+}
+
+@app.route('/api/scenario-power/list', methods=['GET'])
+def get_scenario_power_list():
+    scenarios = []
+    for sid in TYPICAL_SCENARIO_IDS:
+        scenarios.append({'id': sid, 'name': TYPICAL_SCENARIO_NAMES.get(sid, str(sid))})
+    return jsonify({'success': True, 'data': scenarios})
+
+@app.route('/api/scenario-power/<int:scenario_id>', methods=['GET'])
+def get_scenario_power(scenario_id):
+    try:
+        if scenario_id not in TYPICAL_SCENARIO_IDS:
+            return jsonify({'success': False, 'error': f'场景 {scenario_id} 不在典型天气列表中'}), 400
+
+        csv_path = os.path.join(SCENARIO_DIR, f'scenario_{scenario_id:03d}.csv')
+        if not os.path.exists(csv_path):
+            return jsonify({'success': False, 'error': f'文件不存在: scenario_{scenario_id:03d}.csv'}), 404
+
+        df = pd.read_csv(csv_path)
+        cols = ['node_22_wind', 'node_25_wind', 'node_18_PV', 'node_33_PV']
+        for c in cols:
+            if c not in df.columns:
+                return jsonify({'success': False, 'error': f'CSV缺少列: {c}'}), 400
+
+        # Extract hour from timestamp for grouping
+        df['hour'] = pd.to_datetime(df['timestamp']).dt.hour
+        hourly = df.groupby('hour')[cols].mean().reset_index()
+
+        hourly_data = []
+        for _, row in hourly.iterrows():
+            hourly_data.append({
+                'hour': int(row['hour']),
+                'node_22_wind': round(float(row['node_22_wind']), 6),
+                'node_25_wind': round(float(row['node_25_wind']), 6),
+                'node_18_PV': round(float(row['node_18_PV']), 6),
+                'node_33_PV': round(float(row['node_33_PV']), 6),
+            })
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'scenario_id': scenario_id,
+                'name': TYPICAL_SCENARIO_NAMES.get(scenario_id, str(scenario_id)),
+                'hourly': hourly_data
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/scenario-power/<int:scenario_id>', methods=['POST'])
+def save_scenario_power(scenario_id):
+    try:
+        if scenario_id not in TYPICAL_SCENARIO_IDS:
+            return jsonify({'success': False, 'error': f'场景 {scenario_id} 不在典型天气列表中'}), 400
+
+        hourly = request.json.get('hourly', [])
+        if len(hourly) != 24:
+            return jsonify({'success': False, 'error': '需要24小时的数据'}), 400
+
+        csv_path = os.path.join(SCENARIO_DIR, f'scenario_{scenario_id:03d}.csv')
+        if not os.path.exists(csv_path):
+            return jsonify({'success': False, 'error': f'文件不存在: scenario_{scenario_id:03d}.csv'}), 404
+
+        original = pd.read_csv(csv_path)
+        first_ts = pd.to_datetime(original['timestamp'].iloc[0])
+        base_date = first_ts.date()
+
+        cols = ['node_22_wind', 'node_25_wind', 'node_18_PV', 'node_33_PV']
+        rows = []
+        for h_data in hourly:
+            h = int(h_data['hour'])
+            for q in range(4):
+                ts = pd.Timestamp(base_date) + pd.Timedelta(hours=h, minutes=15 * q)
+                row = {
+                    'scenario_id': scenario_id,
+                    'timestamp': ts.strftime('%Y-%m-%d %H:%M:%S'),
+                }
+                for c in cols:
+                    val = float(h_data.get(c, 0))
+                    row[c] = max(0.0, min(1.0, val))
+                rows.append(row)
+
+        out_df = pd.DataFrame(rows, columns=['scenario_id', 'timestamp'] + cols)
+        out_df.to_csv(csv_path, index=False)
+
+        return jsonify({'success': True, 'message': f'场景 {scenario_id} 风光功率已保存'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/scenario-power/import-csv', methods=['POST'])
+def import_scenario_csv():
+    try:
+        scenario_id = request.form.get('scenario_id')
+        if not scenario_id:
+            return jsonify({'success': False, 'error': '未指定场景ID'}), 400
+        scenario_id = int(scenario_id)
+        if scenario_id not in TYPICAL_SCENARIO_IDS:
+            return jsonify({'success': False, 'error': f'场景 {scenario_id} 不在典型天气列表中'}), 400
+
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': '未上传文件'}), 400
+
+        file = request.files['file']
+        if not file.filename.endswith('.csv'):
+            return jsonify({'success': False, 'error': '文件必须是CSV格式'}), 400
+
+        df = pd.read_csv(file)
+        required_cols = ['node_22_wind', 'node_25_wind', 'node_18_PV', 'node_33_PV']
+        for c in required_cols:
+            if c not in df.columns:
+                return jsonify({'success': False, 'error': f'缺少必需列: {c}'}), 400
+
+        n = len(df)
+        if n not in (24, 96):
+            return jsonify({'success': False, 'error': f'行数必须为24（小时）或96（15分钟），实际{n}行'}), 400
+
+        csv_path = os.path.join(SCENARIO_DIR, f'scenario_{scenario_id:03d}.csv')
+        if not os.path.exists(csv_path):
+            return jsonify({'success': False, 'error': f'目标文件不存在: scenario_{scenario_id:03d}.csv'}), 404
+
+        original = pd.read_csv(csv_path)
+        first_ts = pd.to_datetime(original['timestamp'].iloc[0])
+        base_date = first_ts.date()
+
+        if n == 96:
+            # 15-minute data: save directly, only fix scenario_id and clamp
+            rows = []
+            for i in range(96):
+                ts = pd.Timestamp(base_date) + pd.Timedelta(minutes=15 * i)
+                row = {'scenario_id': scenario_id, 'timestamp': ts.strftime('%Y-%m-%d %H:%M:%S')}
+                for c in required_cols:
+                    row[c] = max(0.0, min(1.0, float(df.iloc[i][c])))
+                rows.append(row)
+            hourly = []
+            for h in range(24):
+                chunk = df.iloc[h*4:(h+1)*4]
+                hourly.append({c: round(float(chunk[c].mean()), 6) for c in required_cols})
+        else:
+            # 24-row hourly data: expand to 96 quarter-hour rows
+            hourly = []
+            rows = []
+            for h in range(24):
+                h_data = {}
+                for c in required_cols:
+                    val = max(0.0, min(1.0, float(df.iloc[h][c])))
+                    h_data[c] = round(val, 6)
+                hourly.append(h_data)
+                for q in range(4):
+                    ts = pd.Timestamp(base_date) + pd.Timedelta(hours=h, minutes=15*q)
+                    row = {'scenario_id': scenario_id, 'timestamp': ts.strftime('%Y-%m-%d %H:%M:%S')}
+                    row.update(h_data)
+                    rows.append(row)
+
+        out_df = pd.DataFrame(rows, columns=['scenario_id', 'timestamp'] + required_cols)
+        out_df.to_csv(csv_path, index=False)
+
+        return jsonify({'success': True, 'message': f'已导入 {n} 行数据到场景 {scenario_id}', 'hourly': hourly})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/matlab/config', methods=['GET'])
+def get_matlab_config():
+    try:
+        config = load_matlab_config()
+        return jsonify({'success': True, 'data': config})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/matlab/config', methods=['POST'])
+def update_matlab_config():
+    try:
+        matlab_path = request.json.get('matlab_path', '')
+        if not matlab_path:
+            return jsonify({'success': False, 'error': 'MATLAB路径不能为空'}), 400
+        set_matlab_path(matlab_path)
+        return jsonify({'success': True, 'message': 'MATLAB路径已保存'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/scenario-power/save-and-rerun', methods=['POST'])
+def save_scenario_power_and_rerun():
+    try:
+        hourly_data = request.json.get('hourly_data', {})
+        if not hourly_data:
+            return jsonify({'success': False, 'error': '没有收到功率数据'}), 400
+
+        # Step 1: Save all 5 scenario CSVs
+        cols = ['node_22_wind', 'node_25_wind', 'node_18_PV', 'node_33_PV']
+        saved_count = 0
+        for sid_str, hourly in hourly_data.items():
+            sid = int(sid_str)
+            if sid not in TYPICAL_SCENARIO_IDS:
+                continue
+            csv_path = os.path.join(SCENARIO_DIR, f'scenario_{sid:03d}.csv')
+            if not os.path.exists(csv_path):
+                continue
+            original = pd.read_csv(csv_path)
+            first_ts = pd.to_datetime(original['timestamp'].iloc[0])
+            base_date = first_ts.date()
+            rows = []
+            for h_data in hourly:
+                h = int(h_data['hour'])
+                for q in range(4):
+                    ts = pd.Timestamp(base_date) + pd.Timedelta(hours=h, minutes=15 * q)
+                    row = {'scenario_id': sid, 'timestamp': ts.strftime('%Y-%m-%d %H:%M:%S')}
+                    for c in cols:
+                        row[c] = max(0.0, min(1.0, float(h_data.get(c, 0))))
+                    rows.append(row)
+            out_df = pd.DataFrame(rows, columns=['scenario_id', 'timestamp'] + cols)
+            out_df.to_csv(csv_path, index=False)
+            saved_count += 1
+
+        # Step 2: Call MATLAB to run main_year.m
+        matlab_exe = get_matlab_path()
+        matlab_cmd = "cd('零碳园区优化_v12'); main_year; exit;"
+
+        proc = subprocess.run(
+            [matlab_exe, '-batch', matlab_cmd],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=1800
+        )
+
+        if proc.returncode != 0:
+            stderr_tail = proc.stderr[-2000:] if len(proc.stderr) > 2000 else proc.stderr
+            return jsonify({
+                'success': False,
+                'error': f'MATLAB运算失败 (returncode={proc.returncode})',
+                'stderr': stderr_tail
+            }), 500
+
+        stdout_tail = proc.stdout[-1000:] if len(proc.stdout) > 1000 else proc.stdout
+        return jsonify({
+            'success': True,
+            'message': f'已保存 {saved_count} 个场景并完成MATLAB运算',
+            'stdout': stdout_tail
+        })
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'error': 'MATLAB运算超时（超过30分钟）'}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

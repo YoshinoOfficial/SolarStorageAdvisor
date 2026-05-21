@@ -28,72 +28,66 @@ function initTabs() {
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const tabId = btn.dataset.tab;
-            
+
             tabBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             document.querySelectorAll('.tab-pane').forEach(pane => {
                 pane.classList.remove('active');
             });
             document.getElementById('tab-' + tabId).classList.add('active');
-            
-            if (tabId === 'chart') {
-                loadParkPowerChart();
-            } else if (tabId === 'optimization') {
-                loadOptimizationData();
-            }
-        });
-    });
-    
-    const chartSubTabBtns = document.querySelectorAll('.chart-sub-tab-btn');
-    chartSubTabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const subTabId = btn.dataset.chartSubTab;
-            
-            chartSubTabBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            document.querySelectorAll('.chart-sub-tab-content').forEach(pane => {
-                pane.classList.remove('active');
-            });
-            document.getElementById('chart-sub-tab-' + subTabId).classList.add('active');
-            
-            if (subTabId === 'park') {
-                loadParkPowerChart();
-            }
-            if (subTabId === 'community') {
-                loadChartCommunityPower();
-            }
-        });
-    });
-    
-    const subTabBtns = document.querySelectorAll('.sub-tab-btn');
-    subTabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const subTabId = btn.dataset.subTab;
-            
-            subTabBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            document.querySelectorAll('.sub-tab-content').forEach(pane => {
-                pane.classList.remove('active');
-            });
-            document.getElementById('sub-tab-' + subTabId).classList.add('active');
-            
-            if (subTabId === 'convergence') {
+
+            if (tabId === 'optimization') {
                 loadConvergenceChart();
             }
         });
     });
-    
+
+    const weatherSubTabBtns = document.querySelectorAll('.weather-sub-tab-btn');
+    weatherSubTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const subTabId = btn.dataset.weatherSubTab;
+            weatherSubTabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.weather-sub-tab-content').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            document.getElementById('weather-sub-tab-' + subTabId).classList.add('active');
+            if (subTabId === 'power') {
+                loadScenarioPower().then(() => {
+                    const activeMethod = document.querySelector('.power-method-btn.active');
+                    if (activeMethod && activeMethod.dataset.powerMethod === 'chart') {
+                        renderScenarioDragChart();
+                    }
+                });
+            }
+        });
+    });
+
+    const powerMethodBtns = document.querySelectorAll('.power-method-btn');
+    powerMethodBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const methodId = btn.dataset.powerMethod;
+            powerMethodBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.power-method-content').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            document.getElementById('power-method-' + methodId).classList.add('active');
+            if (methodId === 'chart') {
+                renderScenarioDragChart();
+            }
+        });
+    });
+
     const configSubTabBtns = document.querySelectorAll('.config-sub-tab-btn');
     configSubTabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const subTabId = btn.dataset.configSubTab;
-            
+
             configSubTabBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             document.querySelectorAll('.config-sub-tab-content').forEach(pane => {
                 pane.classList.remove('active');
             });
@@ -822,47 +816,465 @@ async function saveWeatherConfig() {
     }
 }
 
+let scenarioPowerData = null;
+
+async function loadScenarioPower() {
+    const select = document.getElementById('scenario-power-select');
+    const scenarioId = select.value;
+    const statusEl = document.getElementById('scenario-power-status');
+    statusEl.textContent = '';
+    try {
+        const res = await fetch(`/api/scenario-power/${scenarioId}`);
+        const result = await res.json();
+        if (result.success) {
+            scenarioPowerData = result.data.hourly;
+            const body = document.getElementById('scenario-power-body');
+            body.innerHTML = '';
+            scenarioPowerData.forEach(item => {
+                const hh = String(item.hour).padStart(2, '0');
+                body.innerHTML += `
+                    <tr>
+                        <td>${hh}:00</td>
+                        <td><input type="number" class="scenario-power-input" data-col="node_22_wind" value="${item.node_22_wind}" step="0.01" min="0" max="1"></td>
+                        <td><input type="number" class="scenario-power-input" data-col="node_25_wind" value="${item.node_25_wind}" step="0.01" min="0" max="1"></td>
+                        <td><input type="number" class="scenario-power-input" data-col="node_18_PV" value="${item.node_18_PV}" step="0.01" min="0" max="1"></td>
+                        <td><input type="number" class="scenario-power-input" data-col="node_33_PV" value="${item.node_33_PV}" step="0.01" min="0" max="1"></td>
+                    </tr>
+                `;
+            });
+        } else {
+            statusEl.textContent = result.error || '加载失败';
+            statusEl.style.color = '#e74c3c';
+        }
+    } catch (e) {
+        console.error('加载场景功率失败:', e);
+        statusEl.textContent = '加载失败';
+        statusEl.style.color = '#e74c3c';
+    }
+}
+
+function renderScenarioDragChart() {
+    if (!scenarioPowerData) return;
+    const labels = scenarioPowerData.map(d => String(d.hour).padStart(2, '0') + ':00');
+    const cfg = [
+        { name: '风电 node_22', color: '#1e90ff', key: 'node_22_wind' },
+        { name: '风电 node_25', color: '#00bcd4', key: 'node_25_wind' },
+        { name: '光伏 node_18', color: '#ff9800', key: 'node_18_PV' },
+        { name: '光伏 node_33', color: '#f44336', key: 'node_33_PV' },
+    ];
+    const keys = cfg.map(c => c.key);
+    const traces = cfg.map(t => ({
+        x: labels,
+        y: scenarioPowerData.map(d => d[t.key]),
+        mode: 'lines+markers',
+        name: t.name,
+        line: { color: t.color, width: 2 },
+        marker: { color: t.color, size: 10 },
+    }));
+
+    const layout = {
+        title: { text: '点击选中节点，按住上下拖拽调整功率值', font: { size: 14 } },
+        xaxis: { title: '时刻', dtick: 2, fixedrange: true },
+        yaxis: { title: '标幺值 (p.u.)', range: [-0.05, 1.05], dtick: 0.1, fixedrange: true, autorange: false },
+        legend: { orientation: 'h', y: -0.18 },
+        margin: { t: 50, b: 80, l: 60, r: 20 },
+        dragmode: false,
+    };
+
+    function buildTraces() {
+        return cfg.map(t => ({
+            x: labels,
+            y: scenarioPowerData.map(d => d[t.key]),
+            mode: 'lines+markers',
+            name: t.name,
+            line: { color: t.color, width: 2 },
+            marker: { color: t.color, size: 10 },
+        }));
+    }
+
+    Plotly.newPlot('scenario-power-drag-chart', buildTraces(), layout, {
+        responsive: true,
+        displayModeBar: false,
+        scrollZoom: false,
+    });
+
+    const plotDiv = document.getElementById('scenario-power-drag-chart');
+    let selected = null;
+    let dragging = false;
+
+    function mouseYToData(clientY) {
+        const rect = plotDiv.getBoundingClientRect();
+        const yaxis = plotDiv._fullLayout.yaxis;
+        const marginTop = layout.margin.t;
+        const mouseFromTop = clientY - rect.top;
+        const plotY = mouseFromTop - marginTop;
+        const plotHeight = yaxis._length;
+        const range0 = yaxis.range[0];
+        const range1 = yaxis.range[1];
+        const dataVal = range1 + (range0 - range1) * (plotY / plotHeight);
+        return Math.max(0, Math.min(1, dataVal));
+    }
+
+    function refreshChart(traceIdx) {
+        Plotly.react('scenario-power-drag-chart', buildTraces(), plotDiv.layout, {
+            responsive: true,
+            displayModeBar: false,
+            scrollZoom: false,
+        });
+    }
+
+    plotDiv.on('plotly_click', (eventData) => {
+        if (!eventData || !eventData.points || !eventData.points.length) return;
+        const pt = eventData.points[0];
+        selected = { traceIdx: pt.curveNumber, pointIdx: pt.pointIndex };
+        plotDiv.style.cursor = 'ns-resize';
+    });
+
+    plotDiv.addEventListener('mousedown', (e) => {
+        if (!selected) return;
+        dragging = true;
+        e.preventDefault();
+    }, true);
+
+    document.addEventListener('mousemove', (e) => {
+        if (!dragging || !selected) return;
+        const newVal = mouseYToData(e.clientY);
+        const key = keys[selected.traceIdx];
+        scenarioPowerData[selected.pointIdx][key] = parseFloat(newVal.toFixed(4));
+        refreshChart(selected.traceIdx);
+        syncTableFromData();
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (dragging) {
+            dragging = false;
+            plotDiv.style.cursor = 'ns-resize';
+        }
+    });
+
+    plotDiv.addEventListener('mouseleave', () => {
+        if (!dragging) {
+            selected = null;
+            plotDiv.style.cursor = 'default';
+        }
+    });
+}
+
+function syncTableFromData() {
+    if (!scenarioPowerData) return;
+    const rows = document.querySelectorAll('#scenario-power-body tr');
+    rows.forEach((row, idx) => {
+        if (idx >= scenarioPowerData.length) return;
+        const inputs = row.querySelectorAll('.scenario-power-input');
+        const d = scenarioPowerData[idx];
+        if (inputs[0]) inputs[0].value = d.node_22_wind.toFixed(4);
+        if (inputs[1]) inputs[1].value = d.node_25_wind.toFixed(4);
+        if (inputs[2]) inputs[2].value = d.node_18_PV.toFixed(4);
+        if (inputs[3]) inputs[3].value = d.node_33_PV.toFixed(4);
+    });
+}
+
+function syncDataFromTable() {
+    if (!scenarioPowerData) return;
+    const rows = document.querySelectorAll('#scenario-power-body tr');
+    rows.forEach((row, idx) => {
+        if (idx >= scenarioPowerData.length) return;
+        const inputs = row.querySelectorAll('.scenario-power-input');
+        scenarioPowerData[idx].node_22_wind = parseFloat(inputs[0].value) || 0;
+        scenarioPowerData[idx].node_25_wind = parseFloat(inputs[1].value) || 0;
+        scenarioPowerData[idx].node_18_PV = parseFloat(inputs[2].value) || 0;
+        scenarioPowerData[idx].node_33_PV = parseFloat(inputs[3].value) || 0;
+    });
+}
+
+async function saveScenarioPower() {
+    const select = document.getElementById('scenario-power-select');
+    const scenarioId = select.value;
+    const statusEl = document.getElementById('scenario-power-status');
+
+    // Determine which method is active and sync data
+    const activeMethod = document.querySelector('.power-method-btn.active');
+    const method = activeMethod ? activeMethod.dataset.powerMethod : 'table';
+    if (method === 'table') {
+        syncDataFromTable();
+    }
+
+    if (!scenarioPowerData) {
+        statusEl.textContent = '请先加载数据';
+        statusEl.style.color = '#e74c3c';
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/scenario-power/${scenarioId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({hourly: scenarioPowerData})
+        });
+        const result = await res.json();
+        if (result.success) {
+            statusEl.textContent = '保存成功';
+            statusEl.style.color = '#2ecc71';
+        } else {
+            statusEl.textContent = result.error || '保存失败';
+            statusEl.style.color = '#e74c3c';
+        }
+    } catch (e) {
+        console.error('保存场景功率失败:', e);
+        statusEl.textContent = '保存失败';
+        statusEl.style.color = '#e74c3c';
+    }
+}
+
+function onScenarioSelectChange() {
+    loadScenarioPower();
+}
+
+let csvFileData = null;
+
+function onCsvFileSelected(input) {
+    const file = input.files[0];
+    const nameEl = document.getElementById('csv-file-name');
+    const previewArea = document.getElementById('csv-preview-area');
+    const statusEl = document.getElementById('csv-import-status');
+    statusEl.textContent = '';
+
+    if (!file) {
+        nameEl.textContent = '未选择文件';
+        previewArea.style.display = 'none';
+        csvFileData = null;
+        return;
+    }
+
+    nameEl.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const text = e.target.result;
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+
+            const requiredCols = ['node_22_wind', 'node_25_wind', 'node_18_PV', 'node_33_PV'];
+            const colIndices = requiredCols.map(c => {
+                const idx = headers.indexOf(c);
+                if (idx < 0) throw new Error(`缺少列: ${c}`);
+                return idx;
+            });
+
+            const tsIdx = headers.indexOf('timestamp');
+            const rows = [];
+            for (let i = 1; i < lines.length; i++) {
+                const cells = lines[i].split(',').map(c => c.trim());
+                if (cells.length < 4) continue;
+                const row = {
+                    timestamp: tsIdx >= 0 ? cells[tsIdx] : `行${i}`,
+                };
+                colIndices.forEach((idx, j) => {
+                    row[requiredCols[j]] = parseFloat(cells[idx]) || 0;
+                });
+                rows.push(row);
+            }
+
+            if (rows.length < 24) {
+                throw new Error(`数据行数不足：需要至少24行，实际${rows.length}行`);
+            }
+
+            csvFileData = rows;
+
+            // Preview first 10 rows
+            const body = document.getElementById('csv-preview-body');
+            body.innerHTML = '';
+            const previewRows = rows.slice(0, 10);
+            previewRows.forEach((row, idx) => {
+                body.innerHTML += `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>${row.timestamp}</td>
+                        <td>${row.node_22_wind.toFixed(4)}</td>
+                        <td>${row.node_25_wind.toFixed(4)}</td>
+                        <td>${row.node_18_PV.toFixed(4)}</td>
+                        <td>${row.node_33_PV.toFixed(4)}</td>
+                    </tr>
+                `;
+            });
+            if (rows.length > 10) {
+                body.innerHTML += `<tr><td colspan="6" style="text-align:center;color:#999;">... 共 ${rows.length} 行</td></tr>`;
+            }
+
+            previewArea.style.display = 'block';
+        } catch (err) {
+            nameEl.textContent = '解析失败：' + err.message;
+            previewArea.style.display = 'none';
+            csvFileData = null;
+        }
+    };
+    reader.readAsText(file);
+}
+
+async function importCsvToScenario() {
+    const statusEl = document.getElementById('csv-import-status');
+    const fileInput = document.getElementById('csv-file-input');
+    const select = document.getElementById('scenario-power-select');
+    const scenarioId = select.value;
+
+    if (!fileInput.files[0]) {
+        statusEl.textContent = '请先选择CSV文件';
+        statusEl.style.color = '#e74c3c';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('scenario_id', scenarioId);
+    formData.append('file', fileInput.files[0]);
+
+    statusEl.textContent = '导入中...';
+    statusEl.style.color = '#f39c12';
+
+    try {
+        const res = await fetch('/api/scenario-power/import-csv', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+        if (result.success) {
+            statusEl.textContent = result.message || '导入成功';
+            statusEl.style.color = '#2ecc71';
+            // Reload the scenario data to reflect the import
+            scenarioPowerData = result.hourly;
+            syncTableFromData();
+            // Re-render chart if visible
+            const activeMethod = document.querySelector('.power-method-btn.active');
+            if (activeMethod && activeMethod.dataset.powerMethod === 'chart') {
+                renderScenarioDragChart();
+            }
+        } else {
+            statusEl.textContent = result.error || '导入失败';
+            statusEl.style.color = '#e74c3c';
+        }
+    } catch (e) {
+        statusEl.textContent = '请求失败：' + e.message;
+        statusEl.style.color = '#e74c3c';
+    }
+}
+
+async function loadMatlabConfig() {
+    try {
+        const res = await fetch('/api/matlab/config');
+        const result = await res.json();
+        if (result.success) {
+            document.getElementById('matlab-path-input').value = result.data.matlab_path || '';
+        }
+    } catch (e) {
+        console.error('加载MATLAB配置失败:', e);
+    }
+}
+
+async function saveMatlabPath() {
+    const path = document.getElementById('matlab-path-input').value.trim();
+    const statusEl = document.getElementById('matlab-config-status');
+    if (!path) {
+        statusEl.textContent = '路径不能为空';
+        statusEl.style.color = '#e74c3c';
+        return;
+    }
+    try {
+        const res = await fetch('/api/matlab/config', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({matlab_path: path})
+        });
+        const result = await res.json();
+        if (result.success) {
+            statusEl.textContent = '保存成功';
+            statusEl.style.color = '#2ecc71';
+        } else {
+            statusEl.textContent = result.error || '保存失败';
+            statusEl.style.color = '#e74c3c';
+        }
+    } catch (e) {
+        statusEl.textContent = '保存失败';
+        statusEl.style.color = '#e74c3c';
+    }
+}
+
+async function saveAndRerun() {
+    const statusEl = document.getElementById('scenario-power-status');
+    const activeMethod = document.querySelector('.power-method-btn.active');
+    const method = activeMethod ? activeMethod.dataset.powerMethod : 'table';
+    if (method === 'table') {
+        syncDataFromTable();
+    }
+
+    if (!scenarioPowerData) {
+        statusEl.textContent = '请先加载数据';
+        statusEl.style.color = '#e74c3c';
+        return;
+    }
+
+    // Collect all 5 scenarios' data
+    const select = document.getElementById('scenario-power-select');
+    const currentId = select.value;
+    const scenarioIds = ['116', '178', '137', '183', '40'];
+
+    // We need data for all 5 scenarios, not just the current one.
+    // Fetch all and merge with current in-memory edits.
+    statusEl.textContent = '正在保存并调用MATLAB运算，请勿关闭页面...';
+    statusEl.style.color = '#f39c12';
+
+    // Sync current scenario data from table if needed
+    const hourlyData = {};
+    hourlyData[currentId] = scenarioPowerData.map(d => ({...d}));
+
+    // Fetch other scenarios from server
+    for (const sid of scenarioIds) {
+        if (sid === currentId) continue;
+        try {
+            const res = await fetch(`/api/scenario-power/${sid}`);
+            const result = await res.json();
+            if (result.success) {
+                hourlyData[sid] = result.data.hourly;
+            }
+        } catch (e) {
+            console.error(`获取场景${sid}数据失败:`, e);
+        }
+    }
+
+    // Show loading
+    showLoading();
+    try {
+        const res = await fetch('/api/scenario-power/save-and-rerun', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({hourly_data: hourlyData})
+        });
+        const result = await res.json();
+        hideLoading();
+        if (result.success) {
+            statusEl.textContent = '运算完成！' + (result.message || '');
+            statusEl.style.color = '#2ecc71';
+        } else {
+            statusEl.textContent = '运算失败：' + (result.error || '未知错误');
+            statusEl.style.color = '#e74c3c';
+            if (result.stderr) {
+                console.error('MATLAB stderr:', result.stderr);
+            }
+        }
+    } catch (e) {
+        hideLoading();
+        statusEl.textContent = '请求失败：' + e.message;
+        statusEl.style.color = '#e74c3c';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     loadWeatherConfig();
+    loadScenarioPower();
+    loadMatlabConfig();
     loadConfig();
-    loadParkPowerChart();
     setTimeout(loadCommunitySolarCurve, 1000);
     setTimeout(loadCommunityWindCurve, 1200);
 });
-
-async function loadOptimizationData() {
-    try {
-        const [scenariosRes, metricsRes, summaryRes, economicRes, renewableRes, carbonRes] = await Promise.all([
-            fetchAPI('/api/optimization/typical-scenarios'),
-            fetchAPI('/api/optimization/typical-metrics'),
-            fetchAPI('/api/optimization/annual-summary'),
-            fetchAPI('/api/optimization/chart/economic-comparison'),
-            fetchAPI('/api/optimization/chart/renewable-utilization'),
-            fetchAPI('/api/optimization/chart/carbon-analysis')
-        ]);
-        
-        if (scenariosRes.success && metricsRes.success && summaryRes.success) {
-            renderAnnualSummary(summaryRes.data);
-            renderScenariosTable(scenariosRes.data, metricsRes.data);
-        }
-        
-        if (economicRes.success) {
-            renderClickableChart('economic-chart', economicRes.data, '经济性对比');
-        }
-        
-        if (renewableRes.success) {
-            renderClickableChart('renewable-chart', renewableRes.data, '可再生能源利用');
-        }
-        
-        if (carbonRes.success) {
-            renderClickableChart('carbon-chart', carbonRes.data, '碳排放分析');
-        }
-        
-    } catch (e) {
-        console.error('加载优化数据失败:', e);
-    }
-}
 
 async function loadConvergenceChart() {
     try {
@@ -1056,87 +1468,4 @@ function showFullscreenChart(imageData, title) {
     });
 }
 
-function renderAnnualSummary(data) {
-    if (!data || data.length === 0) return;
-    
-    const summary = data[0];
-    const container = document.getElementById('annual-summary');
-    
-    container.innerHTML = `
-        <div class="summary-card">
-            <div class="summary-label">全年总成本</div>
-            <div class="summary-value">${(summary.annual_objective / 10000).toFixed(2)} 万元</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-label">全年购电量</div>
-            <div class="summary-value">${summary.annual_grid_energy.toFixed(0)} MWh</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-label">全年购气量</div>
-            <div class="summary-value">${summary.annual_gas_energy.toFixed(0)} MWh</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-label">全年碳排放</div>
-            <div class="summary-value">${summary.annual_carbon_emission.toFixed(0)} tCO₂</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-label">全年碳配额</div>
-            <div class="summary-value">${summary.annual_carbon_quota.toFixed(0)} tCO₂</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-label">碳交易收益</div>
-            <div class="summary-value">${summary.annual_carbon_sell.toFixed(0)} tCO₂</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-label">新能源利用率</div>
-            <div class="summary-value">${summary.annual_renewable_use_rate.toFixed(1)}%</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-label">全年弃风弃光</div>
-            <div class="summary-value">${summary.annual_renewable_curtailment.toFixed(0)} MWh</div>
-        </div>
-    `;
-}
-
-function renderScenariosTable(scenarios, metrics) {
-    const container = document.getElementById('scenarios-table');
-    
-    const uniqueMetrics = metrics.filter((item, index, self) => 
-        index === self.findIndex((t) => t.scenario === item.scenario)
-    );
-    
-    let html = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>场景</th>
-                    <th>代表天数</th>
-                    <th>日成本(元)</th>
-                    <th>购电量(MWh)</th>
-                    <th>碳排放(tCO₂)</th>
-                    <th>新能源利用率(%)</th>
-                    <th>弃能量(MWh)</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-    
-    uniqueMetrics.forEach((metric, idx) => {
-        const scenario = scenarios[idx];
-        html += `
-            <tr>
-                <td>${scenario.scenario_cn}</td>
-                <td>${metric.representative_days}</td>
-                <td>${metric.total_objective.toFixed(0)}</td>
-                <td>${metric.grid_energy.toFixed(2)}</td>
-                <td>${metric.carbon_emission.toFixed(1)}</td>
-                <td>${metric.renewable_use_rate.toFixed(1)}</td>
-                <td>${metric.renewable_curtailment.toFixed(2)}</td>
-            </tr>
-        `;
-    });
-    
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
 

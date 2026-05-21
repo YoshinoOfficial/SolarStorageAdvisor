@@ -21,78 +21,141 @@
 
         <nav class="tab-nav">
             <button class="tab-btn active" data-tab="weather">天气配置</button>
-            <button class="tab-btn" data-tab="chart">功率曲线图</button>
             <button class="tab-btn" data-tab="config">设备配置</button>
             <button class="tab-btn" data-tab="optimization">优化算法</button>
         </nav>
 
         <div class="tab-content">
             <div id="tab-weather" class="tab-pane active">
-                <div class="config-section">
-                    <h3>年度典型天气代表天数配置</h3>
-                    <p class="config-desc">修改各天气类型的代表天数，总和必须为 365 天。修改后 dashboard 的年运行成本、总新能源发电量、新能源利用率会根据新天数重新计算。</p>
-                    <table class="weather-config-table">
-                        <thead>
-                            <tr>
-                                <th>天气场景</th>
-                                <th>代表天数</th>
-                                <th>占比</th>
-                            </tr>
-                        </thead>
-                        <tbody id="weather-config-body">
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td><strong>合计</strong></td>
-                                <td><strong id="weather-total-days">365</strong></td>
-                                <td><strong>100%</strong></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                    <div class="weather-config-actions">
-                        <button class="btn-primary" onclick="saveWeatherConfig()">保存配置</button>
-                        <button class="btn-secondary" onclick="loadWeatherConfig()">重置</button>
-                        <span id="weather-config-status" class="config-status"></span>
-                    </div>
+                <div class="weather-sub-tabs">
+                    <button class="weather-sub-tab-btn active" data-weather-sub-tab="days">天数配置</button>
+                    <button class="weather-sub-tab-btn" data-weather-sub-tab="power">典型场景风光功率曲线配置</button>
                 </div>
-            </div>
-            <div id="tab-chart" class="tab-pane">
-                <div class="chart-sub-tabs">
-                    <button class="chart-sub-tab-btn active" data-chart-sub-tab="park">园区总功率曲线</button>
-                    <button class="chart-sub-tab-btn" data-chart-sub-tab="community">分园区功率曲线</button>
-                </div>
-                <div id="chart-sub-tab-park" class="chart-sub-tab-content active">
-                    <div class="optimization-charts">
-                        <div class="chart-section full-width">
-                            <div id="park-power-chart" class="chart-container"></div>
-                        </div>
-                    </div>
-                </div>
-                <div id="chart-sub-tab-community" class="chart-sub-tab-content">
-                    <div class="optimization-charts">
-                        <div class="chart-section full-width">
-                            <h3>各社区功率曲线</h3>
-                            <div class="scenario-selector">
-                                <label>选择场景：</label>
-                                <select id="chart-community-scenario-select" onchange="loadChartCommunityPower()">
-                                    <option value="S1">S1: 无储能无碳交易</option>
-                                    <option value="S2">S2: 有储能无碳交易</option>
-                                    <option value="S3" selected>S3: 有储能有碳交易</option>
-                                    <option value="S4">S4: 高新能源有储能有碳交易</option>
-                                </select>
-                                <label style="margin-left: 20px;">选择社区：</label>
-                                <select id="chart-community-id-select" onchange="loadChartCommunityPower()">
-                                    <option value="1">工业区</option>
-                                    <option value="2">商业区</option>
-                                    <option value="3">居民区</option>
-                                </select>
-                            </div>
-                            <div id="chart-community-power-chart" class="chart-container"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
+                <div id="weather-sub-tab-days" class="weather-sub-tab-content active">
+                    <div class="config-section">
+                        <h3>年度典型天气代表天数配置</h3>
+                        <p class="config-desc">修改各天气类型的代表天数，总和必须为 365 天。修改后 dashboard 的年运行成本、总新能源发电量、新能源利用率会根据新天数重新计算。</p>
+                        <table class="weather-config-table">
+                            <thead>
+                                <tr>
+                                    <th>天气场景</th>
+                                    <th>代表天数</th>
+                                    <th>占比</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weather-config-body">
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td><strong>合计</strong></td>
+                                    <td><strong id="weather-total-days">365</strong></td>
+                                    <td><strong>100%</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <div class="weather-config-actions">
+                            <button class="btn-primary" onclick="saveWeatherConfig()">保存配置</button>
+                            <button class="btn-secondary" onclick="loadWeatherConfig()">重置</button>
+                            <span id="weather-config-status" class="config-status"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="weather-sub-tab-power" class="weather-sub-tab-content">
+                    <div class="config-section">
+                        <h3>典型天气风光功率曲线编辑</h3>
+                        <p class="config-desc">编辑各典型天气场景下4个节点的归一化风光出力曲线（0~1标幺值）。保存时自动扩展为15分钟分辨率写入场景文件。</p>
+                        <div class="scenario-power-select-row">
+                            <label>选择天气场景：</label>
+                            <select id="scenario-power-select" onchange="onScenarioSelectChange()">
+                                <option value="116">晴天少风 (116)</option>
+                                <option value="178">晴天多风 (178)</option>
+                                <option value="137">多云中风 (137)</option>
+                                <option value="183">阴天少风 (183)</option>
+                                <option value="40">阴天多风 (40)</option>
+                            </select>
+                        </div>
+
+                        <div class="power-method-tabs">
+                            <button class="power-method-btn active" data-power-method="csv">CSV导入</button>
+                            <button class="power-method-btn" data-power-method="chart">曲线拖拽法</button>
+                            <button class="power-method-btn" data-power-method="table">填表法</button>
+                        </div>
+
+                        <div id="power-method-csv" class="power-method-content active">
+                            <p class="config-desc" style="margin-bottom:12px;">上传 CSV 文件导入风光功率数据。文件需包含 96 行（15分钟间隔）或 24 行（小时），4 列数据（node_22_wind, node_25_wind, node_18_PV, node_33_PV），值为 0~1 标幺值。</p>
+                            <div class="csv-upload-area">
+                                <input type="file" id="csv-file-input" accept=".csv" onchange="onCsvFileSelected(this)" style="display:none;">
+                                <button class="btn-secondary" onclick="document.getElementById('csv-file-input').click()">选择 CSV 文件</button>
+                                <span id="csv-file-name" class="csv-file-name">未选择文件</span>
+                            </div>
+                            <div id="csv-preview-area" style="display:none;">
+                                <h4 style="margin:12px 0 8px; font-size:14px; color:#555;">数据预览（前10行）</h4>
+                                <div class="scenario-power-table-wrap" style="max-height:280px;">
+                                    <table class="scenario-power-table" id="csv-preview-table">
+                                        <thead>
+                                            <tr>
+                                                <th>行</th>
+                                                <th>timestamp</th>
+                                                <th>node_22_wind</th>
+                                                <th>node_25_wind</th>
+                                                <th>node_18_PV</th>
+                                                <th>node_33_PV</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="csv-preview-body"></tbody>
+                                    </table>
+                                </div>
+                                <div class="weather-config-actions" style="margin-top:12px;">
+                                    <button class="btn-primary" onclick="importCsvToScenario()">确认导入</button>
+                                    <span id="csv-import-status" class="config-status"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="power-method-chart" class="power-method-content">
+                            <p class="config-desc" style="margin-bottom:12px;">拖拽曲线上的节点调整标幺值，松手后自动更新。4条曲线分别为风电(node_22/node_25)和光伏(node_18/node_33)。</p>
+                            <div id="scenario-power-drag-chart" class="chart-container" style="min-height:420px;"></div>
+                        </div>
+
+                        <div id="power-method-table" class="power-method-content">
+                            <div class="scenario-power-table-wrap">
+                                <table class="scenario-power-table">
+                                    <thead>
+                                        <tr>
+                                            <th>时刻</th>
+                                            <th>风电 node_22</th>
+                                            <th>风电 node_25</th>
+                                            <th>光伏 node_18</th>
+                                            <th>光伏 node_33</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="scenario-power-body">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="weather-config-actions">
+                            <button class="btn-primary" onclick="saveScenarioPower()">保存功率曲线</button>
+                            <button class="btn-primary btn-rerun" onclick="saveAndRerun()">保存配置并重新运算</button>
+                            <button class="btn-secondary" onclick="loadScenarioPower()">重置</button>
+                            <span id="scenario-power-status" class="config-status"></span>
+                        </div>
+
+                        <div class="matlab-config-section">
+                            <h4>MATLAB 配置</h4>
+                            <div class="config-select-row">
+                                <label>MATLAB 路径：</label>
+                                <input type="text" id="matlab-path-input" style="flex:1; min-width:300px;">
+                                <button class="btn-small" onclick="saveMatlabPath()">保存路径</button>
+                            </div>
+                            <span id="matlab-config-status" class="config-status"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div id="tab-config" class="tab-pane">
                 <div class="config-sub-tabs">
                     <button class="config-sub-tab-btn active" data-config-sub-tab="panel">光伏配置</button>
@@ -277,50 +340,16 @@
                         <h2>零碳园区优化结果分析</h2>
                         <p class="config-hint">基于典型气象日的多能互补系统优化结果</p>
                     </div>
-                    
-                    <div class="optimization-sub-tabs">
-                        <button class="sub-tab-btn active" data-sub-tab="typical">全园区数据汇总</button>
-                        <button class="sub-tab-btn" data-sub-tab="convergence">收敛曲线</button>
+
+                    <div class="convergence-intro">
+                        <h3>ADMM算法收敛曲线</h3>
+                        <p style="color: #7f8c8d; margin-bottom: 20px;">
+                            展示四种场景下ADMM分布式优化算法的收敛过程。原始残差和对偶残差随迭代次数下降，验证算法收敛性。
+                        </p>
                     </div>
-                    
-                    <div id="sub-tab-typical" class="sub-tab-content active">
-                        <div class="optimization-charts">
-                            <div class="chart-section">
-                                <h3>经济性对比</h3>
-                                <div id="economic-chart" class="chart-container"></div>
-                            </div>
-                            <div class="chart-section">
-                                <h3>可再生能源利用</h3>
-                                <div id="renewable-chart" class="chart-container"></div>
-                            </div>
-                            <div class="chart-section">
-                                <h3>碳排放分析</h3>
-                                <div id="carbon-chart" class="chart-container"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="optimization-summary">
-                            <h3>年度汇总指标</h3>
-                            <div id="annual-summary" class="summary-cards"></div>
-                        </div>
-                        
-                        <div class="optimization-details">
-                            <h3>典型场景详细数据</h3>
-                            <div id="scenarios-table" class="data-table-container"></div>
-                        </div>
-                    </div>
-                    
-                    <div id="sub-tab-convergence" class="sub-tab-content">
-                        <div class="convergence-intro">
-                            <h3>ADMM算法收敛曲线</h3>
-                            <p style="color: #7f8c8d; margin-bottom: 20px;">
-                                展示四种场景下ADMM分布式优化算法的收敛过程。原始残差和对偶残差随迭代次数下降，验证算法收敛性。
-                            </p>
-                        </div>
-                        <div class="optimization-charts">
-                            <div class="chart-section full-width">
-                                <div id="admm-convergence-chart" class="chart-container"></div>
-                            </div>
+                    <div class="optimization-charts">
+                        <div class="chart-section full-width">
+                            <div id="admm-convergence-chart" class="chart-container"></div>
                         </div>
                     </div>
                 </div>

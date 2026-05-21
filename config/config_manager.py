@@ -855,7 +855,7 @@ def set_wind_coefficient(community_id, coefficient):
 def get_wind_turbine_config():
     """
     获取默认风机配置
-    
+
     Returns:
         dict: 风机配置字典
     """
@@ -865,3 +865,43 @@ def get_wind_turbine_config():
         'hub_height': 135,
         'nominal_power_kw': 4200
     })
+
+def load_matlab_config():
+    """
+    加载 MATLAB 可执行文件路径配置
+
+    Returns:
+        dict: 包含 matlab_path 的配置字典
+    """
+    return load_config('config/matlab_config.json')
+
+def save_matlab_config(config):
+    """
+    保存 MATLAB 配置
+
+    Args:
+        config: 包含 matlab_path 的配置字典
+    """
+    save_config(config, 'config/matlab_config.json')
+
+def get_matlab_path():
+    """
+    获取 MATLAB 可执行文件路径
+
+    Returns:
+        str: matlab.exe 的完整路径
+    """
+    config = load_matlab_config()
+    return config.get('matlab_path', 'matlab')
+
+def set_matlab_path(matlab_path):
+    """
+    设置 MATLAB 可执行文件路径
+
+    Args:
+        matlab_path: matlab.exe 的完整路径
+    """
+    config = load_matlab_config()
+    config['matlab_path'] = matlab_path
+    save_matlab_config(config)
+    print(f"已设置 MATLAB 路径为: {matlab_path}")

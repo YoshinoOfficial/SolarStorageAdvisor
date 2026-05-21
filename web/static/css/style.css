@@ -256,6 +256,41 @@ header h1 {
     color: white;
 }
 
+.btn-rerun {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.btn-rerun:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+}
+
+.matlab-config-section {
+    margin-top: 20px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.matlab-config-section h4 {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 12px;
+}
+
+.csv-upload-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.csv-file-name {
+    color: #7f8c8d;
+    font-size: 14px;
+}
+
 .btn-secondary {
     padding: 12px 32px;
     font-size: 15px;
@@ -495,6 +530,79 @@ header h1 {
     display: inline-block;
 }
 
+.weather-sub-tabs {
+    display: flex;
+    gap: 12px;
+    margin: 0 0 20px 0;
+    border-bottom: 2px solid #dfe6e9;
+    padding: 10px 0 12px 0;
+}
+
+.weather-sub-tab-btn {
+    padding: 10px 24px;
+    border: none;
+    background: #f8f9fa;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    font-size: 14px;
+    color: #7f8c8d;
+    transition: all 0.3s;
+}
+
+.weather-sub-tab-btn:hover {
+    background: #e9ecef;
+    color: #2c3e50;
+}
+
+.weather-sub-tab-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.weather-sub-tab-content {
+    display: none;
+}
+
+.weather-sub-tab-content.active {
+    display: block;
+}
+
+.power-method-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.power-method-btn {
+    padding: 8px 20px;
+    border: 1px solid #dfe6e9;
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #555;
+    transition: all 0.2s;
+}
+
+.power-method-btn:hover {
+    background: #f0f3ff;
+    border-color: #667eea;
+}
+
+.power-method-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.power-method-content {
+    display: none;
+}
+
+.power-method-content.active {
+    display: block;
+}
+
 .optimization-page {
     padding: 20px;
     background: #f5f6fa;
@@ -692,6 +800,95 @@ header h1 {
 .config-status {
     font-size: 14px;
     margin-left: 8px;
+}
+
+.scenario-power-select-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.scenario-power-select-row label {
+    font-weight: 600;
+    color: #2c3e50;
+    white-space: nowrap;
+}
+
+.scenario-power-select-row select {
+    padding: 8px 14px;
+    border: 1px solid #dfe6e9;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fff;
+    color: #2c3e50;
+    cursor: pointer;
+}
+
+.scenario-power-select-row select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.scenario-power-table-wrap {
+    max-height: 520px;
+    overflow-y: auto;
+    border: 1px solid #dfe6e9;
+    border-radius: 8px;
+}
+
+.scenario-power-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.scenario-power-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.scenario-power-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #2c3e50;
+    padding: 10px 12px;
+    text-align: center;
+    border-bottom: 2px solid #dfe6e9;
+}
+
+.scenario-power-table td {
+    padding: 6px 8px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+}
+
+.scenario-power-table tbody tr:hover {
+    background: #f0f3ff;
+}
+
+.scenario-power-table td:first-child {
+    font-weight: 600;
+    color: #555;
+    background: #fafafa;
+    width: 60px;
+}
+
+.scenario-power-input {
+    width: 80px;
+    padding: 4px 6px;
+    border: 1px solid #dfe6e9;
+    border-radius: 4px;
+    font-size: 13px;
+    text-align: center;
+}
+
+.scenario-power-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
 }
 
 .panel-quantities-section h3 {
