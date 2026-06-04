@@ -207,6 +207,85 @@ body::before {
     overflow-y: auto;
 }
 
+.dashboard-window-switcher {
+    display: flex;
+    width: fit-content;
+    margin: var(--gap-lg) auto 0;
+    padding: 4px;
+    gap: 4px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: rgba(6, 13, 26, 0.82);
+    box-shadow: var(--shadow-card);
+}
+
+.dashboard-window-btn {
+    min-width: 136px;
+    height: 36px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.dashboard-window-btn:hover {
+    color: var(--accent-cyan);
+    background: rgba(0, 212, 255, 0.06);
+}
+
+.dashboard-window-btn.active {
+    color: #03101d;
+    background: var(--gradient-cyan);
+    box-shadow: var(--shadow-glow-sm);
+}
+
+.daily-view {
+    padding-top: var(--gap-lg);
+}
+
+.annual-view .daily-dispatch-panel {
+    display: none;
+}
+
+.daily-ddre-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.daily-match-btn {
+    height: 32px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--gradient-cyan);
+    color: #03101d;
+    font-weight: 700;
+    padding: 0 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.daily-match-btn:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.daily-selector-label {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.daily-table-active-row {
+    color: var(--accent-cyan);
+    font-weight: 700;
+}
+
 .dashboard-overview {
     display: grid;
     grid-template-columns: 1fr 340px;
@@ -271,6 +350,175 @@ body::before {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: var(--gap-lg);
+}
+
+.daily-view .key-charts-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.voltage-panel {
+    grid-column: 1 / -1;
+}
+
+.voltage-panel .chart-container {
+    min-height: 300px;
+}
+
+.daily-voltage-layout {
+    display: grid;
+    grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.05fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+.daily-voltage-topology-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 300px;
+    border: 1px solid rgba(0, 212, 255, 0.14);
+    border-radius: var(--radius-sm);
+    background: rgba(6, 20, 38, 0.42);
+    padding: 10px;
+}
+
+.daily-voltage-topology {
+    flex: 1;
+    min-height: 260px;
+}
+
+.daily-voltage-topology svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 260px;
+}
+
+.daily-topology-edge {
+    stroke: rgba(125, 159, 196, 0.7);
+    stroke-width: 4;
+    stroke-linecap: round;
+}
+
+.daily-topology-node {
+    cursor: pointer;
+    outline: none;
+}
+
+.daily-topology-node circle {
+    fill: rgba(9, 33, 58, 0.96);
+    stroke: rgba(0, 212, 255, 0.72);
+    stroke-width: 3;
+    transition: fill 0.16s ease, stroke 0.16s ease, stroke-width 0.16s ease;
+}
+
+.daily-topology-node text {
+    fill: #e2ecf7;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    text-anchor: middle;
+    pointer-events: none;
+    user-select: none;
+}
+
+.daily-topology-node.available:hover circle,
+.daily-topology-node.available:focus circle {
+    fill: rgba(0, 212, 255, 0.28);
+    stroke: var(--accent-cyan);
+    stroke-width: 4;
+}
+
+.daily-topology-node.selected circle {
+    fill: rgba(0, 230, 118, 0.34);
+    stroke: var(--accent-green);
+    stroke-width: 5;
+}
+
+.daily-topology-node.violation circle {
+    stroke: #ff5252;
+}
+
+.daily-topology-node.violation.selected circle {
+    fill: rgba(255, 82, 82, 0.28);
+    stroke: #ff5252;
+}
+
+.daily-topology-node.unavailable {
+    cursor: not-allowed;
+    opacity: 0.42;
+}
+
+.daily-topology-node.unavailable circle {
+    fill: rgba(48, 65, 86, 0.8);
+    stroke: rgba(123, 143, 168, 0.5);
+}
+
+.daily-voltage-topology-status {
+    min-height: 20px;
+    margin-top: 8px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-align: center;
+}
+
+.daily-voltage-topology-status.warning {
+    color: var(--accent-orange);
+}
+
+.daily-voltage-detail {
+    min-width: 0;
+}
+
+.voltage-node-select {
+    min-width: 110px;
+}
+
+.dashboard-voltage-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.dashboard-voltage-summary-card {
+    background: rgba(13, 36, 64, 0.6);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    min-width: 0;
+}
+
+.dashboard-voltage-summary-card span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.dashboard-voltage-summary-card strong {
+    color: var(--accent-cyan);
+    font-family: var(--font-mono);
+    font-size: 18px;
+    line-height: 1;
+}
+
+.dashboard-voltage-summary-card small {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    margin-left: 4px;
+}
+
+.dashboard-voltage-error {
+    grid-column: 1 / -1;
+    color: var(--accent-orange);
+    background: rgba(255, 145, 0, 0.08);
+    border: 1px solid rgba(255, 145, 0, 0.18);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 12px;
+    text-align: center;
 }
 
 /* --- Compact Community Map --- */
@@ -1112,6 +1360,214 @@ body::before {
     margin-top: 2px;
 }
 
+/* ============ Daily Dispatch Monitor ============ */
+
+.daily-dispatch-panel {
+    padding: var(--gap-md);
+}
+
+.daily-dispatch-status {
+    color: var(--accent-cyan);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 4px 10px;
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    border-radius: var(--radius-sm);
+    background: rgba(0, 212, 255, 0.06);
+}
+
+.daily-dispatch-layout {
+    display: grid;
+    grid-template-columns: minmax(420px, 1fr) 160px minmax(180px, 240px);
+    gap: var(--gap-md);
+    align-items: end;
+}
+
+.daily-dispatch-controls {
+    display: grid;
+    grid-template-columns: minmax(180px, 260px);
+    gap: var(--gap-sm);
+    align-items: end;
+}
+
+.daily-csv-controls {
+    grid-template-columns: minmax(360px, 1fr);
+    align-content: start;
+}
+
+.daily-csv-import-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap-sm);
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.daily-csv-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 110px;
+    height: 34px;
+    background: rgba(0, 180, 255, 0.15);
+    border: 1px solid rgba(0, 180, 255, 0.4);
+    color: #00b4ff;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.daily-csv-btn:hover {
+    background: rgba(0, 180, 255, 0.25);
+    border-color: #00b4ff;
+}
+
+.daily-csv-status {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: rgba(3, 8, 16, 0.45);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    min-height: 18px;
+}
+
+.daily-dispatch-action {
+    width: 100%;
+    height: 50px;
+    align-self: end;
+    font-size: 15px;
+    box-shadow: 0 0 18px rgba(0, 180, 255, 0.16);
+}
+
+.daily-dispatch-controls label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.daily-dispatch-controls input,
+.daily-dispatch-controls select {
+    width: 100%;
+    height: 34px;
+    background: rgba(3, 8, 16, 0.72);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    padding: 0 10px;
+    font-family: var(--font-mono);
+}
+
+.daily-run-btn {
+    height: 34px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--gradient-cyan);
+    color: #03101d;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.daily-run-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-glow-sm);
+}
+
+.daily-run-btn:disabled {
+    cursor: wait;
+    opacity: 0.6;
+    transform: none;
+}
+
+.daily-dispatch-meta {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--gap-sm);
+}
+
+.daily-dispatch-meta div,
+.daily-dispatch-kpi {
+    min-height: 54px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: rgba(6, 13, 26, 0.55);
+}
+
+.daily-runtime-card {
+    min-height: 78px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.daily-dispatch-meta span,
+.daily-dispatch-kpi span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.daily-dispatch-meta strong {
+    display: block;
+    margin-top: 5px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.daily-runtime-card strong {
+    font-size: 22px;
+    color: var(--text-bright);
+    letter-spacing: 0;
+}
+
+.daily-dispatch-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--gap-sm);
+    margin-top: var(--gap-md);
+}
+
+.daily-dispatch-kpi strong {
+    display: inline-block;
+    margin-top: 4px;
+    color: var(--accent-green);
+    font-family: var(--font-display);
+    font-size: 20px;
+}
+
+.daily-dispatch-kpi small {
+    color: var(--text-muted);
+    margin-left: 4px;
+}
+
+.daily-dispatch-charts {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr 1fr 1fr;
+    gap: var(--gap-sm);
+    margin-top: var(--gap-md);
+}
+
+.daily-chart {
+    height: 260px;
+    min-width: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: rgba(3, 8, 16, 0.35);
+}
+
 /* ============ Data Table ============ */
 
 .data-table-container {
@@ -1390,6 +1846,10 @@ body::before {
         grid-template-columns: 1fr;
     }
 
+    .daily-dispatch-layout {
+        grid-template-columns: minmax(0, 1fr) 150px minmax(160px, 220px);
+    }
+
     .hero-section {
         grid-template-columns: 1fr;
         min-height: auto;
@@ -1397,6 +1857,27 @@ body::before {
 
     .key-charts-row {
         grid-template-columns: 1fr;
+    }
+
+    .voltage-panel {
+        grid-column: auto;
+    }
+
+    .daily-voltage-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .daily-voltage-topology-card {
+        min-height: 260px;
+    }
+
+    .daily-voltage-topology,
+    .daily-voltage-topology svg {
+        min-height: 230px;
+    }
+
+    .dashboard-voltage-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .secondary-row {
@@ -1430,6 +1911,19 @@ body::before {
         grid-template-columns: 1fr;
     }
 
+    .daily-dispatch-layout {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .daily-dispatch-action {
+        height: 42px;
+    }
+
+    .daily-runtime-card {
+        min-height: 62px;
+    }
+
     .sidebar-compact-kpi {
         grid-template-columns: 1fr 1fr;
     }
@@ -1441,4 +1935,59 @@ body::before {
     .community-metrics-row {
         grid-template-columns: repeat(2, 1fr);
     }
+}
+
+
+
+/* ===== Daily Normalized Curves Row ===== */
+.daily-normalized-curves-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gap-lg);
+    margin-bottom: var(--gap-lg);
+}
+
+.daily-normalized-curves-row .chart-container-sm {
+    height: 240px;
+    min-height: 200px;
+}
+
+/* ===== Daily Header Controls ===== */
+.daily-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.daily-header-controls select {
+    height: 32px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    padding: 0 10px;
+    font-size: 12px;
+    min-width: 110px;
+}
+
+.daily-header-controls select:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.2);
+}
+
+.daily-header-controls select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.daily-header-controls .daily-match-btn {
+    height: 32px;
+}
+
+.daily-header-controls .daily-dispatch-status {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
 }

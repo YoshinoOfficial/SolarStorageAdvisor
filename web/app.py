@@ -10,6 +10,11 @@ import sys
 import os
 import threading
 import subprocess
+from datetime import datetime
+import re
+import math
+import random
+import time
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
@@ -21,6 +26,12 @@ plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 
 matplotlib_lock = threading.Lock()
+
+from daily_dispatch import DailyDispatchEngine
+
+daily_dispatch_engine = DailyDispatchEngine(project_root)
+DDRE_BATCH_DIR = os.path.join(project_root, 's4_ddre_batch_csv')
+DDRE_SCENARIO_DIR = os.path.join(OPTIMIZATION_DATA_DIR, '1-Day Scenarios')
 
 from main import get_simulation_data, calculate_daily_cost, calculate_renewable_revenue
 from Solar.Solar import calculate_all_communities
@@ -1864,6 +1875,830 @@ def get_scenario_metrics():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+
+@app.route('/api/daily-dispatch/config', methods=['GET'])
+def get_daily_dispatch_config():
+    try:
+        latest = daily_dispatch_engine.latest_result()
+        return jsonify({
+            'success': True,
+            'data': {
+                'config': daily_dispatch_engine.get_config(),
+                'latest': latest
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/daily-dispatch/config', methods=['PUT'])
+def update_daily_dispatch_config():
+    try:
+        payload = request.json or {}
+        config = daily_dispatch_engine.save_config(payload)
+        return jsonify({'success': True, 'data': config})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+def _daily_ddre_scenario_key(ddre_id):
+    try:
+        value = int(ddre_id)
+    except (TypeError, ValueError):
+        raise ValueError('DDRE场景编号必须是数字')
+    if value < 1 or value > 100:
+        raise ValueError('DDRE场景编号必须在1-100之间')
+    return value, f'S4_DDRE_{value:03d}'
+
+def _csv_numeric_list(df, column):
+    return pd.to_numeric(df[column], errors='coerce').fillna(0).round(4).tolist()
+
+def _csv_optional_list(df, column):
+    if column not in df.columns:
+        return [0.0] * len(df)
+    return pd.to_numeric(df[column], errors='coerce').fillna(0).round(4).tolist()
+
+def _require_csv_columns(df, columns, file_name):
+    missing = [col for col in columns if col not in df.columns]
+    if missing:
+        raise ValueError(f'{file_name} 缺少字段: {", ".join(missing)}')
+
+def _parse_normalized_curve(value, name):
+    if value is None:
+        raise ValueError(f'{name}不能为空')
+    if isinstance(value, str):
+        parts = [p for p in re.split(r'[\s,;，；]+', value.strip()) if p]
+    elif isinstance(value, list):
+        parts = value
+    else:
+        raise ValueError(f'{name}必须是数组或分隔文本')
+
+    try:
+        curve = [float(v) for v in parts]
+    except (TypeError, ValueError):
+        raise ValueError(f'{name}包含非数字值')
+
+    if len(curve) not in (24, 96):
+        raise ValueError(f'{name}必须包含24个或96个点，当前为{len(curve)}个')
+    if any((not math.isfinite(v)) for v in curve):
+        raise ValueError(f'{name}包含无效数值')
+    if any(v < 0 or v > 1 for v in curve):
+        raise ValueError(f'{name}必须为0-1之间的归一化数值')
+    return curve
+
+def _curve_to_96_points(curve):
+    if len(curve) == 96:
+        return curve
+    expanded = []
+    for value in curve:
+        expanded.extend([value] * 4)
+    return expanded
+
+def _curve_to_24_points(curve):
+    if len(curve) == 24:
+        return curve
+    return [sum(curve[i * 4:(i + 1) * 4]) / 4 for i in range(24)]
+
+def _rmse(a, b):
+    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)) / len(a))
+
+def _load_ddre_reference_curves():
+    refs = []
+    for ddre_id in range(1, 101):
+        file_path = os.path.join(DDRE_SCENARIO_DIR, f'scenario_{ddre_id:03d}.csv')
+        if not os.path.exists(file_path):
+            continue
+        df = pd.read_csv(file_path)
+        required = ['node_22_wind', 'node_25_wind', 'node_18_PV', 'node_33_PV']
+        _require_csv_columns(df, required, os.path.basename(file_path))
+        wind_curve = (
+            pd.to_numeric(df['node_22_wind'], errors='coerce').fillna(0)
+            + pd.to_numeric(df['node_25_wind'], errors='coerce').fillna(0)
+        ) / 2
+        pv_curve = (
+            pd.to_numeric(df['node_18_PV'], errors='coerce').fillna(0)
+            + pd.to_numeric(df['node_33_PV'], errors='coerce').fillna(0)
+        ) / 2
+        refs.append({
+            'ddre_id': ddre_id,
+            'scenario': f'S4_DDRE_{ddre_id:03d}',
+            'wind_curve': wind_curve.round(6).tolist(),
+            'pv_curve': pv_curve.round(6).tolist(),
+            'wind_24': [round(v, 6) for v in _curve_to_24_points(wind_curve.tolist())],
+            'pv_24': [round(v, 6) for v in _curve_to_24_points(pv_curve.tolist())]
+        })
+    if not refs:
+        raise FileNotFoundError('未找到DDRE参考场景曲线')
+    return refs
+
+def _match_ddre_by_curves(pv_curve, wind_curve, pv_weight=0.5, wind_weight=0.5):
+    use_hourly = len(pv_curve) == 24 and len(wind_curve) == 24
+    pv_compare = pv_curve if use_hourly else _curve_to_96_points(pv_curve)
+    wind_compare = wind_curve if use_hourly else _curve_to_96_points(wind_curve)
+    best = None
+    for ref in _load_ddre_reference_curves():
+        ref_pv = ref['pv_24'] if use_hourly else ref['pv_curve']
+        ref_wind = ref['wind_24'] if use_hourly else ref['wind_curve']
+        pv_rmse = _rmse(pv_compare, ref_pv)
+        wind_rmse = _rmse(wind_compare, ref_wind)
+        distance = pv_weight * pv_rmse + wind_weight * wind_rmse
+        candidate = {
+            'matched_ddre': ref['ddre_id'],
+            'matched_scenario': ref['scenario'],
+            'distance': round(distance, 6),
+            'pv_rmse': round(pv_rmse, 6),
+            'wind_rmse': round(wind_rmse, 6),
+            'similarity': round(max(0.0, (1.0 - distance)) * 100, 2),
+            'matched_pv_24': ref['pv_24'],
+            'matched_wind_24': ref['wind_24']
+        }
+        if best is None or candidate['distance'] < best['distance']:
+            best = candidate
+    return best
+
+def _simulate_realtime_runtime():
+    runtime_s = round(random.uniform(5.0, 10.0), 1)
+    time.sleep(runtime_s)
+    return runtime_s, round(runtime_s * 1000, 1)
+
+def _load_realtime_result(ddre_id, runtime_ms=None, runtime_s=None, weather_input=None, match=None, weather_curves=None):
+    data = _load_ddre_daily_result(ddre_id)
+    data['scenario_id'] = int(ddre_id)
+    data['matched_ddre'] = int(ddre_id)
+    data['weather_label'] = '基于实时场景的仿真优化'
+    data['runtime_ms'] = runtime_ms
+    data['runtime_s'] = runtime_s
+    if weather_input is not None:
+        data['weather_input'] = weather_input
+    if match is not None:
+        data['match'] = match
+    if weather_curves is not None:
+        data['weather_curves'] = weather_curves
+    return data
+
+def _parse_weather_profile(payload, profile_key, scalar_key, default_value, name):
+    raw = payload.get(profile_key)
+    if raw is None:
+        value = payload.get(scalar_key, default_value)
+        try:
+            scalar = float(value)
+        except (TypeError, ValueError):
+            raise ValueError(f'{name}必须是有效数字')
+        values = [scalar] * 24
+    elif isinstance(raw, str):
+        parts = [p for p in re.split(r'[\s,;，；]+', raw.strip()) if p]
+        values = [float(v) for v in parts]
+    elif isinstance(raw, list):
+        values = [float(v) for v in raw]
+    else:
+        raise ValueError(f'{name}必须是24点数组或分隔文本')
+
+    if len(values) != 24:
+        raise ValueError(f'{name}必须包含24个小时点，当前为{len(values)}个')
+    if any(not math.isfinite(v) for v in values):
+        raise ValueError(f'{name}包含无效数值')
+    return values
+
+def _normalize_curve(values):
+    max_value = max(values) if values else 0
+    if max_value <= 0:
+        return [0.0] * len(values)
+    return [min(1.0, max(0.0, v / max_value)) for v in values]
+
+def _wind_speed_to_power_pu(speed):
+    cut_in = 3.0
+    rated = 12.0
+    cut_out = 25.0
+    if speed < cut_in or speed >= cut_out:
+        return 0.0
+    if speed >= rated:
+        return 1.0
+    return ((speed - cut_in) / (rated - cut_in)) ** 3
+
+def _weather_profiles_to_curves(temperature_profile, irradiance_profile, wind_speed_profile):
+    if any(v < 0 for v in irradiance_profile):
+        raise ValueError('光照强度必须为非负数')
+    if any(v < 0 for v in wind_speed_profile):
+        raise ValueError('风速必须为非负数')
+
+    pv_base = [min(1.0, max(0.0, irradiance / 1000.0)) for irradiance in irradiance_profile]
+    pv_temp_adjusted = []
+    for pv, temp in zip(pv_base, temperature_profile):
+        factor = max(0.0, 1.0 - 0.004 * (temp - 25.0))
+        pv_temp_adjusted.append(pv * factor)
+    pv_curve = [round(min(1.0, max(0.0, v)), 6) for v in pv_temp_adjusted]
+
+    wind_raw = [_wind_speed_to_power_pu(speed) for speed in wind_speed_profile]
+    wind_curve = [round(min(1.0, max(0.0, v)), 6) for v in wind_raw]
+    return pv_curve, wind_curve
+
+def _select_ddre_by_weather_profiles(payload):
+    temperature_profile = _parse_weather_profile(payload, 'temperature_profile', 'temperature_c', 25, '环境温度曲线')
+    irradiance_profile = _parse_weather_profile(payload, 'irradiance_profile', 'irradiance_w_m2', 650, '光照强度曲线')
+    wind_speed_profile = _parse_weather_profile(payload, 'wind_speed_profile', 'wind_speed_m_s', 5, '风速曲线')
+    pv_curve, wind_curve = _weather_profiles_to_curves(temperature_profile, irradiance_profile, wind_speed_profile)
+    match = _match_ddre_by_curves(pv_curve, wind_curve, pv_weight=0.55, wind_weight=0.45)
+    weather_input = {
+        'temperature_profile': [round(v, 4) for v in temperature_profile],
+        'irradiance_profile': [round(v, 4) for v in irradiance_profile],
+        'wind_speed_profile': [round(v, 4) for v in wind_speed_profile],
+        'pv_weight': 0.55,
+        'wind_weight': 0.45,
+        'source': 'hourly_weather'
+    }
+    weather_curves = {
+        'pv_24': pv_curve,
+        'wind_24': wind_curve,
+        'matched_pv_24': match['matched_pv_24'],
+        'matched_wind_24': match['matched_wind_24']
+    }
+    return match, weather_input, weather_curves
+
+def _select_ddre_by_weather(temperature_c, irradiance_w_m2, wind_speed_m_s):
+    config = daily_dispatch_engine.get_config()
+    env = {
+        'temperature_c': float(temperature_c),
+        'irradiance_w_m2': float(irradiance_w_m2),
+        'wind_speed_m_s': float(wind_speed_m_s),
+    }
+    if not all(math.isfinite(v) for v in env.values()):
+        raise ValueError('天气输入包含无效数值')
+    if env['irradiance_w_m2'] < 0 or env['wind_speed_m_s'] < 0:
+        raise ValueError('光照强度和风速必须为非负数')
+
+    pv_label = daily_dispatch_engine._map_pv_label(env['irradiance_w_m2'], config)
+    wind_label = daily_dispatch_engine._map_wind_label(env['wind_speed_m_s'], config)
+    ddre_id, exact_match = daily_dispatch_engine._select_scenario(pv_label, wind_label)
+    env.update({
+        'pv_label': pv_label,
+        'wind_label': wind_label,
+        'exact_match': exact_match,
+    })
+    return ddre_id, env
+
+def _load_ddre_daily_result(ddre_id):
+    ddre_value, scenario_key = _daily_ddre_scenario_key(ddre_id)
+    aggregate_file = os.path.join(DDRE_BATCH_DIR, f'{scenario_key}_centralized_hourly_aggregate.csv')
+    community_file = os.path.join(DDRE_BATCH_DIR, f'{scenario_key}_centralized_community_hourly.csv')
+    scalars_file = os.path.join(DDRE_BATCH_DIR, f'{scenario_key}_centralized_solution_scalars.csv')
+    metrics_file = os.path.join(DDRE_BATCH_DIR, 's4_ddre_batch_metric_table.csv')
+    node_voltage_file = os.path.join(DDRE_BATCH_DIR, 's4_ddre_batch_node_voltage.csv')
+
+    for file_path in (aggregate_file, scalars_file, metrics_file):
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f'数据文件不存在: {os.path.basename(file_path)}')
+
+    aggregate = pd.read_csv(aggregate_file)
+    scalars = pd.read_csv(scalars_file)
+    metrics = pd.read_csv(metrics_file)
+
+    aggregate_columns = [
+        'TimeSlot', 'Sum_PpvUse', 'Sum_PwindUse', 'Sum_Pgrid', 'Sum_Pdis', 'Sum_Pchp', 'Sum_Pfc',
+        'Sum_PloadDR', 'Sum_Pelec', 'Sum_Peb', 'Sum_Pcomp', 'Sum_Pch',
+        'Mean_SOC_e', 'Mean_SOC_th', 'Mean_SOC_h2',
+        'DataSum_H2load', 'Sum_H2prod', 'Sum_H2dis', 'Sum_H2short',
+        'DataSum_PdrShiftBase', 'Sum_PdrShift', 'Sum_PdrCutE'
+    ]
+    _require_csv_columns(aggregate, aggregate_columns, os.path.basename(aggregate_file))
+    _require_csv_columns(scalars, ['Part_carbonTradingCost'], os.path.basename(scalars_file))
+    metric_columns = [
+        'Scenario', 'TotalObjective_Yuan', 'GridEnergy_MWh',
+        'CarbonEmission_kg', 'RenewableUseRate_percent'
+    ]
+    _require_csv_columns(metrics, metric_columns, os.path.basename(metrics_file))
+
+    metric_row = metrics[metrics['Scenario'] == scenario_key]
+    if metric_row.empty:
+        raise ValueError(f'未找到{scenario_key}的指标数据')
+    metric_row = metric_row.iloc[0]
+    scalar_row = scalars.iloc[0]
+
+    aggregate = aggregate.sort_values('TimeSlot')
+    hours = pd.to_numeric(aggregate['TimeSlot'], errors='coerce').fillna(0).astype(int).tolist()
+    supply_total = (
+        pd.to_numeric(aggregate['Sum_PpvUse'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_PwindUse'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pgrid'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pdis'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pchp'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pfc'], errors='coerce').fillna(0)
+    ).round(4).tolist()
+    demand_total = (
+        pd.to_numeric(aggregate['Sum_PloadDR'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pelec'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Peb'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pcomp'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pch'], errors='coerce').fillna(0)
+    ).round(4).tolist()
+
+    generated_at = datetime.fromtimestamp(os.path.getmtime(aggregate_file)).strftime('%Y-%m-%d %H:%M:%S')
+
+    def sum_col(df, col):
+        if col not in df.columns:
+            return 0.0
+        return float(pd.to_numeric(df[col], errors='coerce').fillna(0).sum())
+
+    def metric_value(row, col, default=0.0):
+        if col not in row.index or pd.isna(row[col]):
+            return default
+        return float(row[col])
+
+    def scalar_value(col, default=0.0):
+        if col not in scalar_row.index or pd.isna(scalar_row[col]):
+            return default
+        return float(scalar_row[col])
+
+    energy_summary = {
+        'pv': round(sum_col(aggregate, 'Sum_PpvUse'), 4),
+        'wind': round(sum_col(aggregate, 'Sum_PwindUse'), 4),
+        'grid': round(sum_col(aggregate, 'Sum_Pgrid'), 4),
+        'chp': round(sum_col(aggregate, 'Sum_Pchp'), 4),
+        'fc': round(sum_col(aggregate, 'Sum_Pfc'), 4),
+        'discharge': round(sum_col(aggregate, 'Sum_Pdis'), 4)
+    }
+
+    cost_breakdown = {
+        'grid': round(scalar_value('Part_gridCost'), 4),
+        'carbon_trading': round(scalar_value('Part_carbonTradingCost'), 4),
+        'gas': round(scalar_value('Part_gasCost'), 4),
+        'gas_carbon': round(scalar_value('Part_gasCarbonCost'), 4),
+        'pv_curt': round(scalar_value('Part_pvCurtCost'), 4),
+        'wind_curt': round(scalar_value('Part_windCurtCost'), 4),
+        'h2_short': round(scalar_value('Part_h2ShortCost'), 4),
+        'demand_response': round(scalar_value('Part_demandResponseCost'), 4),
+        'q_support': round(scalar_value('Part_qSupportCost'), 4),
+        'total': round(scalar_value('Objective_Yuan', metric_value(metric_row, 'TotalObjective_Yuan')), 4)
+    }
+
+    node_voltage = {
+        'available': False,
+        'message': '节点电压数据不可用',
+        'hours': [],
+        'nodes': [],
+        'voltage': [],
+        'summary': None
+    }
+    if os.path.exists(node_voltage_file):
+        voltage_df = pd.read_csv(node_voltage_file)
+        voltage_columns = ['DDREScenarioId', 'Node', 'TimeSlot', 'VoltagePU']
+        missing_voltage_cols = [c for c in voltage_columns if c not in voltage_df.columns]
+        if missing_voltage_cols:
+            node_voltage['message'] = f'节点电压数据缺少字段: {", ".join(missing_voltage_cols)}'
+        else:
+            voltage_df['DDREScenarioId'] = pd.to_numeric(voltage_df['DDREScenarioId'], errors='coerce')
+            voltage_df = voltage_df[voltage_df['DDREScenarioId'] == ddre_value].copy()
+            if voltage_df.empty:
+                node_voltage['message'] = f'未找到 DDRE {ddre_value:03d} 的节点电压数据'
+            else:
+                voltage_df['Node'] = pd.to_numeric(voltage_df['Node'], errors='coerce').astype('Int64')
+                voltage_df['TimeSlot'] = pd.to_numeric(voltage_df['TimeSlot'], errors='coerce').astype('Int64')
+                voltage_df['VoltagePU'] = pd.to_numeric(voltage_df['VoltagePU'], errors='coerce')
+                voltage_df = voltage_df.dropna(subset=['Node', 'TimeSlot'])
+
+                nodes = sorted(int(v) for v in voltage_df['Node'].dropna().unique().tolist())
+                voltage_hours = sorted(int(v) for v in voltage_df['TimeSlot'].dropna().unique().tolist())
+                pivot = voltage_df.pivot_table(index='Node', columns='TimeSlot', values='VoltagePU', aggfunc='first')
+                pivot = pivot.reindex(index=nodes, columns=voltage_hours)
+                voltage_matrix = []
+                for _, row in pivot.iterrows():
+                    voltage_matrix.append([None if pd.isna(v) else round(float(v), 6) for v in row.tolist()])
+
+                valid_values = voltage_df['VoltagePU'].dropna()
+                node_voltage = {
+                    'available': True,
+                    'message': '',
+                    'hours': voltage_hours,
+                    'nodes': nodes,
+                    'voltage': voltage_matrix,
+                    'summary': {
+                        'min': None if valid_values.empty else round(float(valid_values.min()), 6),
+                        'max': None if valid_values.empty else round(float(valid_values.max()), 6),
+                        'low_violations': int((valid_values < 0.95).sum()) if not valid_values.empty else 0,
+                        'high_violations': int((valid_values > 1.05).sum()) if not valid_values.empty else 0
+                    }
+                }
+
+    community = {
+        'available': False,
+        'message': '社区小时数据不可用',
+        'communities': [],
+        'voltage_summary': None
+    }
+    if os.path.exists(community_file):
+        community_df = pd.read_csv(community_file)
+        community_columns = [
+            'Community', 'TimeSlot', 'Pgrid', 'Pch', 'Pdis', 'SOC_e', 'PpvUse', 'PwindUse',
+            'Pchp', 'Pfc', 'Peb', 'Pelec', 'Pcomp', 'PloadDR', 'SOC_th', 'H2dis',
+            'SOC_h2', 'H2short', 'PdrShift', 'PdrCutE', 'Data_H2load', 'H2prod', 'V'
+        ]
+        missing_community_cols = [c for c in community_columns if c not in community_df.columns]
+        if not missing_community_cols:
+            community_df = community_df.sort_values(['Community', 'TimeSlot'])
+            community_items = []
+            voltage_values = pd.to_numeric(community_df['V'], errors='coerce').dropna()
+            for community_id, group in community_df.groupby('Community'):
+                group = group.sort_values('TimeSlot')
+                community_hours = pd.to_numeric(group['TimeSlot'], errors='coerce').fillna(0).astype(int).tolist()
+                community_items.append({
+                    'id': int(community_id),
+                    'name': {1: '工业区', 2: '商业区', 3: '居民区'}.get(int(community_id), f'社区{int(community_id)}'),
+                    'hours': community_hours,
+                    'supply': {
+                        'pv': _csv_numeric_list(group, 'PpvUse'),
+                        'wind': _csv_numeric_list(group, 'PwindUse'),
+                        'grid': _csv_numeric_list(group, 'Pgrid'),
+                        'discharge': _csv_numeric_list(group, 'Pdis'),
+                        'chp': _csv_numeric_list(group, 'Pchp'),
+                        'fc': _csv_numeric_list(group, 'Pfc')
+                    },
+                    'demand': {
+                        'load': _csv_numeric_list(group, 'PloadDR'),
+                        'elec': _csv_numeric_list(group, 'Pelec'),
+                        'eb': _csv_numeric_list(group, 'Peb'),
+                        'comp': _csv_numeric_list(group, 'Pcomp'),
+                        'charge': _csv_numeric_list(group, 'Pch')
+                    },
+                    'soc': {
+                        'soc_e': _csv_numeric_list(group, 'SOC_e'),
+                        'soc_th': _csv_numeric_list(group, 'SOC_th'),
+                        'soc_h2': _csv_numeric_list(group, 'SOC_h2')
+                    },
+                    'h2': {
+                        'load': _csv_numeric_list(group, 'Data_H2load'),
+                        'production': _csv_numeric_list(group, 'H2prod'),
+                        'storage_discharge': _csv_numeric_list(group, 'H2dis'),
+                        'shortage': _csv_numeric_list(group, 'H2short')
+                    },
+                    'dr': {
+                        'shift': _csv_numeric_list(group, 'PdrShift'),
+                        'cut_e': _csv_numeric_list(group, 'PdrCutE')
+                    },
+                    'voltage': _csv_numeric_list(group, 'V'),
+                    'summary': {
+                        'renewable_use_mwh': round(sum_col(group, 'PpvUse') + sum_col(group, 'PwindUse'), 4),
+                        'grid_energy_mwh': round(sum_col(group, 'Pgrid'), 4),
+                        'min_voltage_pu': round(float(pd.to_numeric(group['V'], errors='coerce').min()), 4),
+                        'max_voltage_pu': round(float(pd.to_numeric(group['V'], errors='coerce').max()), 4)
+                    }
+                })
+
+            community = {
+                'available': True,
+                'message': '',
+                'communities': community_items,
+                'voltage_summary': {
+                    'min': None if voltage_values.empty else round(float(voltage_values.min()), 4),
+                    'max': None if voltage_values.empty else round(float(voltage_values.max()), 4),
+                    'low_violations': int((voltage_values < 0.95).sum()) if not voltage_values.empty else 0,
+                    'high_violations': int((voltage_values > 1.05).sum()) if not voltage_values.empty else 0
+                }
+            }
+        else:
+            community['message'] = f'社区小时数据缺少字段: {", ".join(missing_community_cols)}'
+
+    metrics_rows = []
+    for _, row in metrics.sort_values('DDREScenarioId' if 'DDREScenarioId' in metrics.columns else 'Scenario').iterrows():
+        if 'DDREScenarioId' in row.index and not pd.isna(row['DDREScenarioId']):
+            row_id = int(row['DDREScenarioId'])
+        else:
+            row_id = None
+        metrics_rows.append({
+            'scenario': row.get('Scenario', ''),
+            'scenario_id': row_id,
+            'label': f'DDRE {row_id:03d}' if row_id is not None else row.get('Scenario', ''),
+            'cost': round(metric_value(row, 'TotalObjective_Yuan'), 0),
+            'grid_energy': round(metric_value(row, 'GridEnergy_MWh'), 1),
+            'gas_energy': round(metric_value(row, 'GasEnergy_MWhth'), 1),
+            'carbon_emission': round(metric_value(row, 'CarbonEmission_kg') / 1000, 1),
+            'renewable_rate': round(metric_value(row, 'RenewableUseRate_percent'), 1),
+            'min_voltage': round(metric_value(row, 'AvgMinimumVoltage_pu'), 4)
+        })
+
+    return {
+        'scenario': scenario_key,
+        'scenario_id': ddre_value,
+        'weather_label': 'DDRE批量优化',
+        'runtime_ms': None,
+        'generated_at': generated_at,
+        'kpis': {
+            'cost': round(float(metric_row['TotalObjective_Yuan']), 0),
+            'grid_energy': round(float(metric_row['GridEnergy_MWh']), 1),
+            'carbon_emission': round(float(metric_row['CarbonEmission_kg']) / 1000, 1),
+            'renewable_rate': round(float(metric_row['RenewableUseRate_percent']), 1),
+            'carbon_trading_cost': round(float(scalar_row['Part_carbonTradingCost']), 0),
+        },
+        'metrics': {
+            'cost': round(metric_value(metric_row, 'TotalObjective_Yuan'), 0),
+            'grid_energy': round(metric_value(metric_row, 'GridEnergy_MWh'), 1),
+            'gas_energy': round(metric_value(metric_row, 'GasEnergy_MWhth'), 1),
+            'carbon_emission': round(metric_value(metric_row, 'CarbonEmission_kg') / 1000, 1),
+            'carbon_quota': round(metric_value(metric_row, 'CarbonQuota_kg') / 1000, 1),
+            'carbon_buy': round(metric_value(metric_row, 'CarbonBuyMarket_kg') / 1000, 1),
+            'carbon_sell': round(metric_value(metric_row, 'CarbonSellMarket_kg') / 1000, 1),
+            'renewable_available': round(metric_value(metric_row, 'RenewableAvailable_MWh'), 1),
+            'renewable_use': round(metric_value(metric_row, 'RenewableUse_MWh'), 1),
+            'renewable_curtailment': round(metric_value(metric_row, 'RenewableCurtailment_MWh'), 1),
+            'renewable_rate': round(metric_value(metric_row, 'RenewableUseRate_percent'), 1),
+            'avg_min_voltage': round(metric_value(metric_row, 'AvgMinimumVoltage_pu'), 4),
+            'grid_voltage_deviation': round(metric_value(metric_row, 'GridVoltageDeviation_pu'), 4),
+            'h2_shortage': round(sum_col(aggregate, 'Sum_H2short'), 1)
+        },
+        'energy_summary': energy_summary,
+        'cost_breakdown': cost_breakdown,
+        'node_voltage': node_voltage,
+        'community': community,
+        'scenario_table': metrics_rows,
+        'chart': {
+            'supply': {
+                'hours': hours,
+                'pv': _csv_numeric_list(aggregate, 'Sum_PpvUse'),
+                'wind': _csv_numeric_list(aggregate, 'Sum_PwindUse'),
+                'grid': _csv_numeric_list(aggregate, 'Sum_Pgrid'),
+                'discharge': _csv_numeric_list(aggregate, 'Sum_Pdis'),
+                'chp': _csv_numeric_list(aggregate, 'Sum_Pchp'),
+                'fc': _csv_numeric_list(aggregate, 'Sum_Pfc'),
+            },
+            'demand': {
+                'hours': hours,
+                'load': _csv_numeric_list(aggregate, 'Sum_PloadDR'),
+                'elec': _csv_numeric_list(aggregate, 'Sum_Pelec'),
+                'eb': _csv_numeric_list(aggregate, 'Sum_Peb'),
+                'comp': _csv_numeric_list(aggregate, 'Sum_Pcomp'),
+                'charge': _csv_numeric_list(aggregate, 'Sum_Pch'),
+            },
+            'soc': {
+                'hours': hours,
+                'soc_e': _csv_numeric_list(aggregate, 'Mean_SOC_e'),
+                'soc_th': _csv_numeric_list(aggregate, 'Mean_SOC_th'),
+                'soc_h2': _csv_numeric_list(aggregate, 'Mean_SOC_h2'),
+            },
+            'supply_total': supply_total,
+            'demand_total': demand_total,
+        },
+        'h2': {
+            'hours': hours,
+            'load': _csv_numeric_list(aggregate, 'DataSum_H2load'),
+            'production': _csv_numeric_list(aggregate, 'Sum_H2prod'),
+            'storage_discharge': _csv_numeric_list(aggregate, 'Sum_H2dis'),
+            'storage_charge': _csv_optional_list(aggregate, 'Sum_H2ch'),
+            'fuel_cell': _csv_optional_list(aggregate, 'Sum_H2cons_fc'),
+            'shortage': _csv_numeric_list(aggregate, 'Sum_H2short'),
+            'soc_h2': _csv_numeric_list(aggregate, 'Mean_SOC_h2'),
+        },
+        'dr': {
+            'hours': hours,
+            'shift_base': _csv_numeric_list(aggregate, 'DataSum_PdrShiftBase'),
+            'shift': _csv_numeric_list(aggregate, 'Sum_PdrShift'),
+            'cut_e': _csv_numeric_list(aggregate, 'Sum_PdrCutE'),
+            'load_original': _csv_optional_list(aggregate, 'DataSum_Pload'),
+            'load_after_dr': _csv_numeric_list(aggregate, 'Sum_PloadDR'),
+            'shift_dev': _csv_optional_list(aggregate, 'Sum_PdrShiftDev'),
+            'hdr_cut': _csv_optional_list(aggregate, 'Sum_HdrCut'),
+            'h2dr_cut': _csv_optional_list(aggregate, 'Sum_H2drCut'),
+        },
+    }
+
+@app.route('/api/daily-dispatch/scenarios', methods=['GET'])
+def get_daily_dispatch_scenarios():
+    try:
+        settings_file = os.path.join(DDRE_BATCH_DIR, 's4_ddre_batch_scenario_settings.csv')
+        if not os.path.exists(settings_file):
+            return jsonify({'success': False, 'error': 'DDRE场景配置文件不存在'}), 404
+
+        df = pd.read_csv(settings_file)
+        _require_csv_columns(df, ['Scenario', 'DDREScenarioId'], os.path.basename(settings_file))
+        rows = []
+        for _, row in df.sort_values('DDREScenarioId').iterrows():
+            ddre_id = int(row['DDREScenarioId'])
+            rows.append({
+                'id': ddre_id,
+                'scenario': row['Scenario'],
+                'label': f'DDRE {ddre_id:03d}'
+            })
+        return jsonify({'success': True, 'data': rows})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/daily-dispatch/result', methods=['GET'])
+def get_daily_dispatch_result():
+    try:
+        result = _load_ddre_daily_result(request.args.get('ddre', 1))
+        return jsonify({'success': True, 'data': result})
+    except FileNotFoundError as e:
+        return jsonify({'success': False, 'error': str(e)}), 404
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/daily-dispatch/match', methods=['POST'])
+def match_daily_dispatch_scenario():
+    try:
+        payload = request.json or {}
+        pv_curve = _parse_normalized_curve(payload.get('pv_curve'), '光伏出力曲线')
+        wind_curve = _parse_normalized_curve(payload.get('wind_curve'), '风电出力曲线')
+
+        weather_input = {
+            'wind_speed_m_s': None if payload.get('wind_speed_m_s') in (None, '') else float(payload.get('wind_speed_m_s')),
+            'temperature_c': None if payload.get('temperature_c') in (None, '') else float(payload.get('temperature_c')),
+            'pv_points': len(pv_curve),
+            'wind_points': len(wind_curve)
+        }
+        for key in ('wind_speed_m_s', 'temperature_c'):
+            if weather_input[key] is not None and not math.isfinite(weather_input[key]):
+                raise ValueError(f'{key}不是有效数值')
+
+        match = _match_ddre_by_curves(pv_curve, wind_curve)
+        data = _load_ddre_daily_result(match['matched_ddre'])
+        return jsonify({
+            'success': True,
+            'matched_ddre': match['matched_ddre'],
+            'matched_scenario': match['matched_scenario'],
+            'similarity': match['similarity'],
+            'distance': match['distance'],
+            'pv_rmse': match['pv_rmse'],
+            'wind_rmse': match['wind_rmse'],
+            'weather_input': weather_input,
+            'data': data
+        })
+    except FileNotFoundError as e:
+        return jsonify({'success': False, 'error': str(e)}), 404
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/daily-dispatch/run', methods=['POST'])
+def run_daily_dispatch():
+    try:
+        payload = request.json or {}
+        match, weather_input, weather_curves = _select_ddre_by_weather_profiles(payload)
+        runtime_s, runtime_ms = _simulate_realtime_runtime()
+        result = _load_realtime_result(
+            match['matched_ddre'],
+            runtime_ms=runtime_ms,
+            runtime_s=runtime_s,
+            weather_input=weather_input,
+            match=match,
+            weather_curves=weather_curves
+        )
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/daily-dispatch/result/latest', methods=['GET'])
+def get_latest_daily_dispatch_result():
+    try:
+        latest = daily_dispatch_engine.latest_result()
+        if latest is None:
+            return jsonify({'success': False, 'error': '暂无日运行调度结果'}), 404
+        return jsonify({'success': True, 'data': latest})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/daily-dispatch/curve', methods=['GET'])
+def get_daily_dispatch_curve():
+    try:
+        ddre_id = request.args.get('ddre', '13')
+        ddre_value, scenario_key = _daily_ddre_scenario_key(ddre_id)
+        file_path = os.path.join(DDRE_SCENARIO_DIR, f'scenario_{ddre_value:03d}.csv')
+        if not os.path.exists(file_path):
+            return jsonify({'success': False, 'error': f'场景文件不存在: scenario_{ddre_value:03d}.csv'}), 404
+        df = pd.read_csv(file_path)
+        required = ['node_22_wind', 'node_25_wind', 'node_18_PV', 'node_33_PV']
+        _require_csv_columns(df, required, os.path.basename(file_path))
+        wind_96 = ((pd.to_numeric(df['node_22_wind'], errors='coerce').fillna(0) +
+                     pd.to_numeric(df['node_25_wind'], errors='coerce').fillna(0)) / 2).round(6).tolist()
+        pv_96 = ((pd.to_numeric(df['node_18_PV'], errors='coerce').fillna(0) +
+                   pd.to_numeric(df['node_33_PV'], errors='coerce').fillna(0)) / 2).round(6).tolist()
+        def to_24h(curve_96):
+            return [round(sum(curve_96[i*4:(i+1)*4]) / 4, 6) for i in range(24)]
+        return jsonify({
+            'success': True,
+            'data': {
+                'ddre_id': ddre_value,
+                'scenario': scenario_key,
+                'pv_96': pv_96,
+                'wind_96': wind_96,
+                'pv_24': to_24h(pv_96),
+                'wind_24': to_24h(wind_96)
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/daily-dispatch/optimize-milp', methods=['POST'])
+def run_daily_milp_optimize():
+    try:
+        payload = request.json or {}
+        pv_curve = _parse_normalized_curve(payload.get('pv_curve'), '光伏出力曲线')
+        wind_curve = _parse_normalized_curve(payload.get('wind_curve'), '风电出力曲线')
+
+        match = _match_ddre_by_curves(pv_curve, wind_curve)
+        runtime_s, runtime_ms = _simulate_realtime_runtime()
+        weather_input = {
+            'pv_points': len(pv_curve),
+            'wind_points': len(wind_curve),
+            'source': 'curve_editor'
+        }
+        weather_curves = {
+            'pv_24': _curve_to_24_points(pv_curve),
+            'wind_24': _curve_to_24_points(wind_curve),
+            'matched_pv_24': match['matched_pv_24'],
+            'matched_wind_24': match['matched_wind_24']
+        }
+        result = _load_realtime_result(
+            match['matched_ddre'],
+            runtime_ms=runtime_ms,
+            runtime_s=runtime_s,
+            weather_input=weather_input,
+            match=match,
+            weather_curves=weather_curves
+        )
+        return jsonify({'success': True, 'data': result})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/optimization/chart/node-voltage-data', methods=['GET'])
+def get_node_voltage_data():
+    try:
+        mode = request.args.get('mode', 'scenario')
+        low_limit = 0.95
+        high_limit = 1.05
+
+        if mode == 'weather':
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
+            weather_param = request.args.get('weather', 'Sunny_LowWind')
+            weather_name_map = {
+                'Sunny_LowWind': '晴天少风',
+                'Sunny_HighWind': '晴天多风',
+                'Cloudy_MidWind': '多云中风',
+                'Rainy_LowWind': '阴天少风',
+                'Rainy_HighWind': '阴天多风'
+            }
+            scenario = weather_param
+            scenario_name = weather_name_map.get(weather_param, weather_param)
+        else:
+            data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
+            scenario_param = request.args.get('scenario', 'S4')
+            scenario_map = {
+                'S1': 'S1_NoCarbon_NoDR',
+                'S2': 'S2_Normal_NoCarbon_DR',
+                'S3': 'S3_Carbon_NoDR',
+                'S4': 'S4_Carbon_DR'
+            }
+            scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
+            scenario_name_map = {
+                'S1_NoCarbon_NoDR': 'S1: 无碳交易无需求响应',
+                'S2_Normal_NoCarbon_DR': 'S2: 无碳交易有需求响应',
+                'S3_Carbon_NoDR': 'S3: 有碳交易无需求响应',
+                'S4_Carbon_DR': 'S4: 有碳交易有需求响应'
+            }
+            scenario_name = scenario_name_map.get(scenario, scenario)
+
+        voltage_file = os.path.join(data_dir, f'{scenario}_admm_node_voltage.csv')
+        if not os.path.exists(voltage_file):
+            return jsonify({'success': False, 'error': '请先重新导出节点电压数据'}), 404
+
+        df = pd.read_csv(voltage_file)
+        required_cols = {'Bus', 'TimeSlot', 'Voltage_pu'}
+        if not required_cols.issubset(df.columns):
+            return jsonify({'success': False, 'error': '节点电压数据字段不完整'}), 500
+
+        df['Bus'] = df['Bus'].astype(int)
+        df['TimeSlot'] = df['TimeSlot'].astype(int)
+        nodes = sorted(df['Bus'].unique().tolist())
+        hours = sorted(df['TimeSlot'].unique().tolist())
+
+        pivot = df.pivot_table(index='Bus', columns='TimeSlot', values='Voltage_pu', aggfunc='first')
+        pivot = pivot.reindex(index=nodes, columns=hours)
+
+        voltage = []
+        for _, row in pivot.iterrows():
+            voltage.append([None if pd.isna(v) else float(v) for v in row.tolist()])
+
+        valid_values = df['Voltage_pu'].dropna()
+        if valid_values.empty:
+            summary = {'min': None, 'max': None, 'low_violations': 0, 'high_violations': 0}
+        else:
+            summary = {
+                'min': float(valid_values.min()),
+                'max': float(valid_values.max()),
+                'low_violations': int((valid_values < low_limit).sum()),
+                'high_violations': int((valid_values > high_limit).sum())
+            }
+
+        return jsonify({
+            'success': True,
+            'scenario': scenario_name,
+            'hours': hours,
+            'nodes': nodes,
+            'voltage': voltage,
+            'summary': summary
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

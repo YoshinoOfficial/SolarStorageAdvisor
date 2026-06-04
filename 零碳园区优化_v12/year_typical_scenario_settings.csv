@@ -1,5 +1,5 @@
 TypicalScenario,TypicalScenarioCN,DDREScenarioId,PVLabel,WindLabel,DDRESourceCount,DDRESelectionRule,RepresentativeDays,PVScaleFinal,WindScaleFinal,LoadScaleFinal,H2ScaleFinal,AvailablePV_MWh,AvailableWind_MWh,TotalElectricLoad_MWh,TotalHeatLoad_MWh,TotalH2Load_kg
-Sunny_LowWind,晴天少风,116,0,0,26,median-representative,94,5,5,1,1,103.076979,19.782732,61.73,70.295,617.5
+Sunny_LowWind,晴天少风,116,0,0,26,median-representative,94,5,5,1,1,71.369279,17.678961,61.73,70.295,617.5
 Sunny_HighWind,晴天多风,178,0,2,14,median-representative,51,5,5,1,1,72.773,70.096008,61.73,70.295,617.5
 Cloudy_MidWind,多云中风,137,1,1,20,median-representative,72,5,5,1,1,48.305341,25.98624,61.73,70.295,617.5
 Rainy_LowWind,阴天少风,183,2,0,19,median-representative,69,5,5,1,1,6.884016,14.339712,61.73,70.295,617.5
