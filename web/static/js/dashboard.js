@@ -58,11 +58,14 @@ let dailyCurrentMode = 'realtime';
 const dailyScenarioSelectors = [];
 const dailyWeatherSelectors = [];
 
+let weatherConfigLoaded = false;
+
 function switchDashboardWindow(windowName) {
-    currentDashboardWindow = windowName === 'annual' ? 'annual' : 'daily';
+    currentDashboardWindow = windowName === 'annual' ? 'annual' : (windowName === 'weather' ? 'weather' : 'daily');
 
     const dailyView = document.getElementById('daily-view');
     const annualView = document.getElementById('overview-view');
+    const weatherView = document.getElementById('weather-view');
     const communityView = document.getElementById('community-view');
 
     document.querySelectorAll('.dashboard-window-btn').forEach(btn => {
@@ -78,6 +81,9 @@ function switchDashboardWindow(windowName) {
     if (annualView) {
         annualView.style.display = currentDashboardWindow === 'annual' ? 'grid' : 'none';
     }
+    if (weatherView) {
+        weatherView.style.display = currentDashboardWindow === 'weather' ? 'flex' : 'none';
+    }
 
     if (currentDashboardWindow === 'daily' && !dailyDispatchLoaded) {
         dailyDispatchLoaded = true;
@@ -88,6 +94,12 @@ function switchDashboardWindow(windowName) {
     if (currentDashboardWindow === 'annual' && !annualDataLoaded) {
         annualDataLoaded = true;
         loadOverviewData();
+    }
+    if (currentDashboardWindow === 'weather' && !weatherConfigLoaded) {
+        weatherConfigLoaded = true;
+        dbLoadWeatherConfig();
+        dbLoadScenarioPower();
+        dbLoadMatlabConfig();
     }
 
     setTimeout(() => {
@@ -2938,6 +2950,442 @@ function renderDailyDRChart(dr) {
         margin: { t: 34, b: 62, l: 42, r: 12 }
     };
     Plotly.newPlot(el, traces, layout, plotlyConfig);
+}
+
+/* ========== 天气配置模块 ========== */
+
+let dbScenarioPowerData = null;
+let dbCsvFileData = null;
+let dbTableChartTimer = null;
+
+// ---- 天数配置 ----
+async function dbLoadWeatherConfig() {
+    const body = document.getElementById('db-weather-config-body');
+    const statusEl = document.getElementById('db-weather-config-status');
+    if (!body) return;
+    statusEl.textContent = '';
+    try {
+        const res = await fetch('/api/weather/config');
+        const result = await res.json();
+        if (result.success) {
+            body.innerHTML = '';
+            result.data.forEach(item => {
+                body.innerHTML += `
+                    <tr>
+                        <td>${item.name} (${item.scenario})</td>
+                        <td><input type="number" class="weather-days-input" data-scenario="${item.scenario}" value="${item.days}" min="0" max="365"></td>
+                        <td class="weather-days-pct">${(item.days / 365 * 100).toFixed(1)}%</td>
+                    </tr>
+                `;
+            });
+            dbUpdateWeatherTotal();
+            // bind change events
+            body.querySelectorAll('.weather-days-input').forEach(inp => {
+                inp.addEventListener('input', dbUpdateWeatherTotal);
+            });
+        }
+    } catch (e) {
+        console.error('加载天气配置失败:', e);
+    }
+}
+
+function dbUpdateWeatherTotal() {
+    const inputs = document.querySelectorAll('#db-weather-config-body .weather-days-input');
+    let total = 0;
+    inputs.forEach(inp => {
+        total += parseInt(inp.value) || 0;
+    });
+    const totalEl = document.getElementById('db-weather-total-days');
+    if (totalEl) totalEl.textContent = total;
+    // update percentages
+    inputs.forEach(inp => {
+        const pctEl = inp.closest('tr').querySelector('.weather-days-pct');
+        if (pctEl) {
+            const val = parseInt(inp.value) || 0;
+            pctEl.textContent = total > 0 ? (val / 365 * 100).toFixed(1) + '%' : '0%';
+        }
+    });
+    // validate
+    if (totalEl) {
+        totalEl.style.color = total === 365 ? 'var(--accent-cyan)' : 'var(--accent-red)';
+    }
+}
+
+async function dbSaveWeatherConfig() {
+    const statusEl = document.getElementById('db-weather-config-status');
+    const inputs = document.querySelectorAll('#db-weather-config-body .weather-days-input');
+    const days = {};
+    let total = 0;
+    inputs.forEach(inp => {
+        const val = parseInt(inp.value) || 0;
+        days[inp.dataset.scenario] = val;
+        total += val;
+    });
+    if (total !== 365) {
+        statusEl.textContent = '总天数必须为365';
+        statusEl.style.color = 'var(--accent-red)';
+        return;
+    }
+    try {
+        const res = await fetch('/api/weather/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ days })
+        });
+        const result = await res.json();
+        if (result.success) {
+            statusEl.textContent = '保存成功';
+            statusEl.style.color = 'var(--accent-green)';
+        } else {
+            statusEl.textContent = result.error || '保存失败';
+            statusEl.style.color = 'var(--accent-red)';
+        }
+    } catch (e) {
+        statusEl.textContent = '保存失败';
+        statusEl.style.color = 'var(--accent-red)';
+    }
+}
+
+// ---- 功率曲线配置 ----
+function dbSwitchPowerMethod(method) {
+    document.querySelectorAll('.weather-method-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.method === method);
+    });
+    document.querySelectorAll('.weather-method-content').forEach(pane => {
+        pane.classList.remove('active');
+    });
+    document.getElementById('db-power-method-' + method).classList.add('active');
+    dbRenderActivePowerChart();
+}
+
+async function dbLoadScenarioPower() {
+    const select = document.getElementById('db-scenario-power-select');
+    const scenarioId = select.value;
+    const statusEl = document.getElementById('db-scenario-power-status');
+    if (statusEl) statusEl.textContent = '';
+    try {
+        const res = await fetch(`/api/scenario-power/${scenarioId}`);
+        const result = await res.json();
+        if (result.success) {
+            dbScenarioPowerData = result.data.hourly;
+            const body = document.getElementById('db-scenario-power-body');
+            body.innerHTML = '';
+            dbScenarioPowerData.forEach(item => {
+                const hh = String(item.hour).padStart(2, '0');
+                body.innerHTML += `
+                    <tr>
+                        <td>${hh}:00</td>
+                        <td><input type="number" class="weather-power-input" data-col="node_22_wind" value="${item.node_22_wind}" step="0.01" min="0" max="1"></td>
+                        <td><input type="number" class="weather-power-input" data-col="node_25_wind" value="${item.node_25_wind}" step="0.01" min="0" max="1"></td>
+                        <td><input type="number" class="weather-power-input" data-col="node_18_PV" value="${item.node_18_PV}" step="0.01" min="0" max="1"></td>
+                        <td><input type="number" class="weather-power-input" data-col="node_33_PV" value="${item.node_33_PV}" step="0.01" min="0" max="1"></td>
+                    </tr>
+                `;
+            });
+            dbRenderActivePowerChart();
+        } else {
+            if (statusEl) {
+                statusEl.textContent = result.error || '加载失败';
+                statusEl.style.color = 'var(--accent-red)';
+            }
+        }
+    } catch (e) {
+        console.error('加载场景功率失败:', e);
+        if (statusEl) {
+            statusEl.textContent = '加载失败';
+            statusEl.style.color = 'var(--accent-red)';
+        }
+    }
+}
+
+function dbOnScenarioSelectChange() {
+    dbLoadScenarioPower();
+}
+
+function dbRenderPowerCurveChart(chartId) {
+    if (!dbScenarioPowerData) return;
+    const el = document.getElementById(chartId);
+    if (!el) return;
+    const labels = dbScenarioPowerData.map(d => String(d.hour).padStart(2, '0') + ':00');
+    const cfg = [
+        { name: '风电 node_22', color: '#1e90ff', key: 'node_22_wind' },
+        { name: '风电 node_25', color: '#00bcd4', key: 'node_25_wind' },
+        { name: '光伏 node_18', color: '#ff9100', key: 'node_18_PV' },
+        { name: '光伏 node_33', color: '#ff5252', key: 'node_33_PV' },
+    ];
+    const traces = cfg.map(t => ({
+        x: labels,
+        y: dbScenarioPowerData.map(d => d[t.key]),
+        mode: 'lines+markers',
+        name: t.name,
+        line: { color: t.color, width: 2 },
+        marker: { color: t.color, size: 7 },
+    }));
+    const layout = {
+        ...darkLayout,
+        title: { text: '风光功率曲线预览', font: { size: 13, color: '#e2ecf7' } },
+        xaxis: { ...darkLayout.xaxis, title: { text: '时刻', font: { size: 10 } }, dtick: 2, fixedrange: true },
+        yaxis: { ...darkLayout.yaxis, title: { text: '标幺值 (p.u.)', font: { size: 10 } }, range: [-0.05, 1.05], dtick: 0.1, fixedrange: true, autorange: false },
+        legend: { ...darkLayout.legend, orientation: 'h', y: -0.22 },
+        margin: { t: 40, b: 70, l: 50, r: 20 },
+    };
+    Plotly.react(chartId, traces, layout, plotlyConfig);
+}
+
+function dbRenderActivePowerChart() {
+    const activeBtn = document.querySelector('.weather-method-btn.active');
+    if (!activeBtn) return;
+    const method = activeBtn.dataset.method;
+    if (method === 'csv') {
+        dbRenderPowerCurveChart('db-csv-power-chart');
+    } else if (method === 'table') {
+        dbRenderPowerCurveChart('db-table-power-chart');
+    }
+}
+
+function dbSyncTableFromData() {
+    if (!dbScenarioPowerData) return;
+    const rows = document.querySelectorAll('#db-scenario-power-body tr');
+    rows.forEach((row, idx) => {
+        if (idx >= dbScenarioPowerData.length) return;
+        const inputs = row.querySelectorAll('.weather-power-input');
+        const d = dbScenarioPowerData[idx];
+        if (inputs[0]) inputs[0].value = d.node_22_wind.toFixed(4);
+        if (inputs[1]) inputs[1].value = d.node_25_wind.toFixed(4);
+        if (inputs[2]) inputs[2].value = d.node_18_PV.toFixed(4);
+        if (inputs[3]) inputs[3].value = d.node_33_PV.toFixed(4);
+    });
+}
+
+function dbSyncDataFromTable() {
+    if (!dbScenarioPowerData) return;
+    const rows = document.querySelectorAll('#db-scenario-power-body tr');
+    rows.forEach((row, idx) => {
+        if (idx >= dbScenarioPowerData.length) return;
+        const inputs = row.querySelectorAll('.weather-power-input');
+        dbScenarioPowerData[idx].node_22_wind = parseFloat(inputs[0].value) || 0;
+        dbScenarioPowerData[idx].node_25_wind = parseFloat(inputs[1].value) || 0;
+        dbScenarioPowerData[idx].node_18_PV = parseFloat(inputs[2].value) || 0;
+        dbScenarioPowerData[idx].node_33_PV = parseFloat(inputs[3].value) || 0;
+    });
+}
+
+// table input debounce listener
+document.addEventListener('DOMContentLoaded', () => {
+    const tableBody = document.getElementById('db-scenario-power-body');
+    if (tableBody) {
+        tableBody.addEventListener('input', () => {
+            clearTimeout(dbTableChartTimer);
+            dbTableChartTimer = setTimeout(() => {
+                dbSyncDataFromTable();
+                dbRenderPowerCurveChart('db-table-power-chart');
+            }, 300);
+        });
+    }
+});
+
+async function dbSaveScenarioPower() {
+    const select = document.getElementById('db-scenario-power-select');
+    const scenarioId = select.value;
+    const statusEl = document.getElementById('db-scenario-power-status');
+    const activeBtn = document.querySelector('.weather-method-btn.active');
+    const method = activeBtn ? activeBtn.dataset.method : 'table';
+    if (method === 'table') dbSyncDataFromTable();
+
+    if (!dbScenarioPowerData) {
+        statusEl.textContent = '请先加载数据';
+        statusEl.style.color = 'var(--accent-red)';
+        return;
+    }
+    try {
+        const res = await fetch(`/api/scenario-power/${scenarioId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hourly: dbScenarioPowerData })
+        });
+        const result = await res.json();
+        if (result.success) {
+            statusEl.textContent = '保存成功';
+            statusEl.style.color = 'var(--accent-green)';
+        } else {
+            statusEl.textContent = result.error || '保存失败';
+            statusEl.style.color = 'var(--accent-red)';
+        }
+    } catch (e) {
+        statusEl.textContent = '保存失败';
+        statusEl.style.color = 'var(--accent-red)';
+    }
+}
+
+function dbOnCsvFileSelected(input) {
+    const file = input.files[0];
+    const nameEl = document.getElementById('db-csv-file-name');
+    const previewArea = document.getElementById('db-csv-preview-area');
+    const statusEl = document.getElementById('db-csv-import-status');
+    statusEl.textContent = '';
+    if (!file) {
+        nameEl.textContent = '未选择文件';
+        previewArea.style.display = 'none';
+        dbCsvFileData = null;
+        return;
+    }
+    nameEl.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const text = e.target.result;
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const requiredCols = ['node_22_wind', 'node_25_wind', 'node_18_PV', 'node_33_PV'];
+            const colIndices = requiredCols.map(c => {
+                const idx = headers.indexOf(c);
+                if (idx < 0) throw new Error(`缺少列: ${c}`);
+                return idx;
+            });
+            const tsIdx = headers.indexOf('timestamp');
+            const rows = [];
+            for (let i = 1; i < lines.length; i++) {
+                const cells = lines[i].split(',').map(c => c.trim());
+                if (cells.length < 4) continue;
+                const row = { timestamp: tsIdx >= 0 ? cells[tsIdx] : `行${i}` };
+                colIndices.forEach((idx, j) => { row[requiredCols[j]] = parseFloat(cells[idx]) || 0; });
+                rows.push(row);
+            }
+            if (rows.length < 24) throw new Error(`数据行数不足：需要至少24行，实际${rows.length}行`);
+            dbCsvFileData = rows;
+            const body = document.getElementById('db-csv-preview-body');
+            body.innerHTML = '';
+            rows.slice(0, 10).forEach((row, idx) => {
+                body.innerHTML += `<tr><td>${idx+1}</td><td>${row.timestamp}</td><td>${row.node_22_wind.toFixed(4)}</td><td>${row.node_25_wind.toFixed(4)}</td><td>${row.node_18_PV.toFixed(4)}</td><td>${row.node_33_PV.toFixed(4)}</td></tr>`;
+            });
+            if (rows.length > 10) {
+                body.innerHTML += `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">... 共 ${rows.length} 行</td></tr>`;
+            }
+            previewArea.style.display = 'block';
+        } catch (err) {
+            nameEl.textContent = '解析失败：' + err.message;
+            previewArea.style.display = 'none';
+            dbCsvFileData = null;
+        }
+    };
+    reader.readAsText(file);
+}
+
+async function dbImportCsvToScenario() {
+    const statusEl = document.getElementById('db-csv-import-status');
+    const fileInput = document.getElementById('db-csv-file-input');
+    const select = document.getElementById('db-scenario-power-select');
+    const scenarioId = select.value;
+    if (!fileInput.files[0]) {
+        statusEl.textContent = '请先选择CSV文件';
+        statusEl.style.color = 'var(--accent-red)';
+        return;
+    }
+    const formData = new FormData();
+    formData.append('scenario_id', scenarioId);
+    formData.append('file', fileInput.files[0]);
+    statusEl.textContent = '导入中...';
+    statusEl.style.color = 'var(--accent-yellow)';
+    try {
+        const res = await fetch('/api/scenario-power/import-csv', { method: 'POST', body: formData });
+        const result = await res.json();
+        if (result.success) {
+            statusEl.textContent = result.message || '导入成功';
+            statusEl.style.color = 'var(--accent-green)';
+            dbScenarioPowerData = result.hourly;
+            dbSyncTableFromData();
+            dbRenderActivePowerChart();
+        } else {
+            statusEl.textContent = result.error || '导入失败';
+            statusEl.style.color = 'var(--accent-red)';
+        }
+    } catch (e) {
+        statusEl.textContent = '导入失败';
+        statusEl.style.color = 'var(--accent-red)';
+    }
+}
+
+async function dbSaveAndRerun() {
+    const statusEl = document.getElementById('db-scenario-power-status');
+    const activeBtn = document.querySelector('.weather-method-btn.active');
+    const method = activeBtn ? activeBtn.dataset.method : 'table';
+    if (method === 'table') dbSyncDataFromTable();
+    if (!dbScenarioPowerData) {
+        statusEl.textContent = '请先加载数据';
+        statusEl.style.color = 'var(--accent-red)';
+        return;
+    }
+    const select = document.getElementById('db-scenario-power-select');
+    const currentId = select.value;
+    const scenarioIds = ['116', '178', '137', '183', '40'];
+    statusEl.textContent = '正在保存并调用MATLAB运算，请勿关闭页面...';
+    statusEl.style.color = 'var(--accent-yellow)';
+    const hourlyData = {};
+    hourlyData[currentId] = dbScenarioPowerData.map(d => ({ ...d }));
+    for (const sid of scenarioIds) {
+        if (sid === currentId) continue;
+        try {
+            const res = await fetch(`/api/scenario-power/${sid}`);
+            const result = await res.json();
+            if (result.success) hourlyData[sid] = result.data.hourly;
+        } catch (e) {
+            console.error(`获取场景${sid}数据失败:`, e);
+        }
+    }
+    try {
+        const res = await fetch('/api/scenario-power/save-and-rerun', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hourly_data: hourlyData })
+        });
+        const result = await res.json();
+        if (result.success) {
+            statusEl.textContent = '运算完成';
+            statusEl.style.color = 'var(--accent-green)';
+        } else {
+            statusEl.textContent = result.error || '运算失败';
+            statusEl.style.color = 'var(--accent-red)';
+        }
+    } catch (e) {
+        statusEl.textContent = '运算失败';
+        statusEl.style.color = 'var(--accent-red)';
+    }
+}
+
+async function dbLoadMatlabConfig() {
+    try {
+        const res = await fetch('/api/matlab/config');
+        const result = await res.json();
+        if (result.success) {
+            const inp = document.getElementById('db-matlab-path-input');
+            if (inp) inp.value = result.data.matlab_path || '';
+        }
+    } catch (e) {
+        console.error('加载MATLAB配置失败:', e);
+    }
+}
+
+async function dbSaveMatlabPath() {
+    const statusEl = document.getElementById('db-matlab-config-status');
+    const inp = document.getElementById('db-matlab-path-input');
+    try {
+        const res = await fetch('/api/matlab/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matlab_path: inp.value })
+        });
+        const result = await res.json();
+        if (result.success) {
+            statusEl.textContent = '保存成功';
+            statusEl.style.color = 'var(--accent-green)';
+        } else {
+            statusEl.textContent = result.error || '保存失败';
+            statusEl.style.color = 'var(--accent-red)';
+        }
+    } catch (e) {
+        statusEl.textContent = '保存失败';
+        statusEl.style.color = 'var(--accent-red)';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

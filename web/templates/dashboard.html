@@ -33,6 +33,7 @@
             <div class="dashboard-window-switcher">
                 <button class="dashboard-window-btn active" data-window="daily" onclick="switchDashboardWindow('daily')">日运行监控</button>
                 <button class="dashboard-window-btn" data-window="annual" onclick="switchDashboardWindow('annual')">年化运行情况</button>
+                <button class="dashboard-window-btn" data-window="weather" onclick="switchDashboardWindow('weather')">天气配置</button>
             </div>
 
             <div class="dashboard-overview daily-view" id="daily-view">
@@ -528,6 +529,136 @@
                     </div>
                 </div>
 
+            </div>
+
+            <!-- ===== 天气配置 ===== -->
+            <div class="dashboard-weather-view" id="weather-view" style="display: none;">
+                <div class="weather-config-layout">
+                    <!-- 天数配置 -->
+                    <div class="panel-card weather-panel">
+                        <div class="panel-header">
+                            <h3>典型天气天数配置</h3>
+                        </div>
+                        <p class="weather-desc">配置各典型天气场景的代表天数，总和须为 365 天。</p>
+                        <div class="weather-days-table-wrap">
+                            <table class="weather-days-table">
+                                <thead>
+                                    <tr>
+                                        <th>天气场景</th>
+                                        <th>代表天数</th>
+                                        <th>占比</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="db-weather-config-body"></tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3" style="text-align:right;">
+                                            合计：<strong id="db-weather-total-days">365</strong> 天
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <div class="weather-actions">
+                            <button class="weather-btn-primary" onclick="dbSaveWeatherConfig()">保存配置</button>
+                            <button class="weather-btn-secondary" onclick="dbLoadWeatherConfig()">重置</button>
+                            <span id="db-weather-config-status" class="weather-status"></span>
+                        </div>
+                    </div>
+
+                    <!-- 功率曲线配置 -->
+                    <div class="panel-card weather-panel">
+                        <div class="panel-header">
+                            <h3>典型场景风光功率曲线</h3>
+                        </div>
+                        <p class="weather-desc">编辑各典型天气场景下 4 个节点的归一化风光出力曲线（0~1 标幺值）。</p>
+
+                        <div class="weather-scenario-row">
+                            <label>天气场景：</label>
+                            <select id="db-scenario-power-select" onchange="dbOnScenarioSelectChange()">
+                                <option value="116">晴天少风 (116)</option>
+                                <option value="178">晴天多风 (178)</option>
+                                <option value="137">多云中风 (137)</option>
+                                <option value="183">阴天少风 (183)</option>
+                                <option value="40">阴天多风 (40)</option>
+                            </select>
+                        </div>
+
+                        <div class="weather-method-tabs">
+                            <button class="weather-method-btn active" data-method="csv" onclick="dbSwitchPowerMethod('csv')">CSV导入</button>
+                            <button class="weather-method-btn" data-method="table" onclick="dbSwitchPowerMethod('table')">填表法</button>
+                        </div>
+
+                        <!-- CSV 导入 -->
+                        <div id="db-power-method-csv" class="weather-method-content active">
+                            <p class="weather-desc">上传 CSV 文件（96行15分钟间隔或24行小时，4列标幺值）。</p>
+                            <div class="weather-csv-row">
+                                <label class="weather-csv-btn">
+                                    选择 CSV
+                                    <input type="file" id="db-csv-file-input" accept=".csv" hidden onchange="dbOnCsvFileSelected(this)">
+                                </label>
+                                <span id="db-csv-file-name" class="weather-csv-name">未选择文件</span>
+                            </div>
+                            <div id="db-csv-preview-area" style="display:none;">
+                                <h4 class="weather-sub-title">数据预览（前10行）</h4>
+                                <div class="weather-table-scroll">
+                                    <table class="weather-data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>行</th><th>timestamp</th>
+                                                <th>node_22_wind</th><th>node_25_wind</th>
+                                                <th>node_18_PV</th><th>node_33_PV</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="db-csv-preview-body"></tbody>
+                                    </table>
+                                </div>
+                                <div class="weather-actions">
+                                    <button class="weather-btn-primary" onclick="dbImportCsvToScenario()">确认导入</button>
+                                    <span id="db-csv-import-status" class="weather-status"></span>
+                                </div>
+                            </div>
+                            <div id="db-csv-power-chart" class="weather-chart-container"></div>
+                        </div>
+
+                        <!-- 填表法 -->
+                        <div id="db-power-method-table" class="weather-method-content">
+                            <div class="weather-table-scroll">
+                                <table class="weather-data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>时刻</th>
+                                            <th>风电 node_22</th>
+                                            <th>风电 node_25</th>
+                                            <th>光伏 node_18</th>
+                                            <th>光伏 node_33</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="db-scenario-power-body"></tbody>
+                                </table>
+                            </div>
+                            <div id="db-table-power-chart" class="weather-chart-container"></div>
+                        </div>
+
+                        <div class="weather-actions">
+                            <button class="weather-btn-primary" onclick="dbSaveScenarioPower()">保存功率曲线</button>
+                            <button class="weather-btn-primary weather-btn-rerun" onclick="dbSaveAndRerun()">保存并重新运算</button>
+                            <button class="weather-btn-secondary" onclick="dbLoadScenarioPower()">重置</button>
+                            <span id="db-scenario-power-status" class="weather-status"></span>
+                        </div>
+
+                        <!-- MATLAB 配置 -->
+                        <div class="weather-matlab-section">
+                            <h4 class="weather-sub-title">MATLAB 配置</h4>
+                            <div class="weather-matlab-row">
+                                <label>MATLAB 路径：</label>
+                                <input type="text" id="db-matlab-path-input" class="weather-matlab-input">
+                                <button class="weather-btn-small" onclick="dbSaveMatlabPath()">保存</button>
+                            </div>
+                            <span id="db-matlab-config-status" class="weather-status"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="dashboard-community" id="community-view" style="display: none;">

@@ -728,13 +728,15 @@ def import_scenario_csv():
             hourly = []
             for h in range(24):
                 chunk = df.iloc[h*4:(h+1)*4]
-                hourly.append({c: round(float(chunk[c].mean()), 6) for c in required_cols})
+                entry = {'hour': h}
+                entry.update({c: round(float(chunk[c].mean()), 6) for c in required_cols})
+                hourly.append(entry)
         else:
             # 24-row hourly data: expand to 96 quarter-hour rows
             hourly = []
             rows = []
             for h in range(24):
-                h_data = {}
+                h_data = {'hour': h}
                 for c in required_cols:
                     val = max(0.0, min(1.0, float(df.iloc[h][c])))
                     h_data[c] = round(val, 6)

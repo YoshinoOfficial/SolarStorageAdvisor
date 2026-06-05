@@ -2084,3 +2084,389 @@ body::before {
     color: var(--text-muted);
     white-space: nowrap;
 }
+
+/* ========== 天气配置 Tab ========== */
+.dashboard-weather-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-xl);
+    padding: var(--gap-xl) 0;
+}
+
+.weather-config-layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: var(--gap-xl);
+    max-width: 1800px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.weather-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.weather-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.weather-sub-title {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 12px 0 8px;
+    font-weight: 600;
+}
+
+/* 天数配置表格 */
+.weather-days-table-wrap {
+    overflow-x: auto;
+}
+
+.weather-days-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.weather-days-table th {
+    padding: 10px 12px;
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.weather-days-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(20, 48, 77, 0.3);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+}
+
+.weather-days-table tfoot td {
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+    border-bottom: none;
+    color: var(--text-secondary);
+}
+
+.weather-days-table tfoot strong {
+    color: var(--accent-cyan);
+    font-size: 16px;
+}
+
+.weather-days-input {
+    width: 70px;
+    height: 32px;
+    background: rgba(3, 8, 16, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 0 8px;
+    text-align: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.weather-days-input:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.15);
+}
+
+.weather-days-pct {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+/* 场景选择器 */
+.weather-scenario-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.weather-scenario-row label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.weather-scenario-row select {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.weather-scenario-row select:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.15);
+}
+
+/* 方法切换 */
+.weather-method-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    width: fit-content;
+}
+
+.weather-method-btn {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+
+.weather-method-btn:hover {
+    color: var(--text-secondary);
+}
+
+.weather-method-btn.active {
+    background: var(--accent-cyan);
+    color: #03101d;
+}
+
+.weather-method-content {
+    display: none;
+}
+
+.weather-method-content.active {
+    display: block;
+}
+
+/* CSV 导入 */
+.weather-csv-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0;
+}
+
+.weather-csv-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 14px;
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    border-radius: var(--radius-sm);
+    color: var(--accent-cyan);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.weather-csv-btn:hover {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: rgba(0, 212, 255, 0.4);
+}
+
+.weather-csv-name {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* 数据表格 */
+.weather-table-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+.weather-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.weather-data-table th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-elevated);
+    padding: 8px 10px;
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+    z-index: 1;
+}
+
+.weather-data-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid rgba(20, 48, 77, 0.25);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.weather-data-table tbody tr:hover {
+    background: rgba(0, 212, 255, 0.03);
+}
+
+.weather-power-input {
+    width: 68px;
+    height: 28px;
+    background: rgba(3, 8, 16, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 0 6px;
+    text-align: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.weather-power-input:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.15);
+}
+
+/* 图表容器 */
+.weather-chart-container {
+    min-height: 320px;
+    margin-top: 12px;
+}
+
+/* 按钮 */
+.weather-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.weather-btn-primary {
+    height: 34px;
+    padding: 0 18px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--gradient-cyan);
+    color: #03101d;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.weather-btn-primary:hover {
+    box-shadow: var(--shadow-glow-sm);
+    transform: translateY(-1px);
+}
+
+.weather-btn-primary.weather-btn-rerun {
+    background: var(--gradient-cyan);
+    color: #03101d;
+}
+
+.weather-btn-secondary {
+    height: 34px;
+    padding: 0 18px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.weather-btn-secondary:hover {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+}
+
+.weather-btn-small {
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: rgba(0, 212, 255, 0.08);
+    color: var(--accent-cyan);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.weather-btn-small:hover {
+    background: rgba(0, 212, 255, 0.15);
+}
+
+.weather-status {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* MATLAB 配置 */
+.weather-matlab-section {
+    border-top: 1px solid var(--border-color);
+    padding-top: 16px;
+    margin-top: 4px;
+}
+
+.weather-matlab-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.weather-matlab-row label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.weather-matlab-input {
+    flex: 1;
+    min-width: 200px;
+    height: 32px;
+    background: rgba(3, 8, 16, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 0 10px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.weather-matlab-input:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.15);
+}
