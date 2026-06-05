@@ -2085,6 +2085,30 @@ body::before {
     white-space: nowrap;
 }
 
+/* ========== 年化/天气配置切换按钮 ========== */
+.annual-config-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 18px;
+    margin-bottom: var(--gap-lg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: rgba(0, 212, 255, 0.06);
+    color: var(--accent-cyan);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.annual-config-toggle:hover {
+    background: rgba(0, 212, 255, 0.12);
+    border-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.1);
+}
+
 /* ========== 天气配置 Tab ========== */
 .dashboard-weather-view {
     display: flex;

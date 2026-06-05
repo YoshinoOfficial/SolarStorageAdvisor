@@ -68,8 +68,10 @@ function switchDashboardWindow(windowName) {
     const weatherView = document.getElementById('weather-view');
     const communityView = document.getElementById('community-view');
 
+    // weather view 属于年化分支，保持"年化运行情况"高亮
+    const highlightWindow = currentDashboardWindow === 'weather' ? 'annual' : currentDashboardWindow;
     document.querySelectorAll('.dashboard-window-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.window === currentDashboardWindow);
+        btn.classList.toggle('active', btn.dataset.window === highlightWindow);
     });
 
     if (communityView) {
@@ -83,6 +85,18 @@ function switchDashboardWindow(windowName) {
     }
     if (weatherView) {
         weatherView.style.display = currentDashboardWindow === 'weather' ? 'flex' : 'none';
+    }
+
+    // header 左侧切换按钮：年化/天气时显示，日运行时隐藏
+    const toggleBtn = document.getElementById('header-config-toggle');
+    const toggleText = document.getElementById('header-config-toggle-text');
+    if (toggleBtn) {
+        if (currentDashboardWindow === 'daily') {
+            toggleBtn.style.display = 'none';
+        } else {
+            toggleBtn.style.display = '';
+            if (toggleText) toggleText.textContent = currentDashboardWindow === 'weather' ? '数据展示' : '天气配置';
+        }
     }
 
     if (currentDashboardWindow === 'daily' && !dailyDispatchLoaded) {
@@ -105,6 +119,14 @@ function switchDashboardWindow(windowName) {
     setTimeout(() => {
         window.dispatchEvent(new Event('resize'));
     }, 50);
+}
+
+function toggleWeatherConfig() {
+    if (currentDashboardWindow === 'weather') {
+        switchDashboardWindow('annual');
+    } else {
+        switchDashboardWindow('weather');
+    }
 }
 
 function dailySwitchMode(mode) {
