@@ -79,7 +79,6 @@
 
                         <div class="power-method-tabs">
                             <button class="power-method-btn active" data-power-method="csv">CSV导入</button>
-                            <button class="power-method-btn" data-power-method="chart">曲线拖拽法</button>
                             <button class="power-method-btn" data-power-method="table">填表法</button>
                         </div>
 
@@ -112,11 +111,7 @@
                                     <span id="csv-import-status" class="config-status"></span>
                                 </div>
                             </div>
-                        </div>
-
-                        <div id="power-method-chart" class="power-method-content">
-                            <p class="config-desc" style="margin-bottom:12px;">拖拽曲线上的节点调整标幺值，松手后自动更新。4条曲线分别为风电(node_22/node_25)和光伏(node_18/node_33)。</p>
-                            <div id="scenario-power-drag-chart" class="chart-container" style="min-height:420px;"></div>
+                            <div id="csv-power-curve-chart" class="chart-container" style="min-height:360px; margin-top:16px;"></div>
                         </div>
 
                         <div id="power-method-table" class="power-method-content">
@@ -135,6 +130,7 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <div id="table-power-curve-chart" class="chart-container" style="min-height:360px; margin-top:16px;"></div>
                         </div>
 
                         <div class="weather-config-actions">

@@ -54,12 +54,7 @@ function initTabs() {
             });
             document.getElementById('weather-sub-tab-' + subTabId).classList.add('active');
             if (subTabId === 'power') {
-                loadScenarioPower().then(() => {
-                    const activeMethod = document.querySelector('.power-method-btn.active');
-                    if (activeMethod && activeMethod.dataset.powerMethod === 'chart') {
-                        renderScenarioDragChart();
-                    }
-                });
+                loadScenarioPower();
             }
         });
     });
@@ -74,9 +69,7 @@ function initTabs() {
                 pane.classList.remove('active');
             });
             document.getElementById('power-method-' + methodId).classList.add('active');
-            if (methodId === 'chart') {
-                renderScenarioDragChart();
-            }
+            renderActivePowerChart();
         });
     });
 
@@ -842,6 +835,7 @@ async function loadScenarioPower() {
                     </tr>
                 `;
             });
+            renderActivePowerChart();
         } else {
             statusEl.textContent = result.error || '加载失败';
             statusEl.style.color = '#e74c3c';
@@ -853,8 +847,10 @@ async function loadScenarioPower() {
     }
 }
 
-function renderScenarioDragChart() {
+function renderPowerCurveChart(chartId) {
     if (!scenarioPowerData) return;
+    const el = document.getElementById(chartId);
+    if (!el) return;
     const labels = scenarioPowerData.map(d => String(d.hour).padStart(2, '0') + ':00');
     const cfg = [
         { name: '风电 node_22', color: '#1e90ff', key: 'node_22_wind' },
@@ -862,102 +858,33 @@ function renderScenarioDragChart() {
         { name: '光伏 node_18', color: '#ff9800', key: 'node_18_PV' },
         { name: '光伏 node_33', color: '#f44336', key: 'node_33_PV' },
     ];
-    const keys = cfg.map(c => c.key);
     const traces = cfg.map(t => ({
         x: labels,
         y: scenarioPowerData.map(d => d[t.key]),
         mode: 'lines+markers',
         name: t.name,
         line: { color: t.color, width: 2 },
-        marker: { color: t.color, size: 10 },
+        marker: { color: t.color, size: 8 },
     }));
-
     const layout = {
-        title: { text: '点击选中节点，按住上下拖拽调整功率值', font: { size: 14 } },
+        title: { text: '风光功率曲线预览', font: { size: 14 } },
         xaxis: { title: '时刻', dtick: 2, fixedrange: true },
         yaxis: { title: '标幺值 (p.u.)', range: [-0.05, 1.05], dtick: 0.1, fixedrange: true, autorange: false },
         legend: { orientation: 'h', y: -0.18 },
         margin: { t: 50, b: 80, l: 60, r: 20 },
-        dragmode: false,
     };
+    Plotly.react(chartId, traces, layout, { responsive: true, displayModeBar: false, scrollZoom: false });
+}
 
-    function buildTraces() {
-        return cfg.map(t => ({
-            x: labels,
-            y: scenarioPowerData.map(d => d[t.key]),
-            mode: 'lines+markers',
-            name: t.name,
-            line: { color: t.color, width: 2 },
-            marker: { color: t.color, size: 10 },
-        }));
+function renderActivePowerChart() {
+    const activeMethod = document.querySelector('.power-method-btn.active');
+    if (!activeMethod) return;
+    const method = activeMethod.dataset.powerMethod;
+    if (method === 'csv') {
+        renderPowerCurveChart('csv-power-curve-chart');
+    } else if (method === 'table') {
+        renderPowerCurveChart('table-power-curve-chart');
     }
-
-    Plotly.newPlot('scenario-power-drag-chart', buildTraces(), layout, {
-        responsive: true,
-        displayModeBar: false,
-        scrollZoom: false,
-    });
-
-    const plotDiv = document.getElementById('scenario-power-drag-chart');
-    let selected = null;
-    let dragging = false;
-
-    function mouseYToData(clientY) {
-        const rect = plotDiv.getBoundingClientRect();
-        const yaxis = plotDiv._fullLayout.yaxis;
-        const marginTop = layout.margin.t;
-        const mouseFromTop = clientY - rect.top;
-        const plotY = mouseFromTop - marginTop;
-        const plotHeight = yaxis._length;
-        const range0 = yaxis.range[0];
-        const range1 = yaxis.range[1];
-        const dataVal = range1 + (range0 - range1) * (plotY / plotHeight);
-        return Math.max(0, Math.min(1, dataVal));
-    }
-
-    function refreshChart(traceIdx) {
-        Plotly.react('scenario-power-drag-chart', buildTraces(), plotDiv.layout, {
-            responsive: true,
-            displayModeBar: false,
-            scrollZoom: false,
-        });
-    }
-
-    plotDiv.on('plotly_click', (eventData) => {
-        if (!eventData || !eventData.points || !eventData.points.length) return;
-        const pt = eventData.points[0];
-        selected = { traceIdx: pt.curveNumber, pointIdx: pt.pointIndex };
-        plotDiv.style.cursor = 'ns-resize';
-    });
-
-    plotDiv.addEventListener('mousedown', (e) => {
-        if (!selected) return;
-        dragging = true;
-        e.preventDefault();
-    }, true);
-
-    document.addEventListener('mousemove', (e) => {
-        if (!dragging || !selected) return;
-        const newVal = mouseYToData(e.clientY);
-        const key = keys[selected.traceIdx];
-        scenarioPowerData[selected.pointIdx][key] = parseFloat(newVal.toFixed(4));
-        refreshChart(selected.traceIdx);
-        syncTableFromData();
-    });
-
-    document.addEventListener('mouseup', () => {
-        if (dragging) {
-            dragging = false;
-            plotDiv.style.cursor = 'ns-resize';
-        }
-    });
-
-    plotDiv.addEventListener('mouseleave', () => {
-        if (!dragging) {
-            selected = null;
-            plotDiv.style.cursor = 'default';
-        }
-    });
 }
 
 function syncTableFromData() {
@@ -986,6 +913,20 @@ function syncDataFromTable() {
         scenarioPowerData[idx].node_33_PV = parseFloat(inputs[3].value) || 0;
     });
 }
+
+let _tableChartTimer = null;
+document.addEventListener('DOMContentLoaded', () => {
+    const tableBody = document.getElementById('scenario-power-body');
+    if (tableBody) {
+        tableBody.addEventListener('input', () => {
+            clearTimeout(_tableChartTimer);
+            _tableChartTimer = setTimeout(() => {
+                syncDataFromTable();
+                renderPowerCurveChart('table-power-curve-chart');
+            }, 300);
+        });
+    }
+});
 
 async function saveScenarioPower() {
     const select = document.getElementById('scenario-power-select');
@@ -1142,11 +1083,7 @@ async function importCsvToScenario() {
             // Reload the scenario data to reflect the import
             scenarioPowerData = result.hourly;
             syncTableFromData();
-            // Re-render chart if visible
-            const activeMethod = document.querySelector('.power-method-btn.active');
-            if (activeMethod && activeMethod.dataset.powerMethod === 'chart') {
-                renderScenarioDragChart();
-            }
+            renderActivePowerChart();
         } else {
             statusEl.textContent = result.error || '导入失败';
             statusEl.style.color = '#e74c3c';
