@@ -400,8 +400,16 @@
                                 <select id="dashboard-voltage-node-select" class="voltage-node-select" onchange="renderDashboardSelectedNodeVoltage()"></select>
                             </div>
                         </div>
-                        <div id="dashboard-voltage-summary" class="dashboard-voltage-summary"></div>
-                        <div id="dashboard-voltage-chart" class="chart-container"></div>
+                        <div class="daily-voltage-layout dashboard-voltage-layout">
+                            <div class="daily-voltage-topology-card">
+                                <div id="dashboard-voltage-topology" class="daily-voltage-topology"></div>
+                                <div id="dashboard-voltage-topology-status" class="daily-voltage-topology-status">选择场景或天气查看电压偏差</div>
+                            </div>
+                            <div class="daily-voltage-detail">
+                                <div id="dashboard-voltage-summary" class="dashboard-voltage-summary"></div>
+                                <div id="dashboard-voltage-chart" class="chart-container"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

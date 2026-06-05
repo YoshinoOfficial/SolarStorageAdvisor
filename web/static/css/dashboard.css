@@ -387,17 +387,112 @@ body::before {
     min-height: 260px;
 }
 
+.voltage-deviation-toolbar {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.voltage-play-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 30px;
+    border: 1px solid rgba(0, 212, 255, 0.28);
+    border-radius: var(--radius-sm);
+    background: rgba(7, 27, 49, 0.82);
+    color: var(--accent-cyan);
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.voltage-play-btn:hover,
+.voltage-play-btn:focus {
+    border-color: var(--accent-cyan);
+    background: rgba(0, 212, 255, 0.14);
+    color: #ffffff;
+    outline: none;
+}
+
+.voltage-hour-range {
+    width: 100%;
+    accent-color: var(--accent-cyan);
+}
+
+.voltage-hour-label {
+    min-width: 72px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.voltage-deviation-stage {
+    position: relative;
+    min-height: 230px;
+    border: 1px solid rgba(123, 143, 168, 0.12);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: rgba(242, 246, 250, 0.96);
+}
+
 .daily-voltage-topology svg {
     display: block;
     width: 100%;
     height: 100%;
-    min-height: 260px;
+    min-height: 230px;
+}
+
+.daily-voltage-topology .voltage-topology-svg {
+    min-height: 230px;
+}
+
+.voltage-region-cell {
+    stroke: rgba(40, 52, 66, 0.3);
+    stroke-width: 1.2;
+    vector-effect: non-scaling-stroke;
+}
+
+.voltage-colorbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.voltage-colorbar-gradient {
+    height: 10px;
+    border: 1px solid rgba(123, 143, 168, 0.28);
+    border-radius: 999px;
+    background: linear-gradient(90deg, #083dba 0%, #3b8fcc 25%, #f7f7f2 50%, #f18b6f 75%, #b40f2e 100%);
+}
+
+.voltage-colorbar-label {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.voltage-node-value {
+    fill: #243449;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-anchor: middle;
+    pointer-events: none;
 }
 
 .daily-topology-edge {
-    stroke: rgba(125, 159, 196, 0.7);
+    stroke: rgba(37, 48, 62, 0.76);
     stroke-width: 4;
     stroke-linecap: round;
+    paint-order: stroke;
 }
 
 .daily-topology-node {
@@ -406,14 +501,14 @@ body::before {
 }
 
 .daily-topology-node circle {
-    fill: rgba(9, 33, 58, 0.96);
-    stroke: rgba(0, 212, 255, 0.72);
+    fill: rgba(247, 247, 242, 0.96);
+    stroke: rgba(37, 48, 62, 0.76);
     stroke-width: 3;
     transition: fill 0.16s ease, stroke 0.16s ease, stroke-width 0.16s ease;
 }
 
 .daily-topology-node text {
-    fill: #e2ecf7;
+    fill: #172235;
     font-family: var(--font-mono);
     font-size: 16px;
     font-weight: 700;
@@ -424,13 +519,11 @@ body::before {
 
 .daily-topology-node.available:hover circle,
 .daily-topology-node.available:focus circle {
-    fill: rgba(0, 212, 255, 0.28);
     stroke: var(--accent-cyan);
     stroke-width: 4;
 }
 
 .daily-topology-node.selected circle {
-    fill: rgba(0, 230, 118, 0.34);
     stroke: var(--accent-green);
     stroke-width: 5;
 }

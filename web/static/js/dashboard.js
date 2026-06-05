@@ -40,6 +40,11 @@ let currentDailyDispatchData = null;
 let currentDailyCurves = { pv_24: [], wind_24: [], matchedDdre: 13 };
 let selectedDailyCommunityId = '3';
 let selectedDailyNodeId = '1';
+let selectedDashboardNodeId = '1';
+let dailyVoltageHourIndex = 0;
+let dashboardVoltageHourIndex = 0;
+let dailyVoltagePlaybackTimer = null;
+let dashboardVoltagePlaybackTimer = null;
 let communitySource = 'annual';
 
 const scenarioSelectors = ['scenario-select', 'h2-scenario-select', 'dr-scenario-select'];
@@ -580,8 +585,10 @@ async function loadNodeVoltageChart() {
         }
 
         dashboardVoltageData = result;
+        dashboardVoltageHourIndex = getDefaultVoltageHourIndex(result);
         updateDashboardVoltageNodeSelect(result.nodes || []);
         renderDashboardVoltageSummary(result);
+        renderDashboardVoltageTopology(result);
         renderDashboardSelectedNodeVoltage();
     } catch (e) {
         dashboardVoltageData = null;
@@ -593,12 +600,17 @@ async function loadNodeVoltageChart() {
 function renderDashboardVoltageUnavailable(message) {
     const summaryEl = document.getElementById('dashboard-voltage-summary');
     const chartEl = document.getElementById('dashboard-voltage-chart');
+    const topologyEl = document.getElementById('dashboard-voltage-topology');
     if (summaryEl) {
         summaryEl.innerHTML = `<div class="dashboard-voltage-error">${message}</div>`;
     }
     if (chartEl) {
         chartEl.innerHTML = '';
     }
+    if (topologyEl) {
+        topologyEl.innerHTML = `<div class="dashboard-voltage-error">${message}</div>`;
+    }
+    stopVoltageDeviationPlayback('dashboard');
 }
 
 function renderDashboardVoltageSummary(data) {
@@ -649,6 +661,7 @@ function updateDashboardVoltageNodeSelect(nodes) {
     } else if (nodes.length > 0) {
         select.value = String(nodes[0]);
     }
+    selectedDashboardNodeId = select.value || String(nodes[0] || '1');
 }
 
 function renderDashboardSelectedNodeVoltage() {
@@ -660,6 +673,8 @@ function renderDashboardSelectedNodeVoltage() {
     const nodeIndex = nodes.indexOf(selectedNode);
     const voltage = nodeIndex >= 0 ? (dashboardVoltageData.voltage || [])[nodeIndex] || [] : [];
 
+    selectedDashboardNodeId = String(selectedNode);
+    updateVoltageTopologySelection('dashboard', selectedDashboardNodeId);
     renderDashboardVoltageTimeSeries(dashboardVoltageData.hours || [], voltage, selectedNode);
 }
 
@@ -709,6 +724,450 @@ function renderDashboardVoltageTimeSeries(hours, voltages, selectedNode) {
     };
 
     Plotly.newPlot(container, [trace], layout, plotlyConfig);
+}
+
+const IEEE33_TOPOLOGY_NODES = [
+    { id: 1, x: 0, y: 0 },
+    { id: 2, x: 1, y: 0 },
+    { id: 3, x: 2, y: 0 },
+    { id: 4, x: 3, y: 0 },
+    { id: 5, x: 4, y: 0 },
+    { id: 6, x: 5, y: 0 },
+    { id: 7, x: 6, y: 0 },
+    { id: 8, x: 7, y: 0 },
+    { id: 9, x: 8, y: 0 },
+    { id: 10, x: 9, y: 0 },
+    { id: 11, x: 10, y: 0 },
+    { id: 12, x: 11, y: 0 },
+    { id: 13, x: 12, y: 0 },
+    { id: 14, x: 13, y: 0 },
+    { id: 15, x: 14, y: 0 },
+    { id: 16, x: 15, y: 0 },
+    { id: 17, x: 16, y: 0 },
+    { id: 18, x: 17, y: 0 },
+    { id: 19, x: 1.9, y: -1.2 },
+    { id: 20, x: 3.6, y: -1.2 },
+    { id: 21, x: 5.3, y: -1.2 },
+    { id: 22, x: 7.0, y: -1.2 },
+    { id: 23, x: 2.9, y: 2.4 },
+    { id: 24, x: 4.5, y: 2.4 },
+    { id: 25, x: 6.1, y: 2.4 },
+    { id: 26, x: 5.6, y: 1.35 },
+    { id: 27, x: 7.0, y: 1.35 },
+    { id: 28, x: 8.4, y: 1.35 },
+    { id: 29, x: 9.8, y: 1.35 },
+    { id: 30, x: 11.2, y: 1.35 },
+    { id: 31, x: 12.6, y: 1.35 },
+    { id: 32, x: 14.0, y: 1.35 },
+    { id: 33, x: 15.4, y: 1.35 }
+];
+
+const IEEE33_TOPOLOGY_EDGES = [
+    [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9],
+    [9, 10], [10, 11], [11, 12], [12, 13], [13, 14], [14, 15], [15, 16],
+    [16, 17], [17, 18], [2, 19], [19, 20], [20, 21], [21, 22],
+    [3, 23], [23, 24], [24, 25], [6, 26], [26, 27], [27, 28], [28, 29],
+    [29, 30], [30, 31], [31, 32], [32, 33]
+];
+
+const IEEE33_TOPOLOGY_BOUNDS = IEEE33_TOPOLOGY_NODES.reduce((acc, node) => ({
+    minX: Math.min(acc.minX, node.x),
+    maxX: Math.max(acc.maxX, node.x),
+    minY: Math.min(acc.minY, node.y),
+    maxY: Math.max(acc.maxY, node.y)
+}), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+
+function ieee33TopologyPoint(node) {
+    const width = 1000;
+    const height = 330;
+    const padX = 42;
+    const padY = 42;
+    return {
+        x: padX + ((node.x - IEEE33_TOPOLOGY_BOUNDS.minX) / (IEEE33_TOPOLOGY_BOUNDS.maxX - IEEE33_TOPOLOGY_BOUNDS.minX)) * (width - padX * 2),
+        y: padY + ((IEEE33_TOPOLOGY_BOUNDS.maxY - node.y) / (IEEE33_TOPOLOGY_BOUNDS.maxY - IEEE33_TOPOLOGY_BOUNDS.minY)) * (height - padY * 2)
+    };
+}
+
+function getVoltageMatrixByNode(data) {
+    const voltageByNode = new Map();
+    (data?.nodes || []).forEach((node, index) => {
+        voltageByNode.set(String(node), (data.voltage || [])[index] || []);
+    });
+    return voltageByNode;
+}
+
+function getVoltageDeviationScale(data) {
+    let maxAbs = 0;
+    (data?.voltage || []).forEach(row => {
+        (row || []).forEach(value => {
+            const num = Number(value);
+            if (Number.isFinite(num)) {
+                maxAbs = Math.max(maxAbs, Math.abs(num - 1.0));
+            }
+        });
+    });
+    return Math.max(0.01, Math.min(0.08, maxAbs || 0.05));
+}
+
+function getDefaultVoltageHourIndex(data) {
+    const hours = data?.hours || [];
+    let bestIndex = 0;
+    let bestAbs = -1;
+    hours.forEach((_, hourIndex) => {
+        (data?.voltage || []).forEach(row => {
+            const num = Number((row || [])[hourIndex]);
+            if (Number.isFinite(num)) {
+                const abs = Math.abs(num - 1.0);
+                if (abs > bestAbs) {
+                    bestAbs = abs;
+                    bestIndex = hourIndex;
+                }
+            }
+        });
+    });
+    return bestIndex;
+}
+
+function getVoltageDeviationColor(deviation, scale) {
+    if (!Number.isFinite(deviation)) return '#b7c0ca';
+    const t = Math.max(-1, Math.min(1, deviation / scale));
+    if (t >= 0) {
+        const a = t;
+        const r = Math.round(247 + (180 - 247) * a);
+        const g = Math.round(247 + (15 - 247) * a);
+        const b = Math.round(242 + (46 - 242) * a);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+    const a = Math.abs(t);
+    const r = Math.round(247 + (8 - 247) * a);
+    const g = Math.round(247 + (61 - 247) * a);
+    const b = Math.round(242 + (186 - 242) * a);
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+function clipPolygonByHalfPlane(polygon, a, b, c) {
+    const clipped = [];
+    if (!polygon.length) return clipped;
+
+    for (let i = 0; i < polygon.length; i += 1) {
+        const current = polygon[i];
+        const previous = polygon[(i + polygon.length - 1) % polygon.length];
+        const currentInside = a * current.x + b * current.y <= c + 1e-6;
+        const previousInside = a * previous.x + b * previous.y <= c + 1e-6;
+
+        if (currentInside !== previousInside) {
+            const dx = current.x - previous.x;
+            const dy = current.y - previous.y;
+            const denom = a * dx + b * dy;
+            if (Math.abs(denom) > 1e-9) {
+                const t = (c - a * previous.x - b * previous.y) / denom;
+                clipped.push({
+                    x: previous.x + dx * t,
+                    y: previous.y + dy * t
+                });
+            }
+        }
+        if (currentInside) {
+            clipped.push(current);
+        }
+    }
+
+    return clipped;
+}
+
+function getVoltageRegionCells(pointsByNode) {
+    const padding = 0;
+    const allPoints = IEEE33_TOPOLOGY_NODES
+        .map(node => ({ id: node.id, ...pointsByNode.get(node.id) }))
+        .filter(point => Number.isFinite(point.x) && Number.isFinite(point.y));
+    const bounds = [
+        { x: padding, y: padding },
+        { x: 1000 - padding, y: padding },
+        { x: 1000 - padding, y: 330 - padding },
+        { x: padding, y: 330 - padding }
+    ];
+
+    return allPoints.map(point => {
+        let polygon = bounds.map(p => ({ ...p }));
+        allPoints.forEach(other => {
+            if (other.id === point.id || polygon.length === 0) return;
+            const a = 2 * (other.x - point.x);
+            const b = 2 * (other.y - point.y);
+            const c = other.x * other.x + other.y * other.y - point.x * point.x - point.y * point.y;
+            polygon = clipPolygonByHalfPlane(polygon, a, b, c);
+        });
+        return { id: point.id, polygon };
+    });
+}
+
+function polygonToPath(polygon) {
+    if (!polygon.length) return '';
+    const [first, ...rest] = polygon;
+    return [
+        `M ${first.x.toFixed(2)} ${first.y.toFixed(2)}`,
+        ...rest.map(point => `L ${point.x.toFixed(2)} ${point.y.toFixed(2)}`),
+        'Z'
+    ].join(' ');
+}
+
+function getVoltageScopeState(scope) {
+    if (scope === 'dashboard') {
+        return {
+            hourIndex: dashboardVoltageHourIndex,
+            selectedNodeId: selectedDashboardNodeId,
+            setHourIndex: value => { dashboardVoltageHourIndex = value; },
+            setSelectedNodeId: value => { selectedDashboardNodeId = value; },
+            data: dashboardVoltageData,
+            render: () => renderDashboardVoltageTopology(dashboardVoltageData),
+            onNodeSelect: nodeId => {
+                selectedDashboardNodeId = nodeId;
+                const select = document.getElementById('dashboard-voltage-node-select');
+                if (select) select.value = nodeId;
+                renderDashboardSelectedNodeVoltage();
+            }
+        };
+    }
+    return {
+        hourIndex: dailyVoltageHourIndex,
+        selectedNodeId: selectedDailyNodeId,
+        setHourIndex: value => { dailyVoltageHourIndex = value; },
+        setSelectedNodeId: value => { selectedDailyNodeId = value; },
+        data: currentDailyDispatchData?.node_voltage,
+        render: () => renderDailyVoltageTopology(currentDailyDispatchData?.node_voltage),
+        onNodeSelect: nodeId => {
+            selectedDailyNodeId = nodeId;
+            const select = document.getElementById('daily-voltage-node-select');
+            if (select) select.value = nodeId;
+            renderDailySelectedNodeVoltage();
+        }
+    };
+}
+
+function stopVoltageDeviationPlayback(scope) {
+    if (scope === 'dashboard' && dashboardVoltagePlaybackTimer) {
+        clearInterval(dashboardVoltagePlaybackTimer);
+        dashboardVoltagePlaybackTimer = null;
+    }
+    if (scope === 'daily' && dailyVoltagePlaybackTimer) {
+        clearInterval(dailyVoltagePlaybackTimer);
+        dailyVoltagePlaybackTimer = null;
+    }
+}
+
+function toggleVoltageDeviationPlayback(scope) {
+    const state = getVoltageScopeState(scope);
+    const hours = state.data?.hours || [];
+    if (hours.length <= 1) return;
+
+    const isRunning = scope === 'dashboard' ? dashboardVoltagePlaybackTimer : dailyVoltagePlaybackTimer;
+    if (isRunning) {
+        stopVoltageDeviationPlayback(scope);
+        state.render();
+        return;
+    }
+
+    const timer = setInterval(() => {
+        const next = (getVoltageScopeState(scope).hourIndex + 1) % hours.length;
+        state.setHourIndex(next);
+        state.render();
+    }, 700);
+
+    if (scope === 'dashboard') {
+        dashboardVoltagePlaybackTimer = timer;
+    } else {
+        dailyVoltagePlaybackTimer = timer;
+    }
+    state.render();
+}
+
+function updateVoltageTopologySelection(scope, selectedNodeId) {
+    const containerId = scope === 'dashboard' ? 'dashboard-voltage-topology' : 'daily-voltage-topology';
+    const statusId = scope === 'dashboard' ? 'dashboard-voltage-topology-status' : 'daily-voltage-topology-status';
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll('.daily-topology-node').forEach(nodeEl => {
+        nodeEl.classList.toggle('selected', nodeEl.dataset.node === String(selectedNodeId));
+    });
+    const status = document.getElementById(statusId);
+    if (status && selectedNodeId) {
+        status.textContent = `当前选中 Node ${selectedNodeId}`;
+        status.classList.remove('warning');
+    }
+}
+
+function renderVoltageDeviationTopology(scope, data, containerId, statusId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const hours = data?.hours || [];
+    const voltageByNode = getVoltageMatrixByNode(data);
+    if (!data || (!data.available && data.success === false) || !hours.length || !voltageByNode.size) {
+        container.innerHTML = '<div class="dashboard-voltage-error">拓扑数据等待节点电压结果</div>';
+        const status = document.getElementById(statusId);
+        if (status) {
+            status.textContent = '暂无可播放的电压偏差数据';
+            status.classList.add('warning');
+        }
+        stopVoltageDeviationPlayback(scope);
+        return;
+    }
+
+    const state = getVoltageScopeState(scope);
+    if (!Number.isInteger(state.hourIndex) || state.hourIndex < 0 || state.hourIndex >= hours.length) {
+        state.setHourIndex(getDefaultVoltageHourIndex(data));
+    }
+    const hourIndex = getVoltageScopeState(scope).hourIndex;
+    const hour = hours[hourIndex] || (hourIndex + 1);
+    const selected = String(getVoltageScopeState(scope).selectedNodeId || '');
+    const scale = getVoltageDeviationScale(data);
+    const isPlaying = scope === 'dashboard' ? !!dashboardVoltagePlaybackTimer : !!dailyVoltagePlaybackTimer;
+    const points = new Map(IEEE33_TOPOLOGY_NODES.map(node => [node.id, ieee33TopologyPoint(node)]));
+    const svgNS = 'http://www.w3.org/2000/svg';
+
+    container.innerHTML = '';
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'voltage-deviation-toolbar';
+
+    const playBtn = document.createElement('button');
+    playBtn.type = 'button';
+    playBtn.className = 'voltage-play-btn';
+    playBtn.title = isPlaying ? '暂停播放' : '播放一天过程';
+    playBtn.setAttribute('aria-label', playBtn.title);
+    playBtn.textContent = isPlaying ? 'Ⅱ' : '▶';
+    playBtn.addEventListener('click', () => toggleVoltageDeviationPlayback(scope));
+    toolbar.appendChild(playBtn);
+
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.className = 'voltage-hour-range';
+    range.min = '0';
+    range.max = String(Math.max(0, hours.length - 1));
+    range.step = '1';
+    range.value = String(hourIndex);
+    range.addEventListener('input', event => {
+        state.setHourIndex(Number(event.target.value));
+        state.render();
+    });
+    toolbar.appendChild(range);
+
+    const hourLabel = document.createElement('div');
+    hourLabel.className = 'voltage-hour-label';
+    hourLabel.textContent = `${hour}:00`;
+    toolbar.appendChild(hourLabel);
+    container.appendChild(toolbar);
+
+    const stage = document.createElement('div');
+    stage.className = 'voltage-deviation-stage';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'voltage-topology-svg');
+    svg.setAttribute('viewBox', '0 0 1000 330');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'IEEE33节点电压偏差拓扑');
+
+    const bg = document.createElementNS(svgNS, 'rect');
+    bg.setAttribute('x', '0');
+    bg.setAttribute('y', '0');
+    bg.setAttribute('width', '1000');
+    bg.setAttribute('height', '330');
+    bg.setAttribute('fill', '#f7f7f2');
+    svg.appendChild(bg);
+
+    getVoltageRegionCells(points).forEach(cell => {
+        const voltage = voltageByNode.get(String(cell.id)) || [];
+        const value = Number(voltage[hourIndex]);
+        const region = document.createElementNS(svgNS, 'path');
+        region.setAttribute('d', polygonToPath(cell.polygon));
+        region.setAttribute('class', 'voltage-region-cell');
+        region.setAttribute('fill', Number.isFinite(value) ? getVoltageDeviationColor(value - 1.0, scale) : '#d6dbe0');
+        svg.appendChild(region);
+    });
+
+    IEEE33_TOPOLOGY_EDGES.forEach(([from, to]) => {
+        const a = points.get(from);
+        const b = points.get(to);
+        if (!a || !b) return;
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', a.x);
+        line.setAttribute('y1', a.y);
+        line.setAttribute('x2', b.x);
+        line.setAttribute('y2', b.y);
+        line.setAttribute('class', 'daily-topology-edge');
+        svg.appendChild(line);
+    });
+
+    IEEE33_TOPOLOGY_NODES.forEach(node => {
+        const point = points.get(node.id);
+        const key = String(node.id);
+        const voltage = voltageByNode.get(key) || [];
+        const value = Number(voltage[hourIndex]);
+        const hasData = Number.isFinite(value);
+        const isSelected = selected === key;
+        const hasViolation = (voltage || []).some(v => Number(v) < 0.95 || Number(v) > 1.05);
+
+        const group = document.createElementNS(svgNS, 'g');
+        group.setAttribute('class', [
+            'daily-topology-node',
+            hasData ? 'available' : 'unavailable',
+            isSelected ? 'selected' : '',
+            hasViolation ? 'violation' : ''
+        ].filter(Boolean).join(' '));
+        group.setAttribute('data-node', key);
+        group.setAttribute('tabindex', hasData ? '0' : '-1');
+        group.setAttribute('role', hasData ? 'button' : 'img');
+        group.setAttribute('aria-label', hasData ? `Node ${key} 电压偏差` : `Node ${key} 暂无电压数据`);
+
+        const clickNode = () => {
+            if (!hasData) return;
+            getVoltageScopeState(scope).onNodeSelect(key);
+        };
+        group.addEventListener('click', clickNode);
+        group.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                clickNode();
+            }
+        });
+
+        const circle = document.createElementNS(svgNS, 'circle');
+        circle.setAttribute('cx', point.x);
+        circle.setAttribute('cy', point.y);
+        circle.setAttribute('r', '15');
+        circle.setAttribute('fill', hasData ? getVoltageDeviationColor(value - 1.0, scale) : '#b7c0ca');
+        group.appendChild(circle);
+
+        const label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', point.x);
+        label.setAttribute('y', point.y + 4);
+        label.textContent = key;
+        group.appendChild(label);
+
+        svg.appendChild(group);
+    });
+
+    stage.appendChild(svg);
+    container.appendChild(stage);
+
+    const colorbar = document.createElement('div');
+    colorbar.className = 'voltage-colorbar';
+    const gradient = document.createElement('div');
+    gradient.className = 'voltage-colorbar-gradient';
+    const label = document.createElement('div');
+    label.className = 'voltage-colorbar-label';
+    label.textContent = `${(-scale).toFixed(3)} ~ +${scale.toFixed(3)} p.u.`;
+    colorbar.appendChild(gradient);
+    colorbar.appendChild(label);
+    container.appendChild(colorbar);
+
+    const status = document.getElementById(statusId);
+    if (status) {
+        status.textContent = `当前小时 ${hour}:00，电压偏差 = V - 1.0 p.u.`;
+        status.classList.remove('warning');
+    }
+}
+
+function renderDashboardVoltageTopology(data) {
+    renderVoltageDeviationTopology('dashboard', data, 'dashboard-voltage-topology', 'dashboard-voltage-topology-status');
 }
 
 async function loadEnergySummary() {
@@ -2095,108 +2554,12 @@ function setDailyTopologyStatus(message, isWarning = false) {
 }
 
 function renderDailyVoltageTopology(nodeVoltage) {
-    const container = document.getElementById('daily-voltage-topology');
-    if (!container) return;
-
-    if (!nodeVoltage || !nodeVoltage.available) {
-        container.innerHTML = '<div class="dashboard-voltage-error">拓扑数据等待节点电压结果</div>';
-        setDailyTopologyStatus('暂无可点击节点', true);
-        return;
-    }
-
-    const voltageByNode = getDailyVoltageNodeInfo(nodeVoltage);
-    const points = new Map(DAILY_VOLTAGE_TOPOLOGY_NODES.map(node => [node.id, dailyTopologyPoint(node)]));
-    const selected = String(selectedDailyNodeId || '');
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('viewBox', '0 0 1000 360');
-    svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', '33节点系统拓扑');
-
-    DAILY_VOLTAGE_TOPOLOGY_EDGES.forEach(([from, to]) => {
-        const a = points.get(from);
-        const b = points.get(to);
-        if (!a || !b) return;
-        const line = document.createElementNS(svgNS, 'line');
-        line.setAttribute('x1', a.x);
-        line.setAttribute('y1', a.y);
-        line.setAttribute('x2', b.x);
-        line.setAttribute('y2', b.y);
-        line.setAttribute('class', 'daily-topology-edge');
-        svg.appendChild(line);
-    });
-
-    DAILY_VOLTAGE_TOPOLOGY_NODES.forEach(node => {
-        const point = points.get(node.id);
-        const key = String(node.id);
-        const voltage = voltageByNode.get(key) || [];
-        const hasData = voltage.length > 0;
-        const isSelected = selected === key;
-        const hasViolation = voltage.some(v => Number(v) < 0.95 || Number(v) > 1.05);
-
-        const group = document.createElementNS(svgNS, 'g');
-        group.setAttribute('class', [
-            'daily-topology-node',
-            hasData ? 'available' : 'unavailable',
-            isSelected ? 'selected' : '',
-            hasViolation ? 'violation' : ''
-        ].filter(Boolean).join(' '));
-        group.setAttribute('data-node', key);
-        group.setAttribute('tabindex', hasData ? '0' : '-1');
-        group.setAttribute('role', hasData ? 'button' : 'img');
-        group.setAttribute('aria-label', hasData ? `Node ${key} 电压曲线` : `Node ${key} 暂无电压数据`);
-
-        const clickNode = () => {
-            if (!hasData) {
-                setDailyTopologyStatus(`Node ${key} 暂无电压数据`, true);
-                return;
-            }
-            selectedDailyNodeId = key;
-            const select = document.getElementById('daily-voltage-node-select');
-            if (select) select.value = key;
-            renderDailySelectedNodeVoltage();
-        };
-        group.addEventListener('click', clickNode);
-        group.addEventListener('keydown', event => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                clickNode();
-            }
-        });
-
-        const circle = document.createElementNS(svgNS, 'circle');
-        circle.setAttribute('cx', point.x);
-        circle.setAttribute('cy', point.y);
-        circle.setAttribute('r', node.id === 0 ? 15 : 13);
-        group.appendChild(circle);
-
-        const label = document.createElementNS(svgNS, 'text');
-        label.setAttribute('x', point.x);
-        label.setAttribute('y', point.y + 4);
-        label.textContent = key;
-        group.appendChild(label);
-        svg.appendChild(group);
-    });
-
-    container.innerHTML = '';
-    container.appendChild(svg);
-    updateDailyVoltageTopologySelection(nodeVoltage);
+    renderVoltageDeviationTopology('daily', nodeVoltage, 'daily-voltage-topology', 'daily-voltage-topology-status');
 }
 
 function updateDailyVoltageTopologySelection(nodeVoltage = currentDailyDispatchData?.node_voltage) {
-    const container = document.getElementById('daily-voltage-topology');
-    if (!container || !nodeVoltage?.available) return;
-
-    const voltageByNode = getDailyVoltageNodeInfo(nodeVoltage);
-    const selected = String(selectedDailyNodeId || '');
-    container.querySelectorAll('.daily-topology-node').forEach(nodeEl => {
-        const nodeId = nodeEl.dataset.node;
-        nodeEl.classList.toggle('selected', nodeId === selected);
-    });
-
-    if (voltageByNode.has(selected)) {
-        setDailyTopologyStatus(`当前选中 Node ${selected}`);
-    }
+    if (!nodeVoltage?.available) return;
+    updateVoltageTopologySelection('daily', selectedDailyNodeId);
 }
 
 function renderDailyNodeVoltage(nodeVoltage) {
@@ -2209,6 +2572,7 @@ function renderDailyNodeVoltage(nodeVoltage) {
         summary.innerHTML = `<div class="dashboard-voltage-error">${nodeVoltage?.message || '节点电压数据不可用'}</div>`;
         chart.innerHTML = '';
         select.innerHTML = '';
+        stopVoltageDeviationPlayback('daily');
         renderDailyVoltageTopology(nodeVoltage);
         return;
     }
@@ -2226,6 +2590,7 @@ function renderDailyNodeVoltage(nodeVoltage) {
         ? String(previous)
         : String(nodeVoltage.nodes[0]);
     select.value = selectedDailyNodeId;
+    dailyVoltageHourIndex = getDefaultVoltageHourIndex(nodeVoltage);
     renderDailyVoltageTopology(nodeVoltage);
     renderDailySelectedNodeVoltage();
 }

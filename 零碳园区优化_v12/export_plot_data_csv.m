@@ -48,17 +48,25 @@ for s = 1:numel(scenNames)
         baseName = sprintf('%s_%s', safe_file_name(scenName), safe_file_name(methodName));
         aggregateFile = fullfile(outDir, sprintf('%s_hourly_aggregate.csv', baseName));
         communityFile = fullfile(outDir, sprintf('%s_community_hourly.csv', baseName));
+        nodeVoltageFile = fullfile(outDir, sprintf('%s_node_voltage.csv', baseName));
 
         aggregateTable = build_hourly_aggregate_table(scenName, methodName, D, sol, N, T);
         communityTable = build_community_hourly_table(scenName, methodName, D, sol, N, T);
+        nodeVoltageTable = build_node_voltage_table(scenName, methodName, sol, N, T);
         scalarTable = build_solution_scalar_table(scenName, methodName, sol);
         scalarFile = fullfile(outDir, sprintf('%s_solution_scalars.csv', baseName));
         writetable(aggregateTable, aggregateFile);
         writetable(communityTable, communityFile);
+        if ~isempty(nodeVoltageTable)
+            writetable(nodeVoltageTable, nodeVoltageFile);
+        end
         writetable(scalarTable, scalarFile);
 
         manifestRows = [manifestRows; make_manifest_row(scenName, methodName, 'hourly_aggregate', aggregateFile)]; %#ok<AGROW>
         manifestRows = [manifestRows; make_manifest_row(scenName, methodName, 'community_hourly', communityFile)]; %#ok<AGROW>
+        if ~isempty(nodeVoltageTable)
+            manifestRows = [manifestRows; make_manifest_row(scenName, methodName, 'node_voltage', nodeVoltageFile)]; %#ok<AGROW>
+        end
         manifestRows = [manifestRows; make_manifest_row(scenName, methodName, 'solution_scalars', scalarFile)]; %#ok<AGROW>
 
         convergenceTable = build_convergence_table(scenName, methodName, sol);
@@ -159,6 +167,30 @@ for i = 1:N
             row.(sprintf('Data_%s', name)) = get_vector_value(D, name, i);
         end
 
+        rows = append_struct_row(rows, row);
+    end
+end
+TBL = struct2table(rows);
+end
+
+function TBL = build_node_voltage_table(scenName, methodName, sol, N, T)
+V = get_matrix(sol, 'V', N, T);
+if isempty(V) || ~any(V(:))
+    TBL = table();
+    return;
+end
+
+rows = struct([]);
+for bus = 1:N
+    for t = 1:T
+        voltageSq = V(bus,t);
+        row = struct();
+        row.Scenario = string(scenName);
+        row.Method = string(methodName);
+        row.Bus = bus;
+        row.TimeSlot = t;
+        row.Voltage_pu = sqrt(max(0, voltageSq));
+        row.VoltageSq = voltageSq;
         rows = append_struct_row(rows, row);
     end
 end
