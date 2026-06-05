@@ -99,6 +99,12 @@ function switchDashboardWindow(windowName) {
         }
     }
 
+    // 天气配置时隐藏 tab 栏
+    const switcher = document.querySelector('.dashboard-window-switcher');
+    if (switcher) {
+        switcher.style.display = currentDashboardWindow === 'weather' ? 'none' : '';
+    }
+
     if (currentDashboardWindow === 'daily' && !dailyDispatchLoaded) {
         dailyDispatchLoaded = true;
         loadDailyOverviewData();
