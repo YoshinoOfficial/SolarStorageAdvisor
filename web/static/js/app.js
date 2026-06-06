@@ -1215,7 +1215,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadConvergenceChart() {
     try {
-        const res = await fetchAPI('/api/optimization/chart/admm-convergence');
+        const res = await fetchAPI('/api/optimization/chart/centralized-convergence');
         if (res.success) {
             renderClickableChart('admm-convergence-chart', res.data, 'ADMM算法收敛曲线');
         }

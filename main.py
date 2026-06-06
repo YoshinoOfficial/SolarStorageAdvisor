@@ -4,7 +4,6 @@ from Wind.Wind import getwind
 from Storage.Storage import simulate_storage
 from config.config_manager import load_electricity_price, get_current_community, list_communities, get_current_wind_community
 import pandas as pd
-from plot_comparison import plot_comparison
 
 freconvert = 60 / 15
 
@@ -69,4 +68,3 @@ if __name__ == '__main__':
     print(f"新能源收益: {revenue['total_revenue']} 元/天")
     print(f"  - 减少购电收益: {revenue['revenue_from_reduced_purchase']} 元/天")
     print(f"  - 售电收益: {revenue['revenue_from_selling']} 元/天")
-    plot_comparison(data, ifsave=True)
