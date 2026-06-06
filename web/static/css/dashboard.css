@@ -23,8 +23,8 @@
 
     /* --- Text Hierarchy --- */
     --text-primary: #e2ecf7;
-    --text-secondary: #7b8fa8;
-    --text-muted: #4a5d75;
+    --text-secondary: #d8e4f0;
+    --text-muted: #90a8c0;
     --text-bright: #ffffff;
 
     /* --- Accent Colors --- */
@@ -291,6 +291,407 @@ body::before {
     grid-template-columns: 1fr 340px;
     gap: var(--gap-lg);
     padding-top: var(--gap-lg);
+}
+
+.annual-view {
+    grid-template-columns: 36px 1fr;
+    padding-top: 0;
+    margin-top: var(--gap-lg);
+    gap: var(--gap-md);
+    width: 100%;
+}
+
+.annual-subview-switcher {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 28px;
+    padding: 32px 4px;
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    border-left: none;
+    border-top-right-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+    background: rgba(6, 20, 38, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 0 16px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    white-space: nowrap;
+    cursor: default;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+}
+
+.annual-subview-switcher:hover {
+    width: 150px;
+    padding: 32px 12px;
+    background: rgba(6, 20, 38, 0.95);
+    border-color: rgba(0, 212, 255, 0.3);
+}
+
+.annual-subview-trigger {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--accent-cyan);
+    opacity: 0.6;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    margin-bottom: 8px;
+}
+
+.annual-subview-switcher:hover .annual-subview-trigger {
+    opacity: 1;
+    transform: rotate(90deg);
+    margin-bottom: 12px;
+    align-self: flex-start;
+}
+
+.annual-subview-btn {
+    flex-shrink: 0;
+    opacity: 0;
+    width: 100%;
+    height: 34px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s ease 0.05s, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    text-align: left;
+    pointer-events: none;
+}
+
+.annual-subview-switcher:hover .annual-subview-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.annual-subview-btn:hover {
+    color: var(--accent-cyan);
+    background: rgba(0, 212, 255, 0.06);
+}
+
+.annual-subview-btn.active {
+    color: #03101d;
+    background: var(--gradient-cyan);
+    box-shadow: var(--shadow-glow-sm);
+}
+
+.annual-summary-mode .annual-typical-only,
+.annual-typical-mode .annual-summary-only {
+    display: none !important;
+}
+
+.annual-typical-mode {
+    grid-template-columns: 36px 1fr;
+}
+
+.annual-summary-mode .annual-charts-grid {
+    grid-template-columns: 1fr;
+}
+
+.annual-summary-lead,
+.annual-typical-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 10px 14px;
+    border: 1px solid rgba(0, 212, 255, 0.14);
+    border-radius: var(--radius-md);
+    background: rgba(6, 20, 38, 0.52);
+}
+
+.annual-summary-lead h2,
+.annual-typical-toolbar h2 {
+    margin: 0 0 4px;
+    color: var(--text-primary);
+    font-size: 18px;
+    letter-spacing: 0;
+}
+
+.annual-summary-lead p,
+.annual-typical-toolbar p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.annual-summary-lead > div:first-child,
+.annual-typical-toolbar > div:first-child {
+    flex: 1 1 auto;
+}
+
+.annual-summary-tag {
+    flex-shrink: 0;
+    color: var(--accent-cyan);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.annual-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.annual-kpi-grid .metric-card {
+    min-height: 86px;
+    padding: 12px 16px;
+}
+
+.annual-kpi-grid .metric-value {
+    font-size: 22px;
+}
+
+.annual-secondary-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.annual-secondary-grid .summary-card {
+    min-width: 0;
+    min-height: 72px;
+    padding: 10px 12px;
+}
+
+.annual-secondary-grid .summary-value {
+    font-size: 18px;
+}
+
+.annual-summary-chart-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--gap-lg);
+    align-items: stretch;
+}
+
+.annual-summary-bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gap-lg);
+    align-items: stretch;
+}
+
+.annual-summary-chart-grid .panel-card,
+.annual-summary-bottom-grid .panel-card {
+    min-width: 0;
+}
+
+.annual-energy-card #energy-mix-chart {
+    height: 300px;
+    flex: none;
+}
+
+.annual-summary-bottom-grid .data-table-container {
+    max-height: 220px;
+}
+
+.annual-cost-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.annual-typical-toolbar {
+    flex-wrap: wrap;
+}
+
+.annual-typical-toolbar .scenario-selector {
+    flex: 0 0 210px;
+}
+
+.annual-typical-toolbar .scenario-selector select {
+    width: 100%;
+}
+
+.annual-weather-days {
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    border: 1px solid rgba(0, 212, 255, 0.18);
+    border-radius: var(--radius-sm);
+    color: var(--accent-cyan);
+    background: rgba(0, 212, 255, 0.06);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.annual-main-pane {
+    width: 100%;
+    min-width: 0;
+}
+
+.annual-typical-mode .annual-main-pane {
+    gap: 12px;
+}
+
+.annual-community-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.annual-community-card {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 70px;
+    padding: 12px 14px;
+    border: 1px solid rgba(0, 212, 255, 0.14);
+    border-radius: var(--radius-md);
+    background: rgba(7, 27, 49, 0.72);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.annual-community-strip .annual-community-card {
+    grid-column: auto;
+    grid-row: auto;
+}
+
+.annual-community-card svg {
+    flex: 0 0 auto;
+    color: var(--accent-cyan);
+}
+
+.annual-community-card strong,
+.annual-community-card span {
+    display: block;
+}
+
+.annual-community-card strong {
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.annual-community-card span {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.annual-community-card .status-dot {
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.annual-weather-card {
+    cursor: default;
+}
+
+.annual-power-top-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.annual-typical-mode .chart-container-hero {
+    min-height: 405px;
+}
+
+.annual-typical-mode .daily-kpi-bar {
+    margin-bottom: 0;
+}
+
+.annual-typical-mode .key-charts-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.annual-typical-mode .voltage-panel {
+    grid-column: 1 / -1;
+}
+
+.annual-typical-mode .daily-voltage-topology-card {
+    min-height: 260px;
+}
+
+.annual-typical-mode .daily-voltage-topology {
+    min-height: 225px;
+}
+
+.annual-typical-mode .voltage-panel .chart-container {
+    min-height: 255px;
+}
+
+.annual-typical-table-card .data-table-container {
+    max-height: 240px;
+}
+
+.weather-weight-overview {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.weather-weight-card {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid rgba(0, 212, 255, 0.12);
+    border-radius: var(--radius-sm);
+    background: rgba(7, 27, 49, 0.62);
+}
+
+.weather-weight-name {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.weather-weight-bar {
+    height: 6px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: rgba(123, 143, 168, 0.18);
+}
+
+.weather-weight-bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--gradient-cyan);
+}
+
+.weather-weight-meta,
+.weather-weight-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.weather-weight-meta {
+    margin-top: 8px;
+    color: var(--text-secondary);
+    font-weight: 700;
+}
+
+.weather-weight-foot {
+    flex-direction: column;
+    margin-top: 8px;
+    line-height: 1.35;
 }
 
 .main-content {
@@ -682,7 +1083,7 @@ body::before {
 
 .dr-metric-label {
     font-size: 11px;
-    color: #7b8fa8;
+    color: var(--text-secondary);
     margin-top: 2px;
 }
 
@@ -1114,7 +1515,7 @@ body::before {
 }
 
 .metric-unit {
-    font-size: 12px;
+    font-size: 13px;
     font-family: var(--font-mono);
     color: var(--text-muted);
     margin-bottom: 4px;
@@ -1156,7 +1557,7 @@ body::before {
 }
 
 .summary-label {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-muted);
     margin-bottom: var(--gap-xs);
     letter-spacing: 0.3px;
@@ -1170,7 +1571,7 @@ body::before {
 }
 
 .summary-unit {
-    font-size: 11px;
+    font-size: 12px;
     font-family: var(--font-mono);
     color: var(--text-muted);
     margin-top: 2px;
@@ -1442,13 +1843,13 @@ body::before {
 }
 
 .daily-kpi-unit {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
     margin-top: 1px;
 }
 
 .daily-kpi-label {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
     margin-top: 2px;
 }
@@ -1885,6 +2286,11 @@ body::before {
         gap: 28px;
     }
 
+    .annual-view {
+        grid-template-columns: 36px 1fr;
+        gap: var(--gap-md);
+    }
+
     .chart-container-hero {
         min-height: 380px;
     }
@@ -1922,15 +2328,47 @@ body::before {
     .dashboard-overview {
         grid-template-columns: 1fr 300px;
     }
+
+    .annual-view {
+        grid-template-columns: 36px 1fr;
+    }
 }
 
 @media (max-width: 1400px) {
     .dashboard-overview {
-        grid-template-columns: 1fr 280px;
+        grid-template-columns: 1fr;
+    }
+
+    .annual-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .annual-secondary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .annual-summary-chart-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+
+    .annual-summary-bottom-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .annual-community-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .annual-energy-card .chart-container {
+        min-height: 300px;
     }
 
     .chart-container-hero {
         min-height: 280px;
+    }
+
+    .weather-weight-overview {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
@@ -1970,6 +2408,41 @@ body::before {
     }
 
     .dashboard-voltage-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .annual-summary-lead,
+    .annual-typical-toolbar {
+        align-items: stretch;
+    }
+
+    .annual-summary-chart-grid,
+    .annual-summary-bottom-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .annual-summary-lead {
+        flex-direction: column;
+    }
+
+    .annual-typical-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .annual-typical-toolbar .scenario-selector select {
+        width: 100%;
+    }
+
+    .annual-typical-mode .hero-section,
+    .annual-typical-mode .key-charts-row {
+        grid-template-columns: 1fr;
+    }
+
+    .annual-power-top-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .weather-weight-overview {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
@@ -2019,6 +2492,30 @@ body::before {
 
     .sidebar-compact-kpi {
         grid-template-columns: 1fr 1fr;
+    }
+
+    .annual-kpi-grid,
+    .annual-secondary-grid,
+    .annual-community-strip,
+    .annual-cost-chart-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .annual-kpi-grid .metric-card {
+        min-height: 92px;
+    }
+
+    .annual-subview-switcher {
+        width: 100%;
+    }
+
+    .annual-subview-btn {
+        flex: 1;
+        padding: 0 10px;
+    }
+
+    .weather-weight-overview {
+        grid-template-columns: 1fr;
     }
 
     .community-charts-grid {
@@ -2133,7 +2630,7 @@ body::before {
 }
 
 .weather-desc {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-muted);
     line-height: 1.6;
     margin: 0;
@@ -2384,6 +2881,29 @@ body::before {
 .weather-chart-container {
     min-height: 320px;
     margin-top: 12px;
+}
+
+.weather-normalized-preview {
+    margin-top: 12px;
+    margin-bottom: 0;
+}
+
+.weather-normalized-preview .panel-card {
+    padding: var(--gap-md);
+}
+
+.weather-normalized-preview .panel-header {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+}
+
+.weather-normalized-preview .panel-header h3 {
+    font-size: 13px;
+}
+
+.weather-normalized-preview .chart-container-sm {
+    height: 220px;
+    min-height: 180px;
 }
 
 /* 按钮 */

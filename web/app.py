@@ -949,7 +949,7 @@ def get_hourly_power_data():
             }
             scenario = weather_param
             scenario_name = weather_name_map.get(weather_param, weather_param)
-            hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+            hourly_file = os.path.join(data_dir, f'{scenario}_centralized_hourly_aggregate.csv')
         else:
             data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
             scenario_param = request.args.get('scenario', 'S4')
@@ -967,7 +967,7 @@ def get_hourly_power_data():
                 'S4_Carbon_DR': 'S4: 有碳交易有需求响应'
             }
             scenario_name = scenario_name_map.get(scenario, 'S4')
-            hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+            hourly_file = os.path.join(data_dir, f'{scenario}_centralized_hourly_aggregate.csv')
         
         if not os.path.exists(hourly_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -1031,7 +1031,7 @@ def get_community_power_data():
             }
             scenario = weather_param
             scenario_name = weather_name_map.get(weather_param, weather_param)
-            community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
+            community_file = os.path.join(data_dir, f'{scenario}_centralized_community_hourly.csv')
         else:
             data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
             scenario_param = request.args.get('scenario', 'S4')
@@ -1049,7 +1049,7 @@ def get_community_power_data():
                 'S4_Carbon_DR': 'S4: 有碳交易有需求响应'
             }
             scenario_name = scenario_name_map.get(scenario, 'S4')
-            community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
+            community_file = os.path.join(data_dir, f'{scenario}_centralized_community_hourly.csv')
         
         if not os.path.exists(community_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -1187,8 +1187,8 @@ def get_economic_comparison_chart():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/optimization/chart/admm-convergence', methods=['GET'])
-def get_admm_convergence_chart():
+@app.route('/api/optimization/chart/centralized-convergence', methods=['GET'])
+def get_centralized_convergence_chart():
     try:
         convergence_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
         
@@ -1202,7 +1202,7 @@ def get_admm_convergence_chart():
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
             
             for scenario, label, color in zip(scenarios, scenario_labels, colors):
-                conv_file = os.path.join(convergence_dir, f'{scenario}_admm_convergence.csv')
+                conv_file = os.path.join(convergence_dir, f'{scenario}_centralized_convergence.csv')
                 if os.path.exists(conv_file):
                     df = pd.read_csv(conv_file)
                     ax1.semilogy(df['Iteration'], df['PrimalResidual'], 
@@ -1255,7 +1255,7 @@ def get_hourly_power_chart():
         }
         scenario_name = scenario_name_map.get(scenario, 'S4')
         
-        hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+        hourly_file = os.path.join(data_dir, f'{scenario}_centralized_hourly_aggregate.csv')
         
         if not os.path.exists(hourly_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -1373,7 +1373,7 @@ def get_energy_summary():
         if mode == 'weather':
             data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
             weather_param = request.args.get('weather', 'Sunny_LowWind')
-            hourly_file = os.path.join(data_dir, f'{weather_param}_admm_hourly_aggregate.csv')
+            hourly_file = os.path.join(data_dir, f'{weather_param}_centralized_hourly_aggregate.csv')
 
             if not os.path.exists(hourly_file):
                 return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -1431,7 +1431,7 @@ def get_energy_summary():
         }
         scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
         data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
-        hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+        hourly_file = os.path.join(data_dir, f'{scenario}_centralized_hourly_aggregate.csv')
 
         if not os.path.exists(hourly_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -1522,7 +1522,7 @@ def get_h2_power_data():
         if mode == 'weather':
             data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
             weather_param = request.args.get('weather', 'Sunny_LowWind')
-            hourly_file = os.path.join(data_dir, f'{weather_param}_admm_hourly_aggregate.csv')
+            hourly_file = os.path.join(data_dir, f'{weather_param}_centralized_hourly_aggregate.csv')
         else:
             data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
             scenario_param = request.args.get('scenario', 'S4')
@@ -1533,7 +1533,7 @@ def get_h2_power_data():
                 'S4': 'S4_Carbon_DR'
             }
             scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
-            hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
+            hourly_file = os.path.join(data_dir, f'{scenario}_centralized_hourly_aggregate.csv')
 
         if not os.path.exists(hourly_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -1564,8 +1564,8 @@ def get_dr_power_data():
         if mode == 'weather':
             data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
             weather_param = request.args.get('weather', 'Sunny_LowWind')
-            hourly_file = os.path.join(data_dir, f'{weather_param}_admm_hourly_aggregate.csv')
-            scalars_file = os.path.join(data_dir, f'{weather_param}_admm_solution_scalars.csv')
+            hourly_file = os.path.join(data_dir, f'{weather_param}_centralized_hourly_aggregate.csv')
+            scalars_file = os.path.join(data_dir, f'{weather_param}_centralized_solution_scalars.csv')
         else:
             data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
             scenario_param = request.args.get('scenario', 'S4')
@@ -1576,8 +1576,8 @@ def get_dr_power_data():
                 'S4': 'S4_Carbon_DR'
             }
             scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
-            hourly_file = os.path.join(data_dir, f'{scenario}_admm_hourly_aggregate.csv')
-            scalars_file = os.path.join(data_dir, f'{scenario}_admm_solution_scalars.csv')
+            hourly_file = os.path.join(data_dir, f'{scenario}_centralized_hourly_aggregate.csv')
+            scalars_file = os.path.join(data_dir, f'{scenario}_centralized_solution_scalars.csv')
 
         if not os.path.exists(hourly_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -1621,7 +1621,7 @@ def get_cost_breakdown():
         }
         scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
 
-        scalars_file = os.path.join(data_dir, f'{scenario}_admm_solution_scalars.csv')
+        scalars_file = os.path.join(data_dir, f'{scenario}_centralized_solution_scalars.csv')
 
         if not os.path.exists(scalars_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -1656,7 +1656,7 @@ def get_community_h2_dr_data():
         if mode == 'weather':
             data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'year_plot_data_csv')
             weather_param = request.args.get('weather', 'Sunny_LowWind')
-            community_file = os.path.join(data_dir, f'{weather_param}_admm_community_hourly.csv')
+            community_file = os.path.join(data_dir, f'{weather_param}_centralized_community_hourly.csv')
         else:
             data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'comparison_plot_data_csv')
             scenario_param = request.args.get('scenario', 'S4')
@@ -1667,7 +1667,7 @@ def get_community_h2_dr_data():
                 'S4': 'S4_Carbon_DR'
             }
             scenario = scenario_map.get(scenario_param, 'S4_Carbon_DR')
-            community_file = os.path.join(data_dir, f'{scenario}_admm_community_hourly.csv')
+            community_file = os.path.join(data_dir, f'{scenario}_centralized_community_hourly.csv')
 
         if not os.path.exists(community_file):
             return jsonify({'success': False, 'error': '数据文件不存在'}), 404
@@ -2459,6 +2459,410 @@ def _load_ddre_daily_result(ddre_id):
         },
     }
 
+def _write_daily_realtime_scenario(payload, scenario_id=13):
+    required = ['node_22_wind', 'node_25_wind', 'node_18_PV', 'node_33_PV']
+    curves = {}
+    expected_len = None
+    for col in required:
+        curves[col] = _parse_normalized_curve(payload.get(col), col)
+        if expected_len is None:
+            expected_len = len(curves[col])
+        elif len(curves[col]) != expected_len:
+            raise ValueError('4条风光节点曲线长度必须一致')
+
+    if expected_len not in (24, 96):
+        raise ValueError('风光节点曲线必须为24点或96点')
+
+    curves_96 = {col: _curve_to_96_points(values) for col, values in curves.items()}
+    csv_path = os.path.join(DDRE_SCENARIO_DIR, f'scenario_{scenario_id:03d}.csv')
+    if os.path.exists(csv_path):
+        original = pd.read_csv(csv_path)
+        if 'timestamp' in original.columns and not original.empty:
+            base_date = pd.to_datetime(original['timestamp'].iloc[0]).date()
+        else:
+            base_date = datetime.now().date()
+    else:
+        base_date = datetime.now().date()
+
+    rows = []
+    for i in range(96):
+        ts = pd.Timestamp(base_date) + pd.Timedelta(minutes=15 * i)
+        row = {
+            'scenario_id': scenario_id,
+            'timestamp': ts.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        for col in required:
+            row[col] = round(float(curves_96[col][i]), 6)
+        rows.append(row)
+
+    pd.DataFrame(rows, columns=['scenario_id', 'timestamp'] + required).to_csv(csv_path, index=False)
+    return {
+        'scenario_id': scenario_id,
+        'points': expected_len,
+        'csv_path': csv_path,
+        'pv_24': [round(v, 6) for v in _curve_to_24_points(
+            [(curves_96['node_18_PV'][i] + curves_96['node_33_PV'][i]) / 2 for i in range(96)]
+        )],
+        'wind_24': [round(v, 6) for v in _curve_to_24_points(
+            [(curves_96['node_22_wind'][i] + curves_96['node_25_wind'][i]) / 2 for i in range(96)]
+        )]
+    }
+
+def _load_day_single_result(runtime_s=None, runtime_ms=None, weather_curves=None):
+    data_dir = os.path.join(OPTIMIZATION_DATA_DIR, 'day_single_plot_data_csv')
+    base_name = 'SingleScenario_centralized'
+    aggregate_file = os.path.join(data_dir, f'{base_name}_hourly_aggregate.csv')
+    community_file = os.path.join(data_dir, f'{base_name}_community_hourly.csv')
+    scalars_file = os.path.join(data_dir, f'{base_name}_solution_scalars.csv')
+    node_voltage_file = os.path.join(data_dir, f'{base_name}_node_voltage.csv')
+    metrics_file = os.path.join(OPTIMIZATION_DATA_DIR, 'day_single_scenario_metric_table.csv')
+
+    for file_path in (aggregate_file, scalars_file, metrics_file):
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f'数据文件不存在: {os.path.basename(file_path)}')
+
+    aggregate = pd.read_csv(aggregate_file)
+    scalars = pd.read_csv(scalars_file)
+    metrics = pd.read_csv(metrics_file)
+
+    aggregate_columns = [
+        'TimeSlot', 'Sum_PpvUse', 'Sum_PwindUse', 'Sum_Pgrid', 'Sum_Pdis', 'Sum_Pchp', 'Sum_Pfc',
+        'Sum_PloadDR', 'Sum_Pelec', 'Sum_Peb', 'Sum_Pcomp', 'Sum_Pch',
+        'Mean_SOC_e', 'Mean_SOC_th', 'Mean_SOC_h2',
+        'DataSum_H2load', 'Sum_H2prod', 'Sum_H2dis', 'Sum_H2short',
+        'DataSum_PdrShiftBase', 'Sum_PdrShift', 'Sum_PdrCutE'
+    ]
+    _require_csv_columns(aggregate, aggregate_columns, os.path.basename(aggregate_file))
+    _require_csv_columns(scalars, ['Part_carbonTradingCost'], os.path.basename(scalars_file))
+    metric_columns = ['TotalObjective_Yuan', 'GridEnergy_MWh', 'CarbonEmission_tCO2', 'RenewableUseRate_percent']
+    _require_csv_columns(metrics, metric_columns, os.path.basename(metrics_file))
+
+    metric_row = metrics.iloc[0]
+    scalar_row = scalars.iloc[0]
+    aggregate = aggregate.sort_values('TimeSlot')
+    hours = pd.to_numeric(aggregate['TimeSlot'], errors='coerce').fillna(0).astype(int).tolist()
+    generated_at = datetime.fromtimestamp(os.path.getmtime(aggregate_file)).strftime('%Y-%m-%d %H:%M:%S')
+
+    def sum_col(df, col):
+        if col not in df.columns:
+            return 0.0
+        return float(pd.to_numeric(df[col], errors='coerce').fillna(0).sum())
+
+    def metric_value(row, col, default=0.0):
+        if col not in row.index or pd.isna(row[col]):
+            return default
+        return float(row[col])
+
+    def scalar_value(col, default=0.0):
+        if col not in scalar_row.index or pd.isna(scalar_row[col]):
+            return default
+        return float(scalar_row[col])
+
+    supply_total = (
+        pd.to_numeric(aggregate['Sum_PpvUse'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_PwindUse'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pgrid'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pdis'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pchp'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pfc'], errors='coerce').fillna(0)
+    ).round(4).tolist()
+    demand_total = (
+        pd.to_numeric(aggregate['Sum_PloadDR'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pelec'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Peb'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pcomp'], errors='coerce').fillna(0)
+        + pd.to_numeric(aggregate['Sum_Pch'], errors='coerce').fillna(0)
+    ).round(4).tolist()
+
+    energy_summary = {
+        'pv': round(sum_col(aggregate, 'Sum_PpvUse'), 4),
+        'wind': round(sum_col(aggregate, 'Sum_PwindUse'), 4),
+        'grid': round(sum_col(aggregate, 'Sum_Pgrid'), 4),
+        'chp': round(sum_col(aggregate, 'Sum_Pchp'), 4),
+        'fc': round(sum_col(aggregate, 'Sum_Pfc'), 4),
+        'discharge': round(sum_col(aggregate, 'Sum_Pdis'), 4)
+    }
+
+    cost_breakdown = {
+        'grid': round(scalar_value('Part_gridCost'), 4),
+        'carbon_trading': round(scalar_value('Part_carbonTradingCost'), 4),
+        'gas': round(scalar_value('Part_gasCost'), 4),
+        'gas_carbon': round(scalar_value('Part_gasCarbonCost'), 4),
+        'pv_curt': round(scalar_value('Part_pvCurtCost'), 4),
+        'wind_curt': round(scalar_value('Part_windCurtCost'), 4),
+        'h2_short': round(scalar_value('Part_h2ShortCost'), 4),
+        'demand_response': round(scalar_value('Part_demandResponseCost'), 4),
+        'q_support': round(scalar_value('Part_qSupportCost'), 4),
+        'total': round(scalar_value('Objective_Yuan', metric_value(metric_row, 'TotalObjective_Yuan')), 4)
+    }
+
+    node_voltage = {
+        'available': False,
+        'message': '节点电压数据不可用',
+        'hours': [],
+        'nodes': [],
+        'voltage': [],
+        'summary': None
+    }
+    if os.path.exists(node_voltage_file):
+        voltage_df = pd.read_csv(node_voltage_file)
+        voltage_columns = ['Bus', 'TimeSlot', 'Voltage_pu']
+        missing_voltage_cols = [c for c in voltage_columns if c not in voltage_df.columns]
+        if missing_voltage_cols:
+            node_voltage['message'] = f'节点电压数据缺少字段: {", ".join(missing_voltage_cols)}'
+        else:
+            voltage_df['Bus'] = pd.to_numeric(voltage_df['Bus'], errors='coerce').astype('Int64')
+            voltage_df['TimeSlot'] = pd.to_numeric(voltage_df['TimeSlot'], errors='coerce').astype('Int64')
+            voltage_df['Voltage_pu'] = pd.to_numeric(voltage_df['Voltage_pu'], errors='coerce')
+            voltage_df = voltage_df.dropna(subset=['Bus', 'TimeSlot'])
+            nodes = sorted(int(v) for v in voltage_df['Bus'].dropna().unique().tolist())
+            voltage_hours = sorted(int(v) for v in voltage_df['TimeSlot'].dropna().unique().tolist())
+            pivot = voltage_df.pivot_table(index='Bus', columns='TimeSlot', values='Voltage_pu', aggfunc='first')
+            pivot = pivot.reindex(index=nodes, columns=voltage_hours)
+            voltage_matrix = []
+            for _, row in pivot.iterrows():
+                voltage_matrix.append([None if pd.isna(v) else round(float(v), 6) for v in row.tolist()])
+            valid_values = voltage_df['Voltage_pu'].dropna()
+            node_voltage = {
+                'available': True,
+                'message': '',
+                'hours': voltage_hours,
+                'nodes': nodes,
+                'voltage': voltage_matrix,
+                'summary': {
+                    'min': None if valid_values.empty else round(float(valid_values.min()), 6),
+                    'max': None if valid_values.empty else round(float(valid_values.max()), 6),
+                    'low_violations': int((valid_values < 0.95).sum()) if not valid_values.empty else 0,
+                    'high_violations': int((valid_values > 1.05).sum()) if not valid_values.empty else 0
+                }
+            }
+
+    community = {
+        'available': False,
+        'message': '社区小时数据不可用',
+        'communities': [],
+        'voltage_summary': None
+    }
+    if os.path.exists(community_file):
+        community_df = pd.read_csv(community_file)
+        community_columns = [
+            'Community', 'TimeSlot', 'Pgrid', 'Pch', 'Pdis', 'SOC_e', 'PpvUse', 'PwindUse',
+            'Pchp', 'Pfc', 'Peb', 'Pelec', 'Pcomp', 'PloadDR', 'SOC_th', 'H2dis',
+            'SOC_h2', 'H2short', 'PdrShift', 'PdrCutE', 'Data_H2load', 'H2prod', 'V'
+        ]
+        missing_community_cols = [c for c in community_columns if c not in community_df.columns]
+        if not missing_community_cols:
+            community_df = community_df.sort_values(['Community', 'TimeSlot'])
+            voltage_values = pd.to_numeric(community_df['V'], errors='coerce').dropna()
+            community_items = []
+            for community_id, group in community_df.groupby('Community'):
+                group = group.sort_values('TimeSlot')
+                community_hours = pd.to_numeric(group['TimeSlot'], errors='coerce').fillna(0).astype(int).tolist()
+                community_items.append({
+                    'id': int(community_id),
+                    'name': {1: '工业区', 2: '商业区', 3: '居民区'}.get(int(community_id), f'社区{int(community_id)}'),
+                    'hours': community_hours,
+                    'supply': {
+                        'pv': _csv_numeric_list(group, 'PpvUse'),
+                        'wind': _csv_numeric_list(group, 'PwindUse'),
+                        'grid': _csv_numeric_list(group, 'Pgrid'),
+                        'discharge': _csv_numeric_list(group, 'Pdis'),
+                        'chp': _csv_numeric_list(group, 'Pchp'),
+                        'fc': _csv_numeric_list(group, 'Pfc')
+                    },
+                    'demand': {
+                        'load': _csv_numeric_list(group, 'PloadDR'),
+                        'elec': _csv_numeric_list(group, 'Pelec'),
+                        'eb': _csv_numeric_list(group, 'Peb'),
+                        'comp': _csv_numeric_list(group, 'Pcomp'),
+                        'charge': _csv_numeric_list(group, 'Pch')
+                    },
+                    'soc': {
+                        'soc_e': _csv_numeric_list(group, 'SOC_e'),
+                        'soc_th': _csv_numeric_list(group, 'SOC_th'),
+                        'soc_h2': _csv_numeric_list(group, 'SOC_h2')
+                    },
+                    'h2': {
+                        'load': _csv_numeric_list(group, 'Data_H2load'),
+                        'production': _csv_numeric_list(group, 'H2prod'),
+                        'storage_discharge': _csv_numeric_list(group, 'H2dis'),
+                        'shortage': _csv_numeric_list(group, 'H2short')
+                    },
+                    'dr': {
+                        'shift': _csv_numeric_list(group, 'PdrShift'),
+                        'cut_e': _csv_numeric_list(group, 'PdrCutE')
+                    },
+                    'voltage': _csv_numeric_list(group, 'V'),
+                    'summary': {
+                        'renewable_use_mwh': round(sum_col(group, 'PpvUse') + sum_col(group, 'PwindUse'), 4),
+                        'grid_energy_mwh': round(sum_col(group, 'Pgrid'), 4),
+                        'min_voltage_pu': round(float(pd.to_numeric(group['V'], errors='coerce').min()), 4),
+                        'max_voltage_pu': round(float(pd.to_numeric(group['V'], errors='coerce').max()), 4)
+                    }
+                })
+            community = {
+                'available': True,
+                'message': '',
+                'communities': community_items,
+                'voltage_summary': {
+                    'min': None if voltage_values.empty else round(float(voltage_values.min()), 4),
+                    'max': None if voltage_values.empty else round(float(voltage_values.max()), 4),
+                    'low_violations': int((voltage_values < 0.95).sum()) if not voltage_values.empty else 0,
+                    'high_violations': int((voltage_values > 1.05).sum()) if not voltage_values.empty else 0
+                }
+            }
+        else:
+            community['message'] = f'社区小时数据缺少字段: {", ".join(missing_community_cols)}'
+
+    carbon_emission = metric_value(metric_row, 'CarbonEmission_tCO2')
+    carbon_quota = metric_value(metric_row, 'CarbonQuota_tCO2')
+    carbon_buy = metric_value(metric_row, 'CarbonBuyMarket_tCO2')
+    carbon_sell = metric_value(metric_row, 'CarbonSellMarket_tCO2')
+    renewable_curtailment = metric_value(metric_row, 'RenewableCurtailment_MWh')
+
+    return {
+        'scenario': 'SingleScenario',
+        'scenario_id': 13,
+        'matched_ddre': 13,
+        'weather_label': 'MATLAB实时优化',
+        'runtime_ms': runtime_ms,
+        'runtime_s': runtime_s,
+        'generated_at': generated_at,
+        'weather_curves': weather_curves,
+        'kpis': {
+            'cost': round(metric_value(metric_row, 'TotalObjective_Yuan'), 0),
+            'grid_energy': round(metric_value(metric_row, 'GridEnergy_MWh'), 1),
+            'carbon_emission': round(carbon_emission, 1),
+            'renewable_rate': round(metric_value(metric_row, 'RenewableUseRate_percent'), 1),
+            'carbon_trading_cost': round(scalar_value('Part_carbonTradingCost'), 0),
+        },
+        'metrics': {
+            'cost': round(metric_value(metric_row, 'TotalObjective_Yuan'), 0),
+            'grid_energy': round(metric_value(metric_row, 'GridEnergy_MWh'), 1),
+            'gas_energy': round(metric_value(metric_row, 'GasEnergy_MWhth'), 1),
+            'carbon_emission': round(carbon_emission, 1),
+            'carbon_quota': round(carbon_quota, 1),
+            'carbon_buy': round(carbon_buy, 1),
+            'carbon_sell': round(carbon_sell, 1),
+            'renewable_available': round(metric_value(metric_row, 'RenewableAvailable_MWh'), 1),
+            'renewable_use': round(metric_value(metric_row, 'RenewableUse_MWh'), 1),
+            'renewable_curtailment': round(renewable_curtailment, 1),
+            'renewable_rate': round(metric_value(metric_row, 'RenewableUseRate_percent'), 1),
+            'avg_min_voltage': round(metric_value(metric_row, 'AvgMinimumVoltage_pu'), 4),
+            'grid_voltage_deviation': round(metric_value(metric_row, 'GridVoltageDeviation_pu'), 4),
+            'h2_shortage': round(metric_value(metric_row, 'H2Shortage_kg', sum_col(aggregate, 'Sum_H2short')), 1)
+        },
+        'energy_summary': energy_summary,
+        'cost_breakdown': cost_breakdown,
+        'node_voltage': node_voltage,
+        'community': community,
+        'scenario_table': [{
+            'scenario': 'SingleScenario',
+            'scenario_id': 13,
+            'label': '实时优化',
+            'cost': round(metric_value(metric_row, 'TotalObjective_Yuan'), 0),
+            'grid_energy': round(metric_value(metric_row, 'GridEnergy_MWh'), 1),
+            'gas_energy': round(metric_value(metric_row, 'GasEnergy_MWhth'), 1),
+            'carbon_emission': round(carbon_emission, 1),
+            'renewable_rate': round(metric_value(metric_row, 'RenewableUseRate_percent'), 1),
+            'min_voltage': round(metric_value(metric_row, 'AvgMinimumVoltage_pu'), 4)
+        }],
+        'chart': {
+            'supply': {
+                'hours': hours,
+                'pv': _csv_numeric_list(aggregate, 'Sum_PpvUse'),
+                'wind': _csv_numeric_list(aggregate, 'Sum_PwindUse'),
+                'grid': _csv_numeric_list(aggregate, 'Sum_Pgrid'),
+                'discharge': _csv_numeric_list(aggregate, 'Sum_Pdis'),
+                'chp': _csv_numeric_list(aggregate, 'Sum_Pchp'),
+                'fc': _csv_numeric_list(aggregate, 'Sum_Pfc'),
+            },
+            'demand': {
+                'hours': hours,
+                'load': _csv_numeric_list(aggregate, 'Sum_PloadDR'),
+                'elec': _csv_numeric_list(aggregate, 'Sum_Pelec'),
+                'eb': _csv_numeric_list(aggregate, 'Sum_Peb'),
+                'comp': _csv_numeric_list(aggregate, 'Sum_Pcomp'),
+                'charge': _csv_numeric_list(aggregate, 'Sum_Pch'),
+            },
+            'soc': {
+                'hours': hours,
+                'soc_e': _csv_numeric_list(aggregate, 'Mean_SOC_e'),
+                'soc_th': _csv_numeric_list(aggregate, 'Mean_SOC_th'),
+                'soc_h2': _csv_numeric_list(aggregate, 'Mean_SOC_h2'),
+            },
+            'supply_total': supply_total,
+            'demand_total': demand_total,
+        },
+        'h2': {
+            'hours': hours,
+            'load': _csv_numeric_list(aggregate, 'DataSum_H2load'),
+            'production': _csv_numeric_list(aggregate, 'Sum_H2prod'),
+            'storage_discharge': _csv_numeric_list(aggregate, 'Sum_H2dis'),
+            'storage_charge': _csv_optional_list(aggregate, 'Sum_H2ch'),
+            'fuel_cell': _csv_optional_list(aggregate, 'Sum_H2cons_fc'),
+            'shortage': _csv_numeric_list(aggregate, 'Sum_H2short'),
+            'soc_h2': _csv_numeric_list(aggregate, 'Mean_SOC_h2'),
+        },
+        'dr': {
+            'hours': hours,
+            'shift_base': _csv_numeric_list(aggregate, 'DataSum_PdrShiftBase'),
+            'shift': _csv_numeric_list(aggregate, 'Sum_PdrShift'),
+            'cut_e': _csv_numeric_list(aggregate, 'Sum_PdrCutE'),
+            'load_original': _csv_optional_list(aggregate, 'DataSum_Pload'),
+            'load_after_dr': _csv_numeric_list(aggregate, 'Sum_PloadDR'),
+            'shift_dev': _csv_optional_list(aggregate, 'Sum_PdrShiftDev'),
+            'hdr_cut': _csv_optional_list(aggregate, 'Sum_HdrCut'),
+            'h2dr_cut': _csv_optional_list(aggregate, 'Sum_H2drCut'),
+        },
+    }
+
+def _run_daily_matlab_optimize_payload(payload):
+    try:
+        scenario_info = _write_daily_realtime_scenario(payload, scenario_id=13)
+
+        matlab_exe = get_matlab_path()
+        matlab_cmd = "cd('零碳园区优化_v12'); main_day; exit;"
+        start_time = time.time()
+        proc = subprocess.run(
+            [matlab_exe, '-batch', matlab_cmd],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=1800
+        )
+        runtime_s = round(time.time() - start_time, 1)
+        runtime_ms = round(runtime_s * 1000, 1)
+
+        if proc.returncode != 0:
+            stderr_tail = proc.stderr[-2000:] if len(proc.stderr) > 2000 else proc.stderr
+            return jsonify({
+                'success': False,
+                'error': f'MATLAB日运行优化失败 (returncode={proc.returncode})',
+                'stderr': stderr_tail
+            }), 500
+
+        weather_curves = {
+            'pv_24': scenario_info['pv_24'],
+            'wind_24': scenario_info['wind_24'],
+            'matched_pv_24': None,
+            'matched_wind_24': None,
+            'source': 'uploaded_csv',
+            'points': scenario_info['points']
+        }
+        result = _load_day_single_result(
+            runtime_ms=runtime_ms,
+            runtime_s=runtime_s,
+            weather_curves=weather_curves
+        )
+        stdout_tail = proc.stdout[-1000:] if len(proc.stdout) > 1000 else proc.stdout
+        result['matlab_stdout'] = stdout_tail
+        return jsonify({'success': True, 'data': result})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'error': 'MATLAB日运行优化超时（超过30分钟）'}), 500
+
 @app.route('/api/daily-dispatch/scenarios', methods=['GET'])
 def get_daily_dispatch_scenarios():
     try:
@@ -2592,31 +2996,7 @@ def get_daily_dispatch_curve():
 def run_daily_milp_optimize():
     try:
         payload = request.json or {}
-        pv_curve = _parse_normalized_curve(payload.get('pv_curve'), '光伏出力曲线')
-        wind_curve = _parse_normalized_curve(payload.get('wind_curve'), '风电出力曲线')
-
-        match = _match_ddre_by_curves(pv_curve, wind_curve)
-        runtime_s, runtime_ms = _simulate_realtime_runtime()
-        weather_input = {
-            'pv_points': len(pv_curve),
-            'wind_points': len(wind_curve),
-            'source': 'curve_editor'
-        }
-        weather_curves = {
-            'pv_24': _curve_to_24_points(pv_curve),
-            'wind_24': _curve_to_24_points(wind_curve),
-            'matched_pv_24': match['matched_pv_24'],
-            'matched_wind_24': match['matched_wind_24']
-        }
-        result = _load_realtime_result(
-            match['matched_ddre'],
-            runtime_ms=runtime_ms,
-            runtime_s=runtime_s,
-            weather_input=weather_input,
-            match=match,
-            weather_curves=weather_curves
-        )
-        return jsonify({'success': True, 'data': result})
+        return _run_daily_matlab_optimize_payload(payload)
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:

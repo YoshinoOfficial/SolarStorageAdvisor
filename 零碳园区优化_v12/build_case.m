@@ -288,7 +288,7 @@ end
 
 
 %% Distribution network operating parameters
-Vmin = 0.95 * ones(B,1);
+Vmin = 0.96 * ones(B,1);
 Vmax = 1.05 * ones(B,1);
 Vslack = 1.05;
 PsubMax = 20.0 * ones(1,T);            % MW, 中等园区规模

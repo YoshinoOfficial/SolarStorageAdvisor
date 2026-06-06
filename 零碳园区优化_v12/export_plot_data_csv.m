@@ -174,15 +174,20 @@ TBL = struct2table(rows);
 end
 
 function TBL = build_node_voltage_table(scenName, methodName, sol, N, T)
-V = get_matrix(sol, 'V', N, T);
+V = [];
+if isstruct(sol) && isfield(sol, 'V') && isnumeric(sol.V)
+    V = double(sol.V);
+end
 if isempty(V) || ~any(V(:))
     TBL = table();
     return;
 end
 
+nBus = size(V, 1);
+nTime = size(V, 2);
 rows = struct([]);
-for bus = 1:N
-    for t = 1:T
+for bus = 1:nBus
+    for t = 1:nTime
         voltageSq = V(bus,t);
         row = struct();
         row.Scenario = string(scenName);

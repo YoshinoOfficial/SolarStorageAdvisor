@@ -14,9 +14,9 @@ caseName = 'ieee33_3comm_hetero_real';
 % 每个典型天气场景会在 define_typical_scenarios() 中指定自己的
 % 1-Day Scenarios/scenario_XXX.csv 文件编号。
 runCentralized = 1;
-runFixedADMM   = 1; 
+runFixedADMM   = 0; 
 usePreprocess  = 1;
-generatePlots  = 1;
+generatePlots  = 0;
 
 admmRhoPQ = 200;    % P/Q feeder-consensus ADMM penalty
 admmRhoC  = 100;     % carbon-consensus ADMM penalty, tCO2-scale carbon variables

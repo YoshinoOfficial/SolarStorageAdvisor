@@ -31,7 +31,7 @@ const communityMap = {
 };
 
 let currentView = 'overview';
-let currentMode = 'scenario';
+let currentMode = 'weather';
 let currentDashboardWindow = 'daily';
 let annualDataLoaded = false;
 let dailyDispatchLoaded = false;
@@ -46,9 +46,11 @@ let dashboardVoltageHourIndex = 0;
 let dailyVoltagePlaybackTimer = null;
 let dashboardVoltagePlaybackTimer = null;
 let communitySource = 'annual';
+let annualSubView = 'summary';
+let typicalWeatherLoaded = false;
 
-const scenarioSelectors = ['scenario-select', 'h2-scenario-select', 'dr-scenario-select'];
-const weatherSelectors = ['weather-select', 'h2-weather-select', 'dr-weather-select'];
+const scenarioSelectors = [];
+const weatherSelectors = ['weather-select'];
 
 function prepareDashboardWindows() {
     // Daily monitoring now has its own annual-style dashboard layout in the template.
@@ -114,6 +116,8 @@ function switchDashboardWindow(windowName) {
     if (currentDashboardWindow === 'annual' && !annualDataLoaded) {
         annualDataLoaded = true;
         loadOverviewData();
+    } else if (currentDashboardWindow === 'annual') {
+        switchAnnualSubView(annualSubView);
     }
     if (currentDashboardWindow === 'weather' && !weatherConfigLoaded) {
         weatherConfigLoaded = true;
@@ -133,6 +137,44 @@ function toggleWeatherConfig() {
     } else {
         switchDashboardWindow('weather');
     }
+}
+
+function switchAnnualSubView(view) {
+    annualSubView = view === 'typical' ? 'typical' : 'summary';
+
+    const annualView = document.getElementById('overview-view');
+    if (annualView) {
+        annualView.classList.toggle('annual-summary-mode', annualSubView === 'summary');
+        annualView.classList.toggle('annual-typical-mode', annualSubView === 'typical');
+    }
+
+    document.querySelectorAll('.annual-subview-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.annualView === annualSubView);
+    });
+
+    if (annualSubView === 'summary') {
+        loadAnnualSummaryView();
+    } else {
+        updateAnnualWeatherDays();
+        loadTypicalWeatherView();
+    }
+
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+    }, 50);
+}
+
+function updateAnnualWeatherDays() {
+    const select = document.getElementById('weather-select');
+    const daysEl = document.getElementById('annual-weather-days');
+    const stripEl = document.getElementById('annual-weather-strip-label');
+    if (!select) return;
+
+    const selectedText = select.options[select.selectedIndex]?.textContent || '';
+    const daysMatch = selectedText.match(/\((\d+)\s*天\)/);
+    const name = selectedText.replace(/\s*\(\d+\s*天\)\s*$/, '');
+    if (daysEl) daysEl.textContent = daysMatch ? `代表天数：${daysMatch[1]}天` : '代表天数：--';
+    if (stripEl) stripEl.textContent = name || '--';
 }
 
 function dailySwitchMode(mode) {
@@ -174,32 +216,11 @@ function dailySyncAndLoad(sourceId) {
 
 function switchMode(mode) {
     currentMode = mode;
-
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.mode === mode);
-    });
-
-    const showScenario = mode === 'scenario';
-    scenarioSelectors.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = showScenario ? '' : 'none';
-    });
-    weatherSelectors.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = showScenario ? 'none' : '';
-    });
-
-    loadDailyKPIs();
-    loadParkPowerChart();
-    loadH2PowerChart();
-    loadDRPowerChart();
-    loadEnergySummary();
-    loadNodeVoltageChart();
+    loadTypicalWeatherView();
 }
 
 function syncAndLoad(sourceId) {
-    const isWeather = sourceId.includes('weather');
-    const selectors = isWeather ? weatherSelectors : scenarioSelectors;
+    const selectors = weatherSelectors;
     const source = document.getElementById(sourceId);
     if (!source) return;
     const value = source.value;
@@ -211,14 +232,10 @@ function syncAndLoad(sourceId) {
         }
     });
 
-    if (sourceId === 'scenario-select' || sourceId === 'weather-select') {
-        loadParkPowerChart();
+    updateAnnualWeatherDays();
+    if (annualSubView === 'typical') {
+        loadTypicalWeatherView();
     }
-    loadDailyKPIs();
-    loadH2PowerChart();
-    loadDRPowerChart();
-    loadEnergySummary();
-    loadNodeVoltageChart();
 }
 
 function updateDateTime() {
@@ -243,12 +260,10 @@ updateDateTime();
 
 function showOverview() {
     if (communitySource === 'daily') {
-        const commView = document.getElementById('community-view');
-        if (commView) {
-            commView.querySelectorAll('.mode-toggle').forEach(el => el.style.display = '');
-            document.getElementById('community-scenario-select').style.display = '';
-            document.getElementById('community-weather-select').style.display = 'none';
-        }
+    const commView = document.getElementById('community-view');
+    if (commView) {
+        document.getElementById('community-weather-select').style.display = '';
+    }
         switchDashboardWindow('daily');
     } else {
         switchDashboardWindow('annual');
@@ -281,58 +296,15 @@ function selectCommunity(type) {
     document.getElementById('community-title').textContent = community.name + ' - 运行监控';
     currentView = 'community';
 
-    // Sync community mode toggle and select values with current mode
-    const commView = document.getElementById('community-view');
-    commView.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.mode === currentMode);
-    });
-    const cSel = document.getElementById('community-scenario-select');
-    const wSel = document.getElementById('community-weather-select');
-    if (cSel) cSel.style.display = currentMode === 'scenario' ? '' : 'none';
-    if (wSel) wSel.style.display = currentMode === 'scenario' ? 'none' : '';
     // Sync select values
-    const ovScenario = document.getElementById('scenario-select');
+    const wSel = document.getElementById('community-weather-select');
     const ovWeather = document.getElementById('weather-select');
-    if (cSel && ovScenario) cSel.value = ovScenario.value;
     if (wSel && ovWeather) wSel.value = ovWeather.value;
 
     loadCommunityData(community.id);
 }
 
-function switchCommunityMode(mode) {
-    const view = document.getElementById('community-view');
-    view.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.mode === mode);
-    });
 
-    const showScenario = mode === 'scenario';
-    const cSel = document.getElementById('community-scenario-select');
-    const wSel = document.getElementById('community-weather-select');
-    if (cSel) cSel.style.display = showScenario ? '' : 'none';
-    if (wSel) wSel.style.display = showScenario ? 'none' : '';
-
-    // Sync with overview mode
-    currentMode = mode;
-    document.querySelectorAll('#overview-view .mode-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.mode === mode);
-    });
-    scenarioSelectors.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = showScenario ? '' : 'none';
-    });
-    weatherSelectors.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = showScenario ? 'none' : '';
-    });
-
-    // Reload community data with current community
-    const activeCard = document.querySelector('.map-community.active');
-    if (activeCard) {
-        const type = activeCard.dataset.community;
-        const community = communityMap[type];
-        if (community) loadCommunityData(community.id);
-    }
-}
 
 function onCommunitySelectChange() {
     const activeCard = document.querySelector('.map-community.active');
@@ -344,17 +316,27 @@ function onCommunitySelectChange() {
 }
 
 async function loadOverviewData() {
+    annualSubView = 'summary';
+    switchAnnualSubView('summary');
+}
+
+function loadAnnualSummaryView() {
     loadAnnualSummary();
     loadS4AnnualKPIs();
-    loadDailyKPIs();
-    loadParkPowerChart();
-    loadH2PowerChart();
-    loadDRPowerChart();
     loadCostBreakdownChart();
     loadScenariosTable();
     loadCapacityTable();
     loadEnergySummary();
+}
+
+function loadTypicalWeatherView() {
+    loadDailyKPIs();
+    loadParkPowerChart();
+    loadH2PowerChart();
+    loadDRPowerChart();
+    loadScenariosTable();
     loadNodeVoltageChart();
+    typicalWeatherLoaded = true;
 }
 
 function updateOverviewMetrics(data) {
@@ -436,16 +418,9 @@ async function loadS4AnnualKPIs() {
 }
 
 async function loadDailyKPIs() {
-    let url;
-    if (currentMode === 'weather') {
-        const select = document.getElementById('weather-select');
-        const weather = select ? select.value : 'Sunny_LowWind';
-        url = `/api/optimization/daily-kpis?mode=weather&weather=${weather}`;
-    } else {
-        const select = document.getElementById('scenario-select');
-        const scenario = select ? select.value : 'S4';
-        url = `/api/optimization/daily-kpis?scenario=${scenario}`;
-    }
+    const select = document.getElementById('weather-select');
+    const weather = select ? select.value : 'Sunny_LowWind';
+    const url = `/api/optimization/daily-kpis?mode=weather&weather=${weather}`;
 
     try {
         const res = await fetch(url);
@@ -483,16 +458,9 @@ function animateKPI(id, target, decimals) {
 }
 
 async function loadParkPowerChart() {
-    let url;
-    if (currentMode === 'weather') {
-        const select = document.getElementById('weather-select');
-        const weather = select ? select.value : 'Sunny_LowWind';
-        url = `/api/optimization/chart/hourly-power-data?mode=weather&weather=${weather}`;
-    } else {
-        const select = document.getElementById('scenario-select');
-        const scenario = select ? select.value : 'S4';
-        url = `/api/optimization/chart/hourly-power-data?scenario=${scenario}`;
-    }
+    const select = document.getElementById('weather-select');
+    const weather = select ? select.value : 'Sunny_LowWind';
+    const url = `/api/optimization/chart/hourly-power-data?mode=weather&weather=${weather}`;
 
     try {
         const res = await fetch(url);
@@ -517,19 +485,33 @@ function renderPowerOverviewChart(containerId, data) {
     if (!container) return;
     container.innerHTML = '';
 
+    const isAnnualTypical = containerId === 'overview-power-chart';
+
+    let topGrid = null;
+    if (isAnnualTypical) {
+        topGrid = document.createElement('div');
+        topGrid.className = 'annual-power-top-grid';
+        container.appendChild(topGrid);
+    }
+
     const supplyDiv = document.createElement('div');
-    supplyDiv.style.height = '220px';
-    supplyDiv.style.marginBottom = '22px';
+    supplyDiv.style.height = isAnnualTypical ? '240px' : '220px';
+    supplyDiv.style.marginBottom = isAnnualTypical ? '0' : '22px';
 
     const demandDiv = document.createElement('div');
-    demandDiv.style.height = '220px';
-    demandDiv.style.marginBottom = '22px';
+    demandDiv.style.height = isAnnualTypical ? '240px' : '220px';
+    demandDiv.style.marginBottom = isAnnualTypical ? '0' : '22px';
 
     const socDiv = document.createElement('div');
-    socDiv.style.height = '190px';
+    socDiv.style.height = isAnnualTypical ? '155px' : '190px';
 
-    container.appendChild(supplyDiv);
-    container.appendChild(demandDiv);
+    if (topGrid) {
+        topGrid.appendChild(supplyDiv);
+        topGrid.appendChild(demandDiv);
+    } else {
+        container.appendChild(supplyDiv);
+        container.appendChild(demandDiv);
+    }
     container.appendChild(socDiv);
 
     const hours = data.supply.hours;
@@ -565,8 +547,8 @@ function renderPowerOverviewChart(containerId, data) {
         xaxis: { ...darkLayout.xaxis, title: { text: '', font: { size: 12 } }, dtick: 2 },
         yaxis: { ...darkLayout.yaxis, title: { text: '功率 (MW)', font: { size: 12 }, standoff: 10 } },
         hovermode: 'x unified',
-        legend: { ...darkLayout.legend, x: 0, y: -0.26, orientation: 'h', font: { size: 10, color: '#7b8fa8' }, itemwidth: 42 },
-        margin: { t: 42, b: 68, l: 62, r: 36 }
+        legend: { ...darkLayout.legend, x: 0, y: isAnnualTypical ? -0.2 : -0.26, orientation: 'h', font: { size: 10, color: '#7b8fa8' }, itemwidth: 42 },
+        margin: { t: 36, b: isAnnualTypical ? 54 : 68, l: 58, r: 24 }
     };
 
     const demandLayout = {
@@ -575,8 +557,8 @@ function renderPowerOverviewChart(containerId, data) {
         xaxis: { ...darkLayout.xaxis, title: { text: '', font: { size: 12 } }, dtick: 2 },
         yaxis: { ...darkLayout.yaxis, title: { text: '功率 (MW)', font: { size: 12 }, standoff: 10 } },
         hovermode: 'x unified',
-        legend: { ...darkLayout.legend, x: 0, y: -0.26, orientation: 'h', font: { size: 10, color: '#7b8fa8' }, itemwidth: 42 },
-        margin: { t: 42, b: 68, l: 62, r: 36 }
+        legend: { ...darkLayout.legend, x: 0, y: isAnnualTypical ? -0.2 : -0.26, orientation: 'h', font: { size: 10, color: '#7b8fa8' }, itemwidth: 42 },
+        margin: { t: 36, b: isAnnualTypical ? 54 : 68, l: 58, r: 24 }
     };
 
     const socLayout = {
@@ -586,8 +568,8 @@ function renderPowerOverviewChart(containerId, data) {
         yaxis: { ...darkLayout.yaxis, title: { text: '电/热储能 (MWh)', font: { size: 12 }, standoff: 10 }, side: 'left' },
         yaxis2: { title: { text: '氢储能 (kg)', font: { size: 12 }, standoff: 14 }, side: 'right', overlaying: 'y', gridcolor: 'rgba(0,0,0,0)', tickfont: { size: 11, color: '#7b8fa8' } },
         hovermode: 'x unified',
-        legend: { ...darkLayout.legend, x: 0, y: -0.3, orientation: 'h', font: { size: 10, color: '#7b8fa8' }, itemwidth: 42 },
-        margin: { t: 42, b: 76, l: 62, r: 88 }
+        legend: { ...darkLayout.legend, x: 0, y: isAnnualTypical ? -0.24 : -0.3, orientation: 'h', font: { size: 10, color: '#7b8fa8' }, itemwidth: 42 },
+        margin: { t: 34, b: isAnnualTypical ? 56 : 76, l: 58, r: 78 }
     };
 
     Plotly.newPlot(supplyDiv, supplyTraces, supplyLayout, plotlyConfig);
@@ -600,16 +582,9 @@ async function loadNodeVoltageChart() {
     const chartEl = document.getElementById('dashboard-voltage-chart');
     if (!summaryEl || !chartEl) return;
 
-    let url;
-    if (currentMode === 'weather') {
-        const select = document.getElementById('weather-select');
-        const weather = select ? select.value : 'Sunny_LowWind';
-        url = `/api/optimization/chart/node-voltage-data?mode=weather&weather=${weather}`;
-    } else {
-        const select = document.getElementById('scenario-select');
-        const scenario = select ? select.value : 'S4';
-        url = `/api/optimization/chart/node-voltage-data?scenario=${scenario}`;
-    }
+    const select = document.getElementById('weather-select');
+    const weather = select ? select.value : 'Sunny_LowWind';
+    const url = `/api/optimization/chart/node-voltage-data?mode=weather&weather=${weather}`;
 
     summaryEl.innerHTML = '<div class="dashboard-voltage-error">节点电压数据加载中...</div>';
     chartEl.innerHTML = '';
@@ -716,6 +691,21 @@ function renderDashboardSelectedNodeVoltage() {
     selectedDashboardNodeId = String(selectedNode);
     updateVoltageTopologySelection('dashboard', selectedDashboardNodeId);
     renderDashboardVoltageTimeSeries(dashboardVoltageData.hours || [], voltage, selectedNode);
+
+    const summary = document.getElementById('dashboard-voltage-summary');
+    if (summary) {
+        const validVoltage = voltage.filter(v => v != null && !Number.isNaN(Number(v))).map(Number);
+        const nodeMin = validVoltage.length ? Math.min(...validVoltage) : null;
+        const nodeMax = validVoltage.length ? Math.max(...validVoltage) : null;
+        const nodeLowViolations = validVoltage.filter(v => v < 0.95).length;
+        const nodeHighViolations = validVoltage.filter(v => v > 1.05).length;
+        summary.innerHTML = `
+            <div class="dashboard-voltage-summary-card"><span>当前节点最低电压</span><strong>${nodeMin == null ? '--' : nodeMin.toFixed(4)}</strong><small>p.u.</small></div>
+            <div class="dashboard-voltage-summary-card"><span>当前节点最高电压</span><strong>${nodeMax == null ? '--' : nodeMax.toFixed(4)}</strong><small>p.u.</small></div>
+            <div class="dashboard-voltage-summary-card"><span>低压越限</span><strong>${nodeLowViolations}</strong><small>次</small></div>
+            <div class="dashboard-voltage-summary-card"><span>高压越限</span><strong>${nodeHighViolations}</strong><small>次</small></div>
+        `;
+    }
 }
 
 function renderDashboardVoltageTimeSeries(hours, voltages, selectedNode) {
@@ -1212,18 +1202,7 @@ function renderDashboardVoltageTopology(data) {
 
 async function loadEnergySummary() {
     try {
-        let url;
-        if (currentMode === 'weather') {
-            const select = document.getElementById('weather-select');
-            const weather = select ? select.value : 'Sunny_LowWind';
-            url = `/api/optimization/energy-summary?mode=weather&weather=${weather}`;
-        } else {
-            const select = document.getElementById('scenario-select');
-            const scenario = select ? select.value : 'S4';
-            url = `/api/optimization/energy-summary?scenario=${scenario}`;
-        }
-
-        const res = await fetch(url);
+        const res = await fetch('/api/optimization/energy-summary');
         const result = await res.json();
 
         if (result.success) {
@@ -1278,9 +1257,12 @@ async function loadScenariosTable() {
 
 function renderScenariosTable(metrics) {
     const container = document.getElementById('scenarios-table');
+    const weightContainer = document.getElementById('weather-weight-overview');
 
     if (!metrics || metrics.length === 0) {
-        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">暂无数据</div>';
+        const emptyHtml = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">暂无数据</div>';
+        if (container) container.innerHTML = emptyHtml;
+        if (weightContainer) weightContainer.innerHTML = emptyHtml;
         return;
     }
 
@@ -1288,15 +1270,46 @@ function renderScenariosTable(metrics) {
         index === self.findIndex((t) => t.scenario === item.scenario)
     );
 
+    if (weightContainer) {
+        const totalDays = uniqueMetrics.reduce((sum, metric) => sum + Number(metric.representative_days || 0), 0) || 365;
+        weightContainer.innerHTML = uniqueMetrics.map(metric => {
+            const scenarioName = metric.scenario_cn || metric.scenario;
+            const days = Number(metric.representative_days || 0);
+            const percent = totalDays > 0 ? days / totalDays * 100 : 0;
+            const annualCost = metric.annual_objective || metric.total_objective * days;
+            const annualCarbon = metric.annual_carbon_emission || metric.carbon_emission * days;
+
+            return `
+                <div class="weather-weight-card">
+                    <div class="weather-weight-name">${scenarioName}</div>
+                    <div class="weather-weight-bar">
+                        <span style="width: ${Math.max(2, percent).toFixed(1)}%"></span>
+                    </div>
+                    <div class="weather-weight-meta">
+                        <span>${days} 天</span>
+                        <span>${percent.toFixed(1)}%</span>
+                    </div>
+                    <div class="weather-weight-foot">
+                        <span>折算成本 ${(annualCost / 10000).toFixed(1)} 万元</span>
+                        <span>折算碳排 ${annualCarbon.toFixed(0)} tCO₂</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    if (!container) return;
+
     let html = `
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>场景</th>
-                    <th>天数</th>
-                    <th>成本</th>
-                    <th>碳排放</th>
+                    <th>天气类型</th>
+                    <th>代表天数</th>
+                    <th>日成本</th>
+                    <th>日碳排放</th>
                     <th>新能源率</th>
+                    <th>折算贡献</th>
                 </tr>
             </thead>
             <tbody>
@@ -1304,13 +1317,15 @@ function renderScenariosTable(metrics) {
 
     uniqueMetrics.forEach(metric => {
         const scenarioName = metric.scenario_cn || metric.scenario;
+        const annualCost = metric.annual_objective || metric.total_objective * metric.representative_days;
         html += `
             <tr>
                 <td>${scenarioName}</td>
-                <td>${metric.representative_days}</td>
+                <td>${metric.representative_days} 天</td>
                 <td>${(metric.total_objective / 1000).toFixed(1)}k</td>
                 <td>${metric.carbon_emission.toFixed(0)}</td>
                 <td>${metric.renewable_use_rate.toFixed(1)}%</td>
+                <td>${(annualCost / 10000).toFixed(1)} 万元</td>
             </tr>
         `;
     });
@@ -1320,16 +1335,9 @@ function renderScenariosTable(metrics) {
 }
 
 async function loadCommunityData(communityId) {
-    let param;
-    if (currentMode === 'weather') {
-        const sel = document.getElementById('community-weather-select');
-        const weather = sel ? sel.value : 'Sunny_LowWind';
-        param = `mode=weather&weather=${weather}`;
-    } else {
-        const sel = document.getElementById('community-scenario-select');
-        const scenario = sel ? sel.value : 'S4';
-        param = `scenario=${scenario}`;
-    }
+    const sel = document.getElementById('community-weather-select');
+    const weather = sel ? sel.value : 'Sunny_LowWind';
+    const param = `mode=weather&weather=${weather}`;
 
     try {
         const response = await fetch(`/api/optimization/chart/community-power-data?${param}&community=${communityId}`);
@@ -1529,16 +1537,9 @@ function renderCommunityDRChart(data) {
 }
 
 async function loadH2PowerChart() {
-    let url;
-    if (currentMode === 'weather') {
-        const select = document.getElementById('h2-weather-select');
-        const weather = select ? select.value : 'Sunny_LowWind';
-        url = `/api/optimization/chart/h2-power-data?mode=weather&weather=${weather}`;
-    } else {
-        const select = document.getElementById('h2-scenario-select');
-        const scenario = select ? select.value : 'S4';
-        url = `/api/optimization/chart/h2-power-data?scenario=${scenario}`;
-    }
+    const select = document.getElementById('weather-select');
+    const weather = select ? select.value : 'Sunny_LowWind';
+    const url = `/api/optimization/chart/h2-power-data?mode=weather&weather=${weather}`;
 
     try {
         const res = await fetch(url);
@@ -1558,11 +1559,11 @@ function renderH2PowerChart(data) {
     container.innerHTML = '';
 
     const h2Div = document.createElement('div');
-    h2Div.style.height = '260px';
+    h2Div.style.height = '220px';
     h2Div.style.marginBottom = '5px';
 
     const socDiv = document.createElement('div');
-    socDiv.style.height = '180px';
+    socDiv.style.height = '135px';
 
     container.appendChild(h2Div);
     container.appendChild(socDiv);
@@ -1612,16 +1613,9 @@ function renderH2PowerChart(data) {
 }
 
 async function loadDRPowerChart() {
-    let url;
-    if (currentMode === 'weather') {
-        const select = document.getElementById('dr-weather-select');
-        const weather = select ? select.value : 'Sunny_LowWind';
-        url = `/api/optimization/chart/dr-power-data?mode=weather&weather=${weather}`;
-    } else {
-        const select = document.getElementById('dr-scenario-select');
-        const scenario = select ? select.value : 'S4';
-        url = `/api/optimization/chart/dr-power-data?scenario=${scenario}`;
-    }
+    const select = document.getElementById('weather-select');
+    const weather = select ? select.value : 'Sunny_LowWind';
+    const url = `/api/optimization/chart/dr-power-data?mode=weather&weather=${weather}`;
 
     try {
         const res = await fetch(url);
@@ -1666,11 +1660,11 @@ function renderDRPowerChart(data) {
     container.innerHTML = '';
 
     const loadDiv = document.createElement('div');
-    loadDiv.style.height = '200px';
+    loadDiv.style.height = '160px';
     loadDiv.style.marginBottom = '5px';
 
     const drDiv = document.createElement('div');
-    drDiv.style.height = '260px';
+    drDiv.style.height = '210px';
 
     container.appendChild(loadDiv);
     container.appendChild(drDiv);
@@ -1755,14 +1749,17 @@ function renderCostBreakdownChart(data) {
 
     container.innerHTML = '';
 
+    const chartGrid = document.createElement('div');
+    chartGrid.className = 'annual-cost-chart-grid';
+
     const mainDiv = document.createElement('div');
-    mainDiv.style.height = '250px';
-
+    mainDiv.style.height = '300px';
     const subDiv = document.createElement('div');
-    subDiv.style.height = '250px';
+    subDiv.style.height = '300px';
 
-    container.appendChild(mainDiv);
-    container.appendChild(subDiv);
+    chartGrid.appendChild(mainDiv);
+    chartGrid.appendChild(subDiv);
+    container.appendChild(chartGrid);
 
     const total = data.total;
 
@@ -1794,16 +1791,16 @@ function renderCostBreakdownChart(data) {
         ...darkLayout,
         title: { text: `年总成本 ${(total / 10000).toFixed(1)}万元`, font: { size: 12, color: '#e2ecf7' } },
         showlegend: true,
-        legend: { font: { size: 9, color: '#7b8fa8' }, bgcolor: 'rgba(0,0,0,0)', x: 0.5, y: -0.15, xanchor: 'center', orientation: 'h' },
-        margin: { t: 30, b: 45, l: 10, r: 10 }
+        legend: { font: { size: 9, color: '#7b8fa8' }, bgcolor: 'rgba(0,0,0,0)', x: 0.5, y: -0.1, xanchor: 'center', orientation: 'h' },
+        margin: { t: 28, b: 40, l: 8, r: 8 }
     };
 
     const subLayout = {
         ...darkLayout,
         title: { text: '投资/运维明细', font: { size: 12, color: '#e2ecf7' } },
         showlegend: true,
-        legend: { font: { size: 9, color: '#7b8fa8' }, bgcolor: 'rgba(0,0,0,0)', x: 0.5, y: -0.15, xanchor: 'center', orientation: 'h' },
-        margin: { t: 30, b: 45, l: 10, r: 10 }
+        legend: { font: { size: 9, color: '#7b8fa8' }, bgcolor: 'rgba(0,0,0,0)', x: 0.5, y: -0.1, xanchor: 'center', orientation: 'h' },
+        margin: { t: 28, b: 40, l: 8, r: 8 }
     };
 
     Plotly.newPlot(mainDiv, mainTrace, mainLayout, plotlyConfig);
@@ -1896,7 +1893,7 @@ async function loadWeatherOptions() {
         const result = await res.json();
         if (!result.success) return;
 
-        const selectIds = ['weather-select', 'h2-weather-select', 'dr-weather-select', 'community-weather-select'];
+        const selectIds = ['weather-select', 'community-weather-select'];
         selectIds.forEach(id => {
             const sel = document.getElementById(id);
             if (!sel) return;
@@ -1910,6 +1907,7 @@ async function loadWeatherOptions() {
                 sel.appendChild(opt);
             });
         });
+        updateAnnualWeatherDays();
     } catch (e) {
         console.error('加载天气选项失败:', e);
     }
@@ -1944,6 +1942,7 @@ function handleScenarioCSVUpload(file) {
             const text = e.target.result;
             const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
             if (lines.length < 2) {
+                dailyCsvCurves = null;
                 setCSVStatus('CSV 文件为空或格式不正确', true);
                 return;
             }
@@ -1955,6 +1954,7 @@ function handleScenarioCSVUpload(file) {
             const w25Idx = headers.indexOf('node_25_wind');
 
             if (pv18Idx === -1 || pv33Idx === -1 || w22Idx === -1 || w25Idx === -1) {
+                dailyCsvCurves = null;
                 setCSVStatus('CSV 缺少必要列: node_18_PV, node_33_PV, node_22_wind, node_25_wind', true);
                 return;
             }
@@ -1975,6 +1975,7 @@ function handleScenarioCSVUpload(file) {
             }
 
             if (pv18.length === 0) {
+                dailyCsvCurves = null;
                 setCSVStatus('CSV 中无有效数据行', true);
                 return;
             }
@@ -1983,18 +1984,28 @@ function handleScenarioCSVUpload(file) {
             const windCurve = w22.map((v, i) => (v + (w25[i] || 0)) / 2);
 
             if (pvCurve.length !== 96 && pvCurve.length !== 24) {
+                dailyCsvCurves = null;
                 setCSVStatus(`数据点数为 ${pvCurve.length}，需要 96 点（15分钟间隔）或 24 点`, true);
                 return;
             }
 
-            dailyCsvCurves = { pv_curve: pvCurve, wind_curve: windCurve };
+            dailyCsvCurves = {
+                node_18_PV: pv18,
+                node_33_PV: pv33,
+                node_22_wind: w22,
+                node_25_wind: w25,
+                pv_curve: pvCurve,
+                wind_curve: windCurve
+            };
             renderNormalizedCurves(curveTo24Points(pvCurve), curveTo24Points(windCurve));
-            setCSVStatus(`已导入 ${file.name}（${pvCurve.length} 点归一化 p.u. 数据），点击"实时优化"匹配场景`, false);
+            setCSVStatus(`已导入 ${file.name}（${pvCurve.length} 点归一化 p.u. 数据），点击"实时优化"调用 MATLAB 求解`, false);
         } catch (err) {
+            dailyCsvCurves = null;
             setCSVStatus('CSV 解析失败: ' + err.message + '；CSV 已要求为归一化 p.u. 数据', true);
         }
     };
     reader.onerror = function () {
+        dailyCsvCurves = null;
         setCSVStatus('文件读取失败', true);
     };
     reader.readAsText(file);
@@ -2095,19 +2106,24 @@ function renderNormalizedCurves(pv24, wind24, matchedPv24 = null, matchedWind24 
 
 
 async function runRealtimeFromCurves() {
-    const { pv_24, wind_24 } = currentDailyCurves;
-    if (!pv_24 || !wind_24 || pv_24.length !== 24 || wind_24.length !== 24) {
-        setText('daily-overview-status', '曲线数据不完整');
+    if (!dailyCsvCurves) {
+        setCSVStatus('请先导入风光出力 CSV 文件', true);
+        setText('daily-overview-status', '请先导入CSV文件');
         return;
     }
     const status = document.getElementById('daily-overview-status');
-    if (status) status.textContent = '实时优化中...';
+    if (status) status.textContent = '正在调用 MATLAB 优化求解，请勿关闭页面';
 
     try {
         const res = await fetch('/api/daily-dispatch/optimize-milp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pv_curve: pv_24, wind_curve: wind_24 })
+            body: JSON.stringify({
+                node_18_PV: dailyCsvCurves.node_18_PV,
+                node_33_PV: dailyCsvCurves.node_33_PV,
+                node_22_wind: dailyCsvCurves.node_22_wind,
+                node_25_wind: dailyCsvCurves.node_25_wind
+            })
         });
         const result = await res.json();
         if (!result.success) throw new Error(result.error || '实时优化失败');
@@ -2390,8 +2406,6 @@ function selectDailyCommunityView(id) {
     const names = { '1': '工业区', '2': '商业区', '3': '居民区' };
     document.getElementById('community-title').textContent = (names[id] || '社区' + id) + ' - 日运行监控';
 
-    commView.querySelectorAll('.mode-toggle').forEach(el => el.style.display = 'none');
-    document.getElementById('community-scenario-select').style.display = 'none';
     document.getElementById('community-weather-select').style.display = 'none';
 
     currentView = 'community';
@@ -2812,13 +2826,15 @@ async function runDailyDispatch() {
     }
 
     const payload = {
-        pv_curve: dailyCsvCurves.pv_curve,
-        wind_curve: dailyCsvCurves.wind_curve
+        node_18_PV: dailyCsvCurves.node_18_PV,
+        node_33_PV: dailyCsvCurves.node_33_PV,
+        node_22_wind: dailyCsvCurves.node_22_wind,
+        node_25_wind: dailyCsvCurves.node_25_wind
     };
 
     if (btn) btn.disabled = true;
-    if (status) status.textContent = '实时优化中...';
-    setText('daily-overview-status', '实时优化中...');
+    if (status) status.textContent = '正在调用 MATLAB 优化求解...';
+    setText('daily-overview-status', '正在调用 MATLAB 优化求解，请勿关闭页面');
 
     try {
         const res = await fetch('/api/daily-dispatch/optimize-milp', {
@@ -3130,34 +3146,61 @@ function dbOnScenarioSelectChange() {
     dbLoadScenarioPower();
 }
 
-function dbRenderPowerCurveChart(chartId) {
+function dbBuildNormalizedWeatherCurves() {
     if (!dbScenarioPowerData) return;
+    return {
+        hours: dbScenarioPowerData.map(d => d.hour),
+        pv24: dbScenarioPowerData.map(d => ((Number(d.node_18_PV) || 0) + (Number(d.node_33_PV) || 0)) / 2),
+        wind24: dbScenarioPowerData.map(d => ((Number(d.node_22_wind) || 0) + (Number(d.node_25_wind) || 0)) / 2)
+    };
+}
+
+function dbRenderNormalizedCurve(targetId, values, type) {
+    const el = document.getElementById(targetId);
+    if (!el || !values) return;
+
+    const hours = Array.from({ length: values.length }, (_, i) => i + 1);
+    const isPv = type === 'pv';
+    const color = isPv ? '#f1c40f' : '#3498db';
+    const fill = isPv ? 'rgba(241,196,15,0.12)' : 'rgba(52,152,219,0.12)';
+    const label = isPv ? '光伏归一化出力' : '风电归一化出力';
+
+    const traces = [{
+        x: hours,
+        y: values,
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color, shape: 'spline' },
+        marker: { color, size: 5 },
+        fill: 'tozeroy',
+        fillcolor: fill,
+        name: '',
+        hovertemplate: `${label}: %{y:.2f} p.u.<extra></extra>`
+    }];
+
+    Plotly.react(el, traces, {
+        ...darkLayout,
+        xaxis: { ...darkLayout.xaxis, dtick: 4, title: { text: 'h', font: { size: 9 } } },
+        yaxis: { ...darkLayout.yaxis, range: [0, 1], title: { text: 'p.u.', font: { size: 9 } } },
+        margin: { t: 10, b: 28, l: 36, r: 8 },
+        legend: { ...darkLayout.legend, orientation: 'h', y: -0.35, font: { size: 9 } },
+        showlegend: false
+    }, plotlyConfig);
+}
+
+function dbRenderPowerCurveChart(chartId) {
+    const curves = dbBuildNormalizedWeatherCurves();
+    if (!curves) return;
     const el = document.getElementById(chartId);
     if (!el) return;
-    const labels = dbScenarioPowerData.map(d => String(d.hour).padStart(2, '0') + ':00');
-    const cfg = [
-        { name: '风电 node_22', color: '#1e90ff', key: 'node_22_wind' },
-        { name: '风电 node_25', color: '#00bcd4', key: 'node_25_wind' },
-        { name: '光伏 node_18', color: '#ff9100', key: 'node_18_PV' },
-        { name: '光伏 node_33', color: '#ff5252', key: 'node_33_PV' },
-    ];
-    const traces = cfg.map(t => ({
-        x: labels,
-        y: dbScenarioPowerData.map(d => d[t.key]),
-        mode: 'lines+markers',
-        name: t.name,
-        line: { color: t.color, width: 2 },
-        marker: { color: t.color, size: 7 },
-    }));
-    const layout = {
-        ...darkLayout,
-        title: { text: '风光功率曲线预览', font: { size: 13, color: '#e2ecf7' } },
-        xaxis: { ...darkLayout.xaxis, title: { text: '时刻', font: { size: 10 } }, dtick: 2, fixedrange: true },
-        yaxis: { ...darkLayout.yaxis, title: { text: '标幺值 (p.u.)', font: { size: 10 } }, range: [-0.05, 1.05], dtick: 0.1, fixedrange: true, autorange: false },
-        legend: { ...darkLayout.legend, orientation: 'h', y: -0.22 },
-        margin: { t: 40, b: 70, l: 50, r: 20 },
-    };
-    Plotly.react(chartId, traces, layout, plotlyConfig);
+
+    if (chartId === 'db-csv-power-chart') {
+        dbRenderNormalizedCurve('db-csv-pv-curve-chart', curves.pv24, 'pv');
+        dbRenderNormalizedCurve('db-csv-wind-curve-chart', curves.wind24, 'wind');
+    } else if (chartId === 'db-table-power-chart') {
+        dbRenderNormalizedCurve('db-table-pv-curve-chart', curves.pv24, 'pv');
+        dbRenderNormalizedCurve('db-table-wind-curve-chart', curves.wind24, 'wind');
+    }
 }
 
 function dbRenderActivePowerChart() {
