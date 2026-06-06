@@ -23,8 +23,8 @@
 
     /* --- Text Hierarchy --- */
     --text-primary: #e2ecf7;
-    --text-secondary: #d8e4f0;
-    --text-muted: #90a8c0;
+    --text-secondary: #a9bdd3;
+    --text-muted: #7890aa;
     --text-bright: #ffffff;
 
     /* --- Accent Colors --- */
@@ -59,6 +59,7 @@
     --gap-md: 16px;
     --gap-lg: 24px;
     --gap-xl: 32px;
+    --dashboard-header-offset: 88px;
 
     /* --- Border Radius --- */
     --radius-sm: 6px;
@@ -143,7 +144,7 @@ body::before {
 
 .header-center h1 {
     font-family: var(--font-display);
-    font-size: 22px;
+    font-size: 26px;
     font-weight: 700;
     background: linear-gradient(90deg, #00d4ff 0%, #1e90ff 40%, #00e676 100%);
     -webkit-background-clip: text;
@@ -183,7 +184,8 @@ body::before {
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
     transition: all 0.2s ease;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 600;
 }
 
 .nav-link:hover {
@@ -193,7 +195,7 @@ body::before {
 }
 
 .datetime {
-    font-size: 14px;
+    font-size: 15px;
     color: var(--text-secondary);
     font-family: var(--font-mono);
     letter-spacing: 1px;
@@ -293,20 +295,28 @@ body::before {
     padding-top: var(--gap-lg);
 }
 
+.main-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-lg);
+    min-width: 0;
+}
+
 .annual-view {
     grid-template-columns: 1fr;
     padding-top: 0;
     margin-top: var(--gap-lg);
     gap: var(--gap-md);
     width: 100%;
+    position: relative;
 }
 
 .annual-subview-switcher {
     position: fixed;
+    top: var(--dashboard-header-offset);
     left: 0;
-    top: 0;
-    height: 100vh;
-    z-index: 200;
+    bottom: 16px;
+    z-index: 100;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -424,8 +434,8 @@ body::before {
 .annual-summary-lead p,
 .annual-typical-toolbar p {
     margin: 0;
-    color: var(--text-muted);
-    font-size: 13px;
+    color: var(--text-secondary);
+    font-size: 14px;
     line-height: 1.5;
 }
 
@@ -438,7 +448,7 @@ body::before {
     flex-shrink: 0;
     color: var(--accent-cyan);
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
 }
 
@@ -529,15 +539,14 @@ body::before {
     border-radius: var(--radius-sm);
     color: var(--accent-cyan);
     background: rgba(0, 212, 255, 0.06);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     white-space: nowrap;
 }
 
 .annual-main-pane {
     width: 100%;
-    min-width: 0;
-    padding-left: 36px;
+    padding-left: 40px;
 }
 
 .annual-typical-mode .annual-main-pane {
@@ -580,13 +589,13 @@ body::before {
 }
 
 .annual-community-card strong {
-    font-size: 14px;
+    font-size: 15px;
     margin-bottom: 4px;
 }
 
 .annual-community-card span {
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .annual-community-card .status-dot {
@@ -694,13 +703,6 @@ body::before {
     flex-direction: column;
     margin-top: 8px;
     line-height: 1.35;
-}
-
-.main-content {
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-lg);
-    min-width: 0;
 }
 
 /* --- Hero: Map + Power Curve (50/50) --- */
@@ -1085,7 +1087,7 @@ body::before {
 
 .dr-metric-label {
     font-size: 11px;
-    color: var(--text-secondary);
+    color: #7b8fa8;
     margin-top: 2px;
 }
 
@@ -1209,7 +1211,7 @@ body::before {
 }
 
 .panel-header h3 {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     color: var(--text-primary);
     display: flex;
@@ -1228,7 +1230,7 @@ body::before {
 }
 
 .panel-badge {
-    font-size: 12px;
+    font-size: 13px;
     font-family: var(--font-mono);
     color: var(--accent-cyan);
     background: rgba(0, 212, 255, 0.08);
@@ -1519,13 +1521,13 @@ body::before {
 .metric-unit {
     font-size: 13px;
     font-family: var(--font-mono);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-bottom: 4px;
     letter-spacing: 0.5px;
 }
 
 .metric-label {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-secondary);
     letter-spacing: 0.3px;
 }
@@ -1560,7 +1562,7 @@ body::before {
 
 .summary-label {
     font-size: 13px;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-bottom: var(--gap-xs);
     letter-spacing: 0.3px;
 }
@@ -1575,7 +1577,7 @@ body::before {
 .summary-unit {
     font-size: 12px;
     font-family: var(--font-mono);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-top: 2px;
 }
 
@@ -1846,13 +1848,13 @@ body::before {
 
 .daily-kpi-unit {
     font-size: 12px;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-top: 1px;
 }
 
 .daily-kpi-label {
     font-size: 12px;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-top: 2px;
 }
 
@@ -1865,7 +1867,7 @@ body::before {
 .daily-dispatch-status {
     color: var(--accent-cyan);
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 13px;
     padding: 4px 10px;
     border: 1px solid rgba(0, 212, 255, 0.25);
     border-radius: var(--radius-sm);
@@ -1897,7 +1899,7 @@ body::before {
     justify-content: space-between;
     gap: var(--gap-sm);
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .daily-csv-btn {
@@ -1911,7 +1913,7 @@ body::before {
     color: #00b4ff;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     transition: all 0.2s;
 }
@@ -1927,8 +1929,8 @@ body::before {
     background: rgba(3, 8, 16, 0.45);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-sm);
-    color: var(--text-muted);
-    font-size: 12px;
+    color: var(--text-secondary);
+    font-size: 13px;
     line-height: 1.5;
     min-height: 18px;
 }
@@ -2148,7 +2150,8 @@ body::before {
     padding: 10px 20px;
     border-radius: var(--radius-md);
     cursor: pointer;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 600;
     transition: all 0.2s ease;
 }
 
@@ -2159,7 +2162,7 @@ body::before {
 }
 
 .community-header h2 {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 600;
     letter-spacing: 0.5px;
 }
@@ -2177,7 +2180,7 @@ body::before {
     color: var(--text-primary);
     padding: 4px 10px;
     border-radius: var(--radius-sm);
-    font-size: 12px;
+    font-size: 13px;
     font-family: var(--font-mono);
     cursor: pointer;
 }
@@ -2201,7 +2204,7 @@ body::before {
     padding: 10px 18px;
     border: 1px solid rgba(0, 212, 255, 0.3);
     border-radius: var(--radius-md);
-    font-size: 14px;
+    font-size: 15px;
     transition: all 0.2s ease;
 }
 
@@ -2233,15 +2236,17 @@ body::before {
 .community-metrics-row .metric-card.compact .metric-label {
     order: -1;
     margin-bottom: 2px;
-    font-size: 11px;
+    font-size: 13px;
+    color: var(--text-secondary);
 }
 
 .community-metrics-row .metric-card.compact .metric-value {
-    font-size: 18px;
+    font-size: 20px;
 }
 
 .community-metrics-row .metric-card.compact .metric-unit {
-    font-size: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
 }
 
 .community-charts-grid {
@@ -2289,7 +2294,7 @@ body::before {
     }
 
     .annual-view {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: var(--gap-md);
     }
 
@@ -2332,13 +2337,13 @@ body::before {
     }
 
     .annual-view {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
 @media (max-width: 1400px) {
     .dashboard-overview {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 280px;
     }
 
     .annual-kpi-grid {
@@ -2428,6 +2433,7 @@ body::before {
     }
 
     .annual-typical-toolbar {
+        display: grid;
         grid-template-columns: 1fr;
     }
 
@@ -2632,14 +2638,14 @@ body::before {
 }
 
 .weather-desc {
-    font-size: 13px;
-    color: var(--text-muted);
+    font-size: 14px;
+    color: var(--text-secondary);
     line-height: 1.6;
     margin: 0;
 }
 
 .weather-sub-title {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-secondary);
     margin: 12px 0 8px;
     font-weight: 600;
@@ -2653,15 +2659,15 @@ body::before {
 .weather-days-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .weather-days-table th {
     padding: 10px 12px;
     text-align: left;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-weight: 600;
-    font-size: 11px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border-bottom: 1px solid var(--border-color);
@@ -2673,7 +2679,7 @@ body::before {
     border-bottom: 1px solid rgba(20, 48, 77, 0.3);
     color: var(--text-primary);
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .weather-days-table tfoot td {
@@ -2696,7 +2702,7 @@ body::before {
     border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 14px;
     padding: 0 8px;
     text-align: center;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -2709,8 +2715,8 @@ body::before {
 }
 
 .weather-days-pct {
-    color: var(--text-muted);
-    font-size: 12px;
+    color: var(--text-secondary);
+    font-size: 13px;
 }
 
 /* 场景选择器 */
@@ -2721,7 +2727,7 @@ body::before {
 }
 
 .weather-scenario-row label {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-secondary);
     white-space: nowrap;
 }
@@ -2732,7 +2738,7 @@ body::before {
     color: var(--text-primary);
     padding: 6px 14px;
     border-radius: var(--radius-sm);
-    font-size: 12px;
+    font-size: 13px;
     font-family: var(--font-mono);
     cursor: pointer;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -2885,29 +2891,6 @@ body::before {
     margin-top: 12px;
 }
 
-.weather-normalized-preview {
-    margin-top: 12px;
-    margin-bottom: 0;
-}
-
-.weather-normalized-preview .panel-card {
-    padding: var(--gap-md);
-}
-
-.weather-normalized-preview .panel-header {
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-}
-
-.weather-normalized-preview .panel-header h3 {
-    font-size: 13px;
-}
-
-.weather-normalized-preview .chart-container-sm {
-    height: 220px;
-    min-height: 180px;
-}
-
 /* 按钮 */
 .weather-actions {
     display: flex;
@@ -2974,7 +2957,7 @@ body::before {
 }
 
 .weather-status {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
 }
 
@@ -2992,7 +2975,7 @@ body::before {
 }
 
 .weather-matlab-row label {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-secondary);
     white-space: nowrap;
 }
@@ -3006,7 +2989,7 @@ body::before {
     border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 13px;
     padding: 0 10px;
     transition: border-color 0.2s, box-shadow 0.2s;
 }

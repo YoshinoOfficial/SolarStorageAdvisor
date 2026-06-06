@@ -3039,7 +3039,7 @@ def get_node_voltage_data():
             }
             scenario_name = scenario_name_map.get(scenario, scenario)
 
-        voltage_file = os.path.join(data_dir, f'{scenario}_admm_node_voltage.csv')
+        voltage_file = os.path.join(data_dir, f'{scenario}_centralized_node_voltage.csv')
         if not os.path.exists(voltage_file):
             return jsonify({'success': False, 'error': '请先重新导出节点电压数据'}), 404
 

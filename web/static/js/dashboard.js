@@ -300,6 +300,7 @@ function selectCommunity(type) {
     const wSel = document.getElementById('community-weather-select');
     const ovWeather = document.getElementById('weather-select');
     if (wSel && ovWeather) wSel.value = ovWeather.value;
+    if (wSel) wSel.style.display = 'none';
 
     loadCommunityData(community.id);
 }
@@ -1335,8 +1336,9 @@ function renderScenariosTable(metrics) {
 }
 
 async function loadCommunityData(communityId) {
-    const sel = document.getElementById('community-weather-select');
-    const weather = sel ? sel.value : 'Sunny_LowWind';
+    const annualSel = document.getElementById('weather-select');
+    const communitySel = document.getElementById('community-weather-select');
+    const weather = annualSel?.value || communitySel?.value || 'Sunny_LowWind';
     const param = `mode=weather&weather=${weather}`;
 
     try {
